@@ -4,11 +4,9 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-	"sort"
-
 	"github.com/ismailshak/transit/api"
 	"github.com/ismailshak/transit/config"
+	"github.com/ismailshak/transit/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -27,17 +25,11 @@ func init() {
 }
 
 func executeList(client api.Api, args []string) {
-	station := "K01" // Hardcoding "Courthouse" for now
+	station := "C01,A01" // Hardcoding "Metro Center" for now
 	timings, err := client.ListTimings(&station)
 	if err != nil {
-		panic(err)
+		panic(err) // TODO: error handling
 	}
 
-	sort.Slice(timings, func(i, j int) bool {
-		return timings[i].Destination < timings[j].Destination
-	})
-
-	for _, t := range timings {
-		fmt.Printf("(%s) %s %smin(s)\n", t.Line, t.Destination, t.Min)
-	}
+	tui.PrintArrivingScreen(timings)
 }
