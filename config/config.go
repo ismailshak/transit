@@ -4,13 +4,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+type DmvConfig struct {
+	ApiKey string `mapstructure:"api_key"`
+}
+
 type CoreConfig struct {
-	ApiKey   string `mapstructure:"api_key"`
 	Location string `mapstructure:"location"`
 }
 
 type Config struct {
 	Core CoreConfig `mapstructure:"core"`
+	Dmv  DmvConfig  `mapstructure:"dmv"`
 }
 
 var (

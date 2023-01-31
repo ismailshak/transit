@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"github.com/ismailshak/transit/api"
-	"github.com/ismailshak/transit/config"
 	"github.com/ismailshak/transit/list"
 	"github.com/spf13/cobra"
 )
@@ -23,7 +22,7 @@ try being more specific by adding more characters.
 	`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		client := api.DmvClient(&config.GetConfig().Core.ApiKey)
+		client := api.DmvClient()
 		list.Execute(client, args)
 	},
 }
