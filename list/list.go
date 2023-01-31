@@ -21,7 +21,7 @@ func Execute(client api.Api, args []string) {
 
 // If a single match was found, print the station's arriving trains
 func handleArg(client api.Api, allStations []string, arg string) {
-	matches := fuzzy.Find(arg, allStations)
+	matches := helpers.FuzzyFind(arg, allStations)
 	if matches.Len() == 0 {
 		printNotFound(arg)
 		return
