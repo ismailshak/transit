@@ -10,6 +10,11 @@ builds:
     goarch:
       - amd64
       - arm64
+    ldflags:
+      - -s -w 
+      - -X github.com/ismailshak/transit/version.version={{.Version}}
+      - -X github.com/ismailshak/transit/version.commit={{.Commit}}
+      - -X github.com/ismailshak/transit/version.date={{.Date}}
 archives:
   - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of uname.
