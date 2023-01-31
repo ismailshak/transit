@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // API to interact with DMV Metro
@@ -19,9 +20,10 @@ type TimingResponse struct {
 }
 
 // Fetch latest train arrival information
-func (dmv DmvApi) ListTimings(station *string) ([]Timing, error) {
+func (dmv DmvApi) ListTimings(stations []string) ([]Timing, error) {
 	route := "StationPrediction.svc/json/GetPrediction"
-	url := fmt.Sprintf("%s/%s/%s", dmv.base_url, route, *station)
+	codes := strings.Join(stations, ",")
+	url := fmt.Sprintf("%s/%s/%s", dmv.base_url, route, codes)
 
 	client := http.Client{}
 	req, _ := http.NewRequest(http.MethodGet, url, nil)

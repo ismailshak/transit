@@ -13,7 +13,7 @@ type Timing struct {
 }
 
 type Api interface {
-	ListTimings(station *string) ([]Timing, error)
+	ListTimings(station []string) ([]Timing, error)
 }
 
 // Build and return a client for the DMV Metro
