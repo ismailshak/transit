@@ -1,5 +1,8 @@
-# Binary produced
+# Binary produced out of `go build -o transit`
 transit
 
 # Local CLI config file
 config.yml
+
+# Compiled binaries go here
+dist/
