@@ -11,6 +11,7 @@
 ### Requirements
 
 - An api key for you local transit authority.
+- Setup your config file following instructions in Usage > Config below
 
 | location | website                      |
 | -------- | ---------------------------- |
@@ -27,6 +28,46 @@ brew install ismailshak/tap/transit
 ```
 
 ## Usage
+
+### Config
+
+A config file will automatically be generated the first time you run `transit`.
+
+For first time setup, you will need to run these commands:
+
+```bash
+transit config set core.location="<location>"
+transit config set <location>.api_key="<api_key>"
+
+# Examples
+transit config set core.location="dmv"
+transit config set dmv.api_key="abcd"
+```
+
+`config` has other commands:
+
+```bash
+# help
+transit config --help
+
+# print a config option
+transit config get <key>
+
+# print path to config file
+transit config path
+```
+
+<details>
+
+<summary>Full list of available config options</summary>
+
+```
+core.location
+
+dmv.api_key
+```
+
+</details>
 
 ### List arriving trains for a station
 
