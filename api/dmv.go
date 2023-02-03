@@ -2,10 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/ismailshak/transit/logger"
 )
 
 // API to interact with DMV Metro
@@ -36,11 +39,13 @@ func (dmv DmvApi) ListTimings(stations []string) ([]Timing, error) {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Non 200 received %d", resp.StatusCode)
-	}
-
 	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != 200 {
+		logger.Debug(string(body))
+		logger.Error(fmt.Sprintf("Failed to fetch. Received %d", resp.StatusCode))
+		return nil, errors.New("Failed to fetch")
+	}
 
 	var timings TimingResponse
 	err = json.Unmarshal(body, &timings)

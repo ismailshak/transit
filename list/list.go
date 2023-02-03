@@ -2,10 +2,10 @@ package list
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/ismailshak/transit/api"
 	"github.com/ismailshak/transit/helpers"
+	"github.com/ismailshak/transit/logger"
 	"github.com/ismailshak/transit/tui"
 	"github.com/sahilm/fuzzy"
 )
@@ -42,14 +42,14 @@ func handleArg(client api.Api, allStations []string, arg string) {
 func fetchTrains(client api.Api, stationCodes []string) []api.Timing {
 	timings, err := client.ListTimings(stationCodes)
 	if err != nil {
-		panic(err) // TODO: error handling
+		helpers.Exit(helpers.EXIT_BAD_CONFIG) // TODO: better err code
 	}
 
 	return timings
 }
 
 func printNotFound(arg string) {
-	fmt.Printf("- Skipping '%s': could not find a matching station\n", arg)
+	logger.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
 }
 
 func printTooManyMatches(matches fuzzy.Matches, arg string) {
@@ -58,6 +58,5 @@ func printTooManyMatches(matches fuzzy.Matches, arg string) {
 		names = append(names, m.Str)
 	}
 
-	fmt.Printf("- Skipping '%s': too many matches found\n", arg)
-	fmt.Printf("matches: %s\n", strings.Join(names, " - "))
+	logger.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
 }

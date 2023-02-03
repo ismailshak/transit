@@ -1,12 +1,12 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ismailshak/transit/api"
 	"github.com/ismailshak/transit/helpers"
+	"github.com/ismailshak/transit/logger"
 )
 
 var (
@@ -92,9 +92,10 @@ func PrintArrivingScreen(timings []api.Timing) {
 	items = append(items, genHeader(header))
 	for _, v := range destinationLookup {
 		if helpers.IsGhostTrain(v.line, v.destination) {
-			fmt.Println("NOTE: A train not intended for passengers is hidden from the display below")
+			logger.Debug(("A train not intended for passengers is hidden from the display below"))
 			continue
 		}
+
 		item := genRow(v.line, v.destination, v.minutes)
 		items = append(items, item)
 	}
@@ -108,8 +109,7 @@ func PrintArrivingScreen(timings []api.Timing) {
 	builder := strings.Builder{}
 	builder.WriteString(out)
 
-	fmt.Println(builder.String())
-
+	logger.Print(builder.String())
 }
 
 type Row struct {
