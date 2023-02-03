@@ -1,6 +1,6 @@
 package version
 
-import "fmt"
+import "github.com/ismailshak/transit/logger"
 
 // These variables are set by build flags (goreleaser injects values at release time)
 // To mimic locally:
@@ -15,9 +15,9 @@ var (
 )
 
 func Execute() {
-	fmt.Println(formatVesion())
+	logger.Print(formatVersion())
 }
 
-func formatVesion() string {
+func formatVersion() string {
 	return version
 }

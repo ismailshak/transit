@@ -1,8 +1,11 @@
 # Binary produced out of `go build -o transit`
 transit
 
-# Local CLI config file
+# Local CLI config file (useful for symlinking to config dir while developing)
 config.yml
 
-# Compiled binaries go here
+# goreleaser compiled binaries go here
 dist/
+
+# vscode settings
+.vscode

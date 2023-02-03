@@ -4,8 +4,15 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"github.com/ismailshak/transit/config"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"strings"
+
+	"github.com/ismailshak/transit/logger"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var configCmd = &cobra.Command{
@@ -29,7 +36,7 @@ var configGetCommand = &cobra.Command{
 	Args:                  cobra.ExactArgs(1),
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.ExecuteGet(args[0])
+		ExecuteGet(args[0])
 	},
 }
 
@@ -41,7 +48,7 @@ var configSetCommand = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		config.ExecuteSet(args[0])
+		ExecuteSet(args[0])
 	},
 }
 
@@ -52,7 +59,7 @@ var configPathCommand = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		config.ExecutePath()
+		ExecutePath()
 	},
 }
 
@@ -61,4 +68,85 @@ func init() {
 	configCmd.AddCommand(configGetCommand)
 	configCmd.AddCommand(configSetCommand)
 	configCmd.AddCommand(configPathCommand)
+}
+
+var (
+	vp *viper.Viper = viper.New()
+)
+
+// Entry point for `config get`
+func ExecuteGet(key string) {
+	result := vp.Get(key)
+
+	if result == nil {
+		logger.Warn(fmt.Sprintf("No config property found matching '%s'\n", key))
+		return
+	}
+
+	logger.Print(fmt.Sprint(result))
+}
+
+// Entry point for `config set`
+func ExecuteSet(arg string) {
+	key, value, valid := parseSetArg(arg)
+	if !valid {
+		logger.Warn(fmt.Sprintf("Could not parse '%s'. Make sure it's in the format <key>=<value>\n", key))
+		return
+	}
+
+	valid = validateKey(key, value)
+	if !valid {
+		return
+	}
+
+	vp.Set(key, value)
+	vp.WriteConfig()
+	logger.Print(fmt.Sprintf("'%s' has been set to '%s'\n", key, value))
+}
+
+// Entry point for `config path`
+func ExecutePath() {
+	logger.Print(getConfigPath())
+}
+
+func parseSetArg(arg string) (string, string, bool) {
+	parts := strings.Split(arg, "=")
+
+	if len(parts) != 2 {
+		return "", "", false
+	}
+
+	return parts[0], parts[1], true
+}
+
+var validLocations = map[string]bool{
+	"dmv": true,
+}
+
+func validateKey(key, value string) bool {
+	if key == "core.location" {
+		valid := validateLocation(value)
+		if !valid {
+			logger.Error(fmt.Sprintf("'%s' is not a valid location\n", value))
+			return false
+		}
+	}
+
+	return true
+}
+
+func validateLocation(location string) bool {
+	_, exists := validLocations[location]
+	return exists
+}
+
+func getConfigPath() string {
+	return vp.ConfigFileUsed()
+}
+
+func createConfigIfNotFound(configPath string) {
+	if _, err := os.Stat(configPath); errors.Is(err, os.ErrNotExist) {
+		logger.Debug(fmt.Sprintf("Config not found. Creating a config file at path '%s'", configPath))
+		os.WriteFile(configPath, []byte{}, fs.FileMode(os.O_CREATE))
+	}
 }
