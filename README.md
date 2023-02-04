@@ -4,7 +4,7 @@
 
 ### Demo
 
-[![asciicast](https://asciinema.org/a/Qq39eZP80bsdNLwcW5JCj1IzT.svg)](https://asciinema.org/a/Qq39eZP80bsdNLwcW5JCj1IzT)
+https://user-images.githubusercontent.com/23173408/216787213-bf213727-73d7-4579-87c4-052333ceac87.mp4
 
 ## Installation
 
