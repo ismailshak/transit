@@ -11,7 +11,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w 
+      - -s -w
       - -X github.com/ismailshak/transit/version.version={{.Version}}
       - -X github.com/ismailshak/transit/version.commit={{.Commit}}
       - -X github.com/ismailshak/transit/version.date={{.Date}}
@@ -27,8 +27,8 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     # use zip for windows archives
     format_overrides:
-    - goos: windows
-      format: zip
+      - goos: windows
+        format: zip
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
 snapshot:
@@ -40,19 +40,18 @@ changelog:
     - title: Features
       regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
       order: 0
-    - title: 'Bug fixes'
+    - title: "Bug fixes"
       regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
       order: 1
-    - title: 'Performance'
+    - title: "Performance"
       regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
       order: 1
     - title: Others
       order: 999
   filters:
     exclude:
-      - '^docs'
-      - '^test'
-
+      - "^docs"
+      - "^test"
 # The lines beneath this are called `modelines`. See `:help modeline`
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj

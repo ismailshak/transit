@@ -13,12 +13,12 @@ import (
 
 var listCmd = &cobra.Command{
 	Use:     "list <args>",
-	Example: "  transit list courthouse (matches \"Court House\")\n  transit list metro (matches \"Metro Center\")",
-	Short:   "Display next train arrival information for chosen station(s)",
+	Example: "  transit list courth (matches \"Court House\")\n  transit list metro (matches \"Metro Center\")",
+	Short:   "Display upcoming train arrival information for chosen station(s)",
 	Long: `
-'list' will display arriving train information for one or more stations.
+'list' will display upcoming train information for one or more stations.
 
-Arguments are considered valid if it can be used to narrow 
+Arguments are considered valid if it can be used to narrow
 the official station names to just 1. If something's too generic,
 try being more specific by adding more characters.
 	`,
