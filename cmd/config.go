@@ -13,23 +13,23 @@ import (
 )
 
 var configCmd = &cobra.Command{
-	Use:   "config <args>",
+	Use:   "config <command>",
 	Short: "Manage configuration for transit CLI",
 	Long: `
 Get and set configuration options.
 
-For nested config options, use a period/dot as a delimiter.
+For nested config options, use a period/full-stop/dot as a delimiter.
 
-There is very minimal validation on the values you set, whatever you decide
-to set will probably be approved... just not parsed or read`,
+There is very minimal validation on the values you set. Whatever you decide
+to set will probably be written... will just not be parsed/read by any of the commands.`,
 	DisableFlagsInUseLine: true,
 }
 
 var configGetCommand = &cobra.Command{
 	Use:                   "get <key>",
 	Short:                 "Get a key from the config file",
-	Long:                  "Get a key from the config file\nFor all values, check the README at https://github.com/ismailshak/transit",
-	Example:               "  transfer config get core.location",
+	Long:                  "Get a key from the config file\nFor all values, check the README at https://github.com/ismailshak/transit#config",
+	Example:               "  transit config get core.location",
 	Args:                  cobra.ExactArgs(1),
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -39,9 +39,9 @@ var configGetCommand = &cobra.Command{
 
 var configSetCommand = &cobra.Command{
 	Use:                   "set <key> <value>",
-	Short:                 "Set a key from the config file",
-	Long:                  "Set a key from the config file\nFor all values, check the README at https://github.com/ismailshak/transit",
-	Example:               "  transfer config set core.location dmv\n  transfer config set dmv.api_key abcdef",
+	Short:                 "Set a key in the config file",
+	Long:                  "Set a key in the config file\nFor all values, check the README at https://github.com/ismailshak/transit",
+	Example:               "  transit config set core.location dmv\n  transit config set dmv.api_key abcdef",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
