@@ -4,10 +4,7 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"strings"
 
 	"github.com/ismailshak/transit/logger"
@@ -19,7 +16,7 @@ var configCmd = &cobra.Command{
 	Use:   "config <args>",
 	Short: "Manage configuration for transit CLI",
 	Long: `
-Get and set configuration options. 
+Get and set configuration options.
 
 For nested config options, use a period/dot as a delimiter.
 
@@ -142,11 +139,4 @@ func validateLocation(location string) bool {
 
 func getConfigPath() string {
 	return vp.ConfigFileUsed()
-}
-
-func createConfigIfNotFound(configPath string) {
-	if _, err := os.Stat(configPath); errors.Is(err, os.ErrNotExist) {
-		logger.Debug(fmt.Sprintf("Config not found. Creating a config file at path '%s'", configPath))
-		os.WriteFile(configPath, []byte{}, fs.FileMode(os.O_CREATE))
-	}
 }

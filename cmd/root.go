@@ -72,10 +72,21 @@ func LoadConfig(path string) {
 		logger.Debug(fmt.Sprintf("Config path override provided: '%s'", path))
 		vp.SetConfigFile(path)
 	} else {
-		createConfigIfNotFound(os.Getenv("HOME") + "/.config/transit/config.yml")
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			logger.Error(fmt.Sprint(err))
+			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		}
+
+		err = helpers.CreatePathIfNotFound(homeDir + "/.config/transit/config.yml")
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to create config directory: %s", err))
+			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		}
+
 		vp.SetConfigName("config")
 		vp.SetConfigType("yaml")
-		vp.AddConfigPath("$HOME/.config/transit/")
+		vp.AddConfigPath(homeDir + "/.config/transit/")
 	}
 
 	err := vp.ReadInConfig()
