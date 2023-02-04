@@ -41,8 +41,9 @@ func (dmv DmvApi) ListTimings(stations []string) ([]Timing, error) {
 
 	body, _ := io.ReadAll(resp.Body)
 
+	logger.Debug(string(body))
+
 	if resp.StatusCode != 200 {
-		logger.Debug(string(body))
 		logger.Error(fmt.Sprintf("Failed to fetch. Received %d", resp.StatusCode))
 		return nil, errors.New("Failed to fetch")
 	}
