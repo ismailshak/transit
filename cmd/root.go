@@ -69,13 +69,24 @@ func initConfig() {
 func LoadConfig(path string) {
 	configFile := config.GetConfig()
 	if path != "" {
-		logger.Debug(fmt.Sprintf("Config path override provided: '%s'", path))
 		vp.SetConfigFile(path)
 	} else {
-		createConfigIfNotFound(os.Getenv("HOME") + "/.config/transit/config.yml")
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			logger.Error(fmt.Sprint(err))
+			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		}
+
+		fullConfigPath := homeDir + "/.config/transit/config.yml"
+		err = helpers.CreatePathIfNotFound(fullConfigPath)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to create config directory: %s", err))
+			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		}
+
 		vp.SetConfigName("config")
 		vp.SetConfigType("yaml")
-		vp.AddConfigPath("$HOME/.config/transit/")
+		vp.AddConfigPath(homeDir + "/.config/transit/")
 	}
 
 	err := vp.ReadInConfig()
@@ -89,7 +100,4 @@ func LoadConfig(path string) {
 		logger.Error("Failed to parse config" + fmt.Sprint(err))
 		helpers.Exit(helpers.EXIT_BAD_CONFIG)
 	}
-
-	// TODO: we probably don't need to do this, given its already a pointer
-	config.SetConfig(configFile)
 }
