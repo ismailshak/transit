@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -92,7 +93,8 @@ func PrintArrivingScreen(timings []api.Timing) {
 	items = append(items, genHeader(header))
 	for _, v := range destinationLookup {
 		if helpers.IsGhostTrain(v.line, v.destination) {
-			logger.Debug(("A train not intended for passengers is hidden from the display below"))
+			logger.Debug(("A train not intended for passengers is hidden from the display"))
+			logger.Debug(fmt.Sprintf("%+v", v))
 			continue
 		}
 
