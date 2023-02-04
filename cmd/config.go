@@ -38,14 +38,14 @@ var configGetCommand = &cobra.Command{
 }
 
 var configSetCommand = &cobra.Command{
-	Use:                   "set <key>=<value>",
+	Use:                   "set <key> <value>",
 	Short:                 "Set a key from the config file",
 	Long:                  "Set a key from the config file\nFor all values, check the README at https://github.com/ismailshak/transit",
-	Example:               "  transfer config set core.location=dmv\n  transfer config set dmv.api_key=abcdef",
+	Example:               "  transfer config set core.location dmv\n  transfer config set dmv.api_key abcdef",
 	DisableFlagsInUseLine: true,
-	Args:                  cobra.ExactArgs(1),
+	Args:                  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		ExecuteSet(args[0])
+		ExecuteSet(args[0], args[1])
 	},
 }
 
@@ -84,14 +84,8 @@ func ExecuteGet(key string) {
 }
 
 // Entry point for `config set`
-func ExecuteSet(arg string) {
-	key, value, valid := parseSetArg(arg)
-	if !valid {
-		logger.Warn(fmt.Sprintf("Could not parse '%s'. Make sure it's in the format <key>=<value>\n", key))
-		return
-	}
-
-	valid = validateKey(key, value)
+func ExecuteSet(key, value string) {
+	valid := validateKey(key, value)
 	if !valid {
 		return
 	}
@@ -116,10 +110,6 @@ func parseSetArg(arg string) (string, string, bool) {
 	return parts[0], parts[1], true
 }
 
-var validLocations = map[string]bool{
-	"dmv": true,
-}
-
 func validateKey(key, value string) bool {
 	if key == "core.location" {
 		valid := validateLocation(value)
@@ -130,6 +120,10 @@ func validateKey(key, value string) bool {
 	}
 
 	return true
+}
+
+var validLocations = map[string]bool{
+	"dmv": true,
 }
 
 func validateLocation(location string) bool {
