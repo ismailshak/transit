@@ -62,9 +62,10 @@ transit --version
 
 ### Help
 
-A global flag that can be used with any command and subcommand. This will print usage with examples.
+This will print usage with examples. Help is a global flag that can be used with any command and subcommand.
 
 ```bash
+transit -h
 transit --help
 
 transit <command> --help
@@ -72,9 +73,9 @@ transit <command> --help
 transit <command> <subcommand> --help
 ```
 
-### Verbose logging
+### Verbose
 
-A global flag that can be used with any command and subcommand. This will enable debug logs.
+This will enable debug logs. Verbose is a global flag that can be used with any command and subcommand.
 
 ```bash
 transit -v
@@ -112,7 +113,9 @@ dmv:
 
 </details>
 
-### List arriving trains for a station
+### List
+
+List upcoming trains for one or more stations.
 
 ```bash
 # single station
