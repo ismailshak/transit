@@ -3,7 +3,7 @@ package helpers
 // Returns a 256-color mode for a given metro line. A background
 // and foreground tuple are returned (in that order)
 func GetColorFromLine(line string) (string, string) {
-	white, black := "15", "0"
+	white, black := "#FFFFFF", "#000000"
 	switch line {
 	case "SV", "Silver":
 		return "7", black
