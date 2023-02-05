@@ -1,8 +1,18 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/universal:2",
-  "features": {
-    "ghcr.io/devcontainers/features/go:1": {
-      "version": "1.19"
+  "name": "Transit CLI (golang)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "VARIANT": "1.19",
+      "INSTALL_NODE": "true",
+      "NODE_VERSION": "lts/*"
     }
-  }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["golang.go"]
+    }
+  },
+  "remoteUser": "vscode"
 }
