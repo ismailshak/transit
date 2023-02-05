@@ -113,19 +113,19 @@ dmv:
 
 </details>
 
-### List
+### At
 
-List upcoming trains for one or more stations.
+Print upcoming trains at one or more stations.
 
 ```bash
 # single station
-transit list <station_name>
+transit at <station_name>
 
 # multiple stations
-transit list <station-1> <station-2> <station-3>
+transit at <station-1> <station-2> <station-3>
 
 # examples
-transit list --help
+transit at --help
 ```
 
 Arguments will be fuzzy matched against the list of official metro names, so it's a bit lenient. For example, "courthouse" will match "Court House" and "franconia" will match "Franconia-Springfield".
