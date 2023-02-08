@@ -5,8 +5,9 @@ type DmvConfig struct {
 }
 
 type CoreConfig struct {
-	Verbose  bool
-	Location string `mapstructure:"location"`
+	Verbose       bool
+	Location      string `mapstructure:"location"`
+	WatchInterval int    `mapstructure:"watch_interval"`
 }
 
 type Config struct {

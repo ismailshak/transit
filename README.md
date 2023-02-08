@@ -101,11 +101,12 @@ transit config path
 
 <details>
 
-<summary>Full list of available config options</summary>
+<summary>Expand for full list of available config options</summary>
 
 ```yaml
 core:
   location: <string>
+  watch_interval: 10 # default
 
 dmv:
   api_key: <string>
@@ -123,6 +124,9 @@ transit at <station_name>
 
 # multiple stations
 transit at <station-1> <station-2> <station-3>
+
+# watch mode, --watch or -w (one or many stations)
+transit at <station> --watch
 
 # examples
 transit at --help

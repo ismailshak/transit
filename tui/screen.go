@@ -35,10 +35,10 @@ func genHeader(header string) string {
 }
 
 // Generates a row printed on the screen
-func genRow(line, destination string, minutes []string) string {
-	formattedLine := genLine(line)
-	formattedDest := genDestination(destination)
-	formattedMins := genTimeList(minutes)
+func genRow(destination []api.Predictions) string {
+	formattedLine := genLine(destination[0].Line)
+	formattedDest := genDestination(destination[0].Destination)
+	formattedMins := genTimeList(destination)
 
 	return lipgloss.JoinHorizontal(lipgloss.Left, formattedLine, formattedDest, formattedMins)
 }
@@ -65,10 +65,10 @@ func genDestination(destination string) string {
 }
 
 // Generates a comma separated list of formatted minutes until
-func genTimeList(minutes []string) string {
+func genTimeList(destination []api.Predictions) string {
 	formatted := []string{}
-	for _, m := range minutes {
-		formatted = append(formatted, genTimeEntry(m))
+	for _, d := range destination {
+		formatted = append(formatted, genTimeEntry(d.Min))
 	}
 
 	return strings.Join(formatted, ",")
@@ -84,21 +84,23 @@ func genTimeEntry(time string) string {
 
 // Create and print a screen that resembles a station's. Will display
 // an arriving train's line, destination and arriving trains (in "minutes-away")
-func PrintArrivingScreen(predictions []api.Predictions) {
+func PrintArrivingScreen(destinationLookup *map[string][]api.Predictions, sortedDestinations []string) {
 	list := getScreen()
-	header := predictions[0].LocationName
 
-	destinationLookup := groupByDestination(predictions)
+	// since this is the same for all items, fishing it out from the first one
+	header := (*destinationLookup)[sortedDestinations[0]][0].LocationName
+
 	items := []string{}
 	items = append(items, genHeader(header))
-	for _, v := range destinationLookup {
-		if helpers.IsGhostTrain(v.line, v.destination) {
+	for _, d := range sortedDestinations {
+		destination := (*destinationLookup)[d]
+		if helpers.IsGhostTrain(destination[0].Line, destination[0].Destination) {
 			logger.Debug(("A train not intended for passengers is hidden from the display"))
-			logger.Debug(fmt.Sprintf("%+v", v))
+			logger.Debug(fmt.Sprintf("%+v", destination[0]))
 			continue
 		}
 
-		item := genRow(v.line, v.destination, v.minutes)
+		item := genRow(destination)
 		items = append(items, item)
 	}
 
