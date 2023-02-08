@@ -84,11 +84,11 @@ func genTimeEntry(time string) string {
 
 // Create and print a screen that resembles a station's. Will display
 // an arriving train's line, destination and arriving trains (in "minutes-away")
-func PrintArrivingScreen(timings []api.Timing) {
+func PrintArrivingScreen(predictions []api.Predictions) {
 	list := getScreen()
-	header := timings[0].LocationName
+	header := predictions[0].LocationName
 
-	destinationLookup := groupByDestination(timings)
+	destinationLookup := groupByDestination(predictions)
 	items := []string{}
 	items = append(items, genHeader(header))
 	for _, v := range destinationLookup {
@@ -120,9 +120,9 @@ type Row struct {
 	minutes     []string
 }
 
-func groupByDestination(timings []api.Timing) map[string]*Row {
+func groupByDestination(predictions []api.Predictions) map[string]*Row {
 	destMap := make(map[string]*Row)
-	for _, t := range timings {
+	for _, t := range predictions {
 		_, exists := destMap[t.Destination]
 		if exists {
 			destMap[t.Destination].minutes = append(destMap[t.Destination].minutes, t.Min)
