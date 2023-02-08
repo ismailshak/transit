@@ -2,6 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"sort"
+	"syscall"
+	"time"
 
 	"github.com/ismailshak/transit/api"
 	"github.com/ismailshak/transit/config"
@@ -9,6 +14,11 @@ import (
 	"github.com/ismailshak/transit/logger"
 	"github.com/ismailshak/transit/tui"
 	"github.com/spf13/cobra"
+)
+
+// Used for flags
+var (
+	watchFlag bool
 )
 
 var atCmd = &cobra.Command{
@@ -30,15 +40,21 @@ try being more specific by adding more characters.
 			helpers.Exit(helpers.EXIT_BAD_CONFIG)
 		}
 
+		if watchFlag {
+			WatchExecuteAt(client, args)
+			return
+		}
+
 		ExecuteAt(client, args)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(atCmd)
+
+	atCmd.Flags().BoolVarP(&watchFlag, "watch", "w", false, "live update arrival information")
 }
 
-// Entry point to the `at` subcommand
 func ExecuteAt(client api.Api, args []string) {
 	for _, arg := range args {
 		codes := client.GetCodeFromArg(arg)
@@ -52,6 +68,53 @@ func ExecuteAt(client api.Api, args []string) {
 			helpers.Exit(helpers.EXIT_BAD_CONFIG)
 		}
 
-		tui.PrintArrivingScreen(predictions)
+		destinationLookup, sortedDestinations := groupByDestination(predictions)
+		tui.PrintArrivingScreen(&destinationLookup, sortedDestinations)
 	}
+}
+
+func WatchExecuteAt(client api.Api, args []string) {
+	buffer := tui.NewBuffer()
+	interval := time.Second * time.Duration(config.GetConfig().Core.WatchInterval)
+	message := tui.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
+	cancelChan := make(chan os.Signal, 1)
+
+	// catch SIGETRM or SIGINTERRUPT
+	signal.Notify(cancelChan, syscall.SIGTERM, syscall.SIGINT)
+
+	buffer.StartAlternateBuffer()
+
+	go func() {
+		for {
+			buffer.RefreshScreen()
+			logger.Print(message)
+			ExecuteAt(client, args)
+			time.Sleep(interval)
+		}
+	}()
+
+	// blocking expression
+	<-cancelChan
+
+	buffer.StopAlternateBuffer()
+}
+
+// Groups predictions by destination (assumes already sorted by minutes). Returns grouped map,
+// and returns a sorted list of destinations
+func groupByDestination(predictions []api.Predictions) (map[string][]api.Predictions, []string) {
+	destMap := make(map[string][]api.Predictions)
+	var destinations []string
+	for _, p := range predictions {
+		_, exists := destMap[p.Destination]
+		if exists {
+			destMap[p.Destination] = append(destMap[p.Destination], p)
+		} else {
+			destMap[p.Destination] = []api.Predictions{p}
+			destinations = append(destinations, p.Destination)
+		}
+	}
+
+	sort.Strings(destinations)
+
+	return destMap, destinations
 }

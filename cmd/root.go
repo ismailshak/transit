@@ -86,6 +86,9 @@ func LoadConfig(path string) {
 		vp.AddConfigPath(homeDir + "/.config/transit/")
 	}
 
+	// config defaults
+	vp.SetDefault("core.watch_interval", 10)
+
 	err := vp.ReadInConfig()
 	if err != nil {
 		logger.Error(fmt.Sprint(err))
@@ -94,7 +97,7 @@ func LoadConfig(path string) {
 
 	err = vp.Unmarshal(&configFile)
 	if err != nil {
-		logger.Error("Failed to parse config" + fmt.Sprint(err))
+		logger.Error("Failed to parse config\n" + fmt.Sprint(err))
 		helpers.Exit(helpers.EXIT_BAD_CONFIG)
 	}
 }
