@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ismailshak/transit/config"
 	"github.com/ismailshak/transit/helpers"
@@ -26,11 +27,25 @@ type Predictions struct {
 	Line string
 }
 
+// Disruptions and/or delays data
+type Incident struct {
+	// Message from the transit authority describing the situation
+	Description string
+	// Last date & time update from the transit authority
+	DateUpdated time.Time
+	// Lines, stations or stops affected by the incident
+	Affected []string
+	// Type of incident
+	Type string
+}
+
 type Api interface {
 	// Fetches arrival information for list of location unique identifiers
 	FetchPredictions(ids []string) ([]Predictions, error)
 	// Given user input for a location, returns the unique identifier (location could have multiple)
 	GetCodeFromArg(arg string) []string
+	// Fetch train incidents for a location
+	FetchTrainIncidents() ([]Incident, error)
 }
 
 func GetClient(location string) Api {

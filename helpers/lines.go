@@ -12,7 +12,7 @@ func GetColorFromLine(line string) (string, string) {
 	case "BL", "Blue":
 		return "21", white
 	case "YL", "Yellow":
-		return "11", black
+		return "#E6F209", black
 	case "OR", "Orange":
 		return "208", black
 	case "GR", "Green":
