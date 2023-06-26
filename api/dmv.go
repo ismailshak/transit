@@ -7,9 +7,14 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ismailshak/transit/helpers"
 	"github.com/ismailshak/transit/logger"
+)
+
+const (
+	DATETIME_LAYOUT = "2006-01-02T15:04:05"
 )
 
 // API to interact with WMATA
@@ -21,6 +26,17 @@ type DmvApi struct {
 // WMATA's predictions API response
 type PredictionsResponse struct {
 	Trains []Predictions
+}
+
+type WMATA_Incident struct {
+	Description   string
+	IncidentType  string
+	LinesAffected string
+	DateUpdated   string
+}
+
+type IncidentsResponse struct {
+	Incidents []WMATA_Incident
 }
 
 func (dmv *DmvApi) FetchPredictions(stations []string) ([]Predictions, error) {
@@ -50,6 +66,64 @@ func (dmv *DmvApi) FetchPredictions(stations []string) ([]Predictions, error) {
 	err = json.Unmarshal(body, &predictions)
 
 	return predictions.Trains, nil
+}
+
+func (dmv *DmvApi) FetchTrainIncidents() ([]Incident, error) {
+	route := "Incidents.svc/json/Incidents"
+	url := fmt.Sprintf("%s/%s", dmv.baseUrl, route)
+
+	client := http.Client{}
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	req.Header.Add("api_key", *dmv.apiKey)
+	resp, err := client.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	logger.Debug(string(body))
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New(fmt.Sprintf("Failed to fetch. Received %d", resp.StatusCode))
+	}
+
+	var incidentsRes IncidentsResponse
+	err = json.Unmarshal(body, &incidentsRes)
+
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Failed to parse response: %s", err))
+	}
+
+	var incidents []Incident
+	for _, res := range incidentsRes.Incidents {
+		date, _ := time.Parse(DATETIME_LAYOUT, res.DateUpdated)
+		inc := Incident{
+			Description: res.Description,
+			DateUpdated: date,
+			Affected:    parseLinesAffected(res.LinesAffected),
+			Type:        res.IncidentType,
+		}
+
+		incidents = append(incidents, inc)
+	}
+
+	return incidents, nil
+}
+
+func parseLinesAffected(lines string) []string {
+	splitSlice := strings.Split(strings.ReplaceAll(lines, " ", ""), ";")
+
+	var filteredSlice []string
+	for _, s := range splitSlice {
+		if s != "" {
+			filteredSlice = append(filteredSlice, s)
+		}
+	}
+
+	return filteredSlice
 }
 
 func (dmv *DmvApi) GetCodeFromArg(arg string) []string {
