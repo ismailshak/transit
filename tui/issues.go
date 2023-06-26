@@ -1,12 +1,14 @@
 package tui
 
 import (
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ismailshak/transit/api"
 	"github.com/ismailshak/transit/helpers"
 	"github.com/ismailshak/transit/logger"
+	"golang.org/x/term"
 )
 
 const (
@@ -19,12 +21,20 @@ func PrintIssues(client api.Api, incidents []api.Incident) {
 		return
 	}
 
+	maxWidth := 80
+	termWidth, _, _ := term.GetSize(int(os.Stdin.Fd()))
+	width := termWidth - 10 // some padding
+
+	if width > maxWidth {
+		width = maxWidth
+	}
+
 	for _, inc := range incidents {
-		printIncident(inc)
+		render(inc, width)
 	}
 }
 
-func printIncident(incident api.Incident) {
+func render(incident api.Incident, width int) {
 	list := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), true, true, true, true).
 		Padding(1, 1).
@@ -38,7 +48,7 @@ func printIncident(incident api.Incident) {
 
 	header := lipgloss.JoinHorizontal(lipgloss.Left, inc_type, affected, update)
 
-	description := lipgloss.NewStyle().Width(100).Margin(1, 1, 0).Render(incident.Description)
+	description := lipgloss.NewStyle().Width(width).Margin(1, 1, 0).Render(incident.Description)
 
 	out := list.Render(lipgloss.JoinVertical(lipgloss.Left, header, description))
 	logger.Print(out)
