@@ -4,7 +4,7 @@
 
 ### Demo
 
-https://user-images.githubusercontent.com/23173408/216838894-066bbaa0-bfa9-4762-8f59-72aff4a735c5.mp4
+https://github.com/ismailshak/transit/assets/23173408/b1aa7fea-b5e7-4ee6-ade5-ebb55cb4033e
 
 ## Installation
 
@@ -18,12 +18,14 @@ https://user-images.githubusercontent.com/23173408/216838894-066bbaa0-bfa9-4762-
 
 ### Homebrew
 
+To install
 ```bash
-# to install
 brew tap ismailshak/tap
 brew install transit
+```
 
-# to update to a newer version
+To update to a newer version
+```bash
 brew update && brew upgrade transit
 ```
 
@@ -133,6 +135,17 @@ transit at --help
 ```
 
 Arguments will be fuzzy matched against the list of official metro names, so it's a bit lenient. For example, "courthouse" will match "Court House" and "franconia" will match "Franconia-Springfield".
+
+### Incidents
+
+Alias `inc`. Print any disruptions or delays across all stations
+
+```bash
+transit incidents
+
+# alias
+transit inc
+```
 
 ## Exit Codes
 
