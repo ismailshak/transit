@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ismailshak/transit/api"
-	"github.com/ismailshak/transit/helpers"
 	"github.com/ismailshak/transit/logger"
 	"golang.org/x/term"
 )
@@ -30,11 +29,11 @@ func PrintIssues(client api.Api, incidents []api.Incident) {
 	}
 
 	for _, inc := range incidents {
-		render(inc, width)
+		render(client, inc, width)
 	}
 }
 
-func render(incident api.Incident, width int) {
+func render(client api.Api, incident api.Incident, width int) {
 	list := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), true, true, true, true).
 		Padding(1, 1).
@@ -44,7 +43,7 @@ func render(incident api.Incident, width int) {
 
 	update := lipgloss.NewStyle().Margin(0, 1).Render(incident.DateUpdated.Format(DATE_FORMAT))
 
-	affected := genAffected(incident.Affected)
+	affected := genAffected(client, incident.Affected)
 
 	header := lipgloss.JoinHorizontal(lipgloss.Left, inc_type, affected, update)
 
@@ -54,11 +53,11 @@ func render(incident api.Incident, width int) {
 	logger.Print(out)
 }
 
-func genAffected(affected []string) string {
+func genAffected(client api.Api, affected []string) string {
 	builder := strings.Builder{}
 
 	for _, a := range affected {
-		bg, fg := helpers.GetColorFromLine(a)
+		bg, fg := client.GetColorFromLine(a)
 		line := lipgloss.NewStyle().Padding(0, 1).Margin(0, 1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg)).Render(a)
 		builder.WriteString(line)
 	}

@@ -69,7 +69,7 @@ func ExecuteAt(client api.Api, args []string) {
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(predictions)
-		tui.PrintArrivingScreen(&destinationLookup, sortedDestinations)
+		tui.PrintArrivingScreen(client, &destinationLookup, sortedDestinations)
 	}
 }
 

@@ -144,6 +144,26 @@ func (dmv *DmvApi) GetCodeFromArg(arg string) []string {
 	return dmvStationCodes[fullName]
 }
 
+func (dmv *DmvApi) GetColorFromLine(line string) (string, string) {
+	white, black := "#FFFFFF", "#000000"
+	switch line {
+	case "SV", "Silver":
+		return "7", black
+	case "RD", "Red":
+		return "124", white
+	case "BL", "Blue":
+		return "21", white
+	case "YL", "Yellow":
+		return "#E6F209", black
+	case "OR", "Orange":
+		return "208", black
+	case "GR", "Green":
+		return "40", white
+	default:
+		return white, black
+	}
+}
+
 func getDmvStationNames() []string {
 	var keys []string
 	for k := range dmvStationCodes {

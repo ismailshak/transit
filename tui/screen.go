@@ -35,8 +35,8 @@ func genHeader(header string) string {
 }
 
 // Generates a row printed on the screen
-func genRow(destination []api.Predictions) string {
-	formattedLine := genLine(destination[0].Line)
+func genRow(client api.Api, destination []api.Predictions) string {
+	formattedLine := genLine(client, destination[0].Line)
 	formattedDest := genDestination(destination[0].Destination)
 	formattedMins := genTimeList(destination)
 
@@ -44,8 +44,8 @@ func genRow(destination []api.Predictions) string {
 }
 
 // Generate and color a metro's line
-func genLine(line string) string {
-	bg, fg := helpers.GetColorFromLine(line)
+func genLine(client api.Api, line string) string {
+	bg, fg := client.GetColorFromLine(line)
 	return lipgloss.NewStyle().
 		Bold(true).
 		Background(lipgloss.Color(bg)).
@@ -84,7 +84,7 @@ func genTimeEntry(time string) string {
 
 // Create and print a screen that resembles a station's. Will display
 // an arriving train's line, destination and arriving trains (in "minutes-away")
-func PrintArrivingScreen(destinationLookup *map[string][]api.Predictions, sortedDestinations []string) {
+func PrintArrivingScreen(client api.Api, destinationLookup *map[string][]api.Predictions, sortedDestinations []string) {
 	list := getScreen()
 
 	// since this is the same for all items, fishing it out from the first one
@@ -100,7 +100,7 @@ func PrintArrivingScreen(destinationLookup *map[string][]api.Predictions, sorted
 			continue
 		}
 
-		item := genRow(destination)
+		item := genRow(client, destination)
 		items = append(items, item)
 	}
 
