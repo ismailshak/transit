@@ -164,6 +164,10 @@ func (dmv *DmvApi) GetColorFromLine(line string) (string, string) {
 	}
 }
 
+func (dmv *DmvApi) IsGhostTrain(line, destination string) bool {
+	return line == "--" || destination == "No Passenger" || line == "No"
+}
+
 func getDmvStationNames() []string {
 	var keys []string
 	for k := range dmvStationCodes {

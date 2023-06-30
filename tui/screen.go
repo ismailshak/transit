@@ -6,7 +6,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ismailshak/transit/api"
-	"github.com/ismailshak/transit/helpers"
 	"github.com/ismailshak/transit/logger"
 )
 
@@ -94,7 +93,7 @@ func PrintArrivingScreen(client api.Api, destinationLookup *map[string][]api.Pre
 	items = append(items, genHeader(header))
 	for _, d := range sortedDestinations {
 		destination := (*destinationLookup)[d]
-		if helpers.IsGhostTrain(destination[0].Line, destination[0].Destination) {
+		if client.IsGhostTrain(destination[0].Line, destination[0].Destination) {
 			logger.Debug(("A train not intended for passengers is hidden from the display"))
 			logger.Debug(fmt.Sprintf("%+v", destination[0]))
 			continue
