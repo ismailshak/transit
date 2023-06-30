@@ -69,7 +69,7 @@ func ExecuteAt(client api.Api, args []string) {
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(predictions)
-		tui.PrintArrivingScreen(&destinationLookup, sortedDestinations)
+		tui.PrintArrivingScreen(client, &destinationLookup, sortedDestinations)
 	}
 }
 
@@ -99,11 +99,12 @@ func WatchExecuteAt(client api.Api, args []string) {
 	buffer.StopAlternateBuffer()
 }
 
-// Groups predictions by destination (assumes already sorted by minutes). Returns grouped map,
-// and returns a sorted list of destinations
+// Groups predictions by destination (assumes already sorted by minutes).
+// Returns grouped map and returns a sorted list of destinations
 func groupByDestination(predictions []api.Predictions) (map[string][]api.Predictions, []string) {
 	destMap := make(map[string][]api.Predictions)
 	var destinations []string
+
 	for _, p := range predictions {
 		_, exists := destMap[p.Destination]
 		if exists {

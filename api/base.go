@@ -42,10 +42,15 @@ type Incident struct {
 type Api interface {
 	// Fetches arrival information for list of location unique identifiers
 	FetchPredictions(ids []string) ([]Predictions, error)
-	// Given user input for a location, returns the unique identifier (location could have multiple)
-	GetCodeFromArg(arg string) []string
 	// Fetch train incidents for a location
 	FetchTrainIncidents() ([]Incident, error)
+	// Given user input for a location, returns the unique identifier (location could have multiple)
+	GetCodeFromArg(arg string) []string
+	// Given a line name or abbreviation, return colors that represents it.
+	// (fg, bg) tuple returned
+	GetColorFromLine(arg string) (string, string)
+	// Determines if a train isn't for passengers
+	IsGhostTrain(line, destination string) bool
 }
 
 func GetClient(location string) Api {
