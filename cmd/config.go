@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/ismailshak/transit/logger"
 	"github.com/spf13/cobra"
@@ -95,16 +94,6 @@ func ExecuteSet(key, value string) {
 // Entry point for `config path`
 func ExecutePath() {
 	logger.Print(getConfigPath())
-}
-
-func parseSetArg(arg string) (string, string, bool) {
-	parts := strings.Split(arg, "=")
-
-	if len(parts) != 2 {
-		return "", "", false
-	}
-
-	return parts[0], parts[1], true
 }
 
 func validateKey(key, value string) bool {
