@@ -37,7 +37,7 @@ func render(client api.Api, incident api.Incident, width int) {
 	list := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), true, true, true, true).
 		Padding(1, 1).
-		BorderForeground(subtle)
+		BorderForeground(SUBTLE)
 
 	inc_type := lipgloss.NewStyle().Padding(0, 1).Bold(true).Render(incident.Type)
 
