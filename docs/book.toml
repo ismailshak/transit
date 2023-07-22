@@ -4,3 +4,7 @@ language = "en"
 multilingual = false
 src = "src"
 title = "Transit CLI Documentation"
+
+[output.html]
+git-repository-url = "https://github.com/ismailshak/transit"
+git-repository-icon = "fa-github"
