@@ -26,7 +26,7 @@
 
 `transit` is a cross platform tool that brings local transit information to the command line.
 
-Check out the [documentation page](https://transit-cli.vercel.app) for a list of features and installation and usage information.
+Check out the [documentation page](https://transitcli.com) for installation and usage information.
 
 ### Demo
 
