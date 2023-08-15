@@ -55,6 +55,10 @@ brews:
       pull_request:
         enabled: true
         draft: false
+        base:
+          owner: ismailshak
+          name: homebrew-tap
+          branch: main
 scoops:
   -
     name: transit
@@ -83,6 +87,10 @@ scoops:
       pull_request:
         enabled: true
         draft: false
+        base:
+          owner: ismailshak
+          name: scoop-bucket
+          branch: main
 # The lines beneath this are called `modelines`. See `:help modeline`
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
