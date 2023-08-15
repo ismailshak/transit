@@ -148,17 +148,17 @@ func (dmv *DmvApi) GetColorFromLine(line string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	switch line {
 	case "SV", "Silver":
-		return "#C0C0C0", black
+		return "#919D9D", black
 	case "RD", "Red":
-		return "#D70000", white
+		return "#BF0D3E", white
 	case "BL", "Blue":
-		return "#0000FF", white
+		return "#009CDE", white
 	case "YL", "Yellow":
-		return "#E6F209", black
+		return "#FFD100", black
 	case "OR", "Orange":
-		return "#FF8700", black
+		return "#ED8B00", black
 	case "GR", "Green":
-		return "#00D700", black
+		return "#00B140", white
 	default:
 		return white, black
 	}
