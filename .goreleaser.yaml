@@ -33,6 +33,33 @@ checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
+scoops:
+  -
+    name: transit
+    url_template: "https://github.com/ismailshak/transit/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+    folder: bucket
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
+    commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
+    homepage: "https://transitcli.com/"
+    description: Cross platform tool that brings local transit information to the command line
+    license: MIT
+    # Setting this will prevent goreleaser to actually try to commit the updated
+    # manifest leaving the responsibility of publishing it to the user.
+    # If set to auto, the release will not be uploaded to the scoop bucket
+    # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
+    skip_upload: auto
+    # A two-dimensional array of string, specifies the shortcut values to make available in the startmenu.
+    # The array has to contain an executable/label pair. The third and fourth element are optional.
+    shortcuts: [["transit.exe", "transit"]]
+    goamd64: v3
+    repository:
+      name: scoop-bucket
+      branch: "{{ .ProjectName }}-{{ .Version }}"
+      pull_request:
+        enabled: true
+        draft: false
 # The lines beneath this are called `modelines`. See `:help modeline`
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
