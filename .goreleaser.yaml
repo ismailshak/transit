@@ -55,8 +55,9 @@ scoops:
     shortcuts: [["transit.exe", "transit"]]
     goamd64: v3
     repository:
+      owner: ismailshak
       name: scoop-bucket
-      branch: "{{ .ProjectName }}-{{ .Version }}"
+      branch: "{{.ProjectName}}-{{.Version}}"
       pull_request:
         enabled: true
         draft: false
