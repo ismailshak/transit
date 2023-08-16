@@ -31,8 +31,6 @@ builds:
       - -X github.com/ismailshak/transit/version.date={{.Date}}
 
 archives:
-  - format: tar.gz
-    # this name template makes the OS and Arch compatible with the results of uname.
   - name_template: >-
       {{- .ProjectName }}_
       {{- title .Os }}_
@@ -44,6 +42,10 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
+
+universal_binaries:
+  - replace: true
+
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
 
