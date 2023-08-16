@@ -1,54 +1,57 @@
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod tidy
+
+report_sizes: true
+
 builds:
-  - goos:
-      - darwin
+  - env:
+      - CGO_ENABLED=0
+    goos:
       - linux
+      - darwin
       - windows
     goarch:
+      - "386"
       - amd64
+      - arm
       - arm64
+    goarm:
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
       - -X github.com/ismailshak/transit/version.version={{.Version}}
       - -X github.com/ismailshak/transit/version.commit={{.Commit}}
       - -X github.com/ismailshak/transit/version.date={{.Date}}
+
 archives:
   - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of uname.
-    name_template: >-
-      {{ .ProjectName }}_
+  - name_template: >-
+      {{- .ProjectName }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
     # use zip for windows archives
     format_overrides:
       - goos: windows
         format: zip
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
+
 brews:
-  -
-    name: transit
-    goamd64: v3
-    url_template: "https://github.com/ismailshak/transit/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "Brew formula update for {{.ProjectName}} version {{.Tag}}"
-    folder: Formula
-    homepage: "https://transitcli.com/"
-    description: "CLI tool that interacts with local transit information"
-    license: "MIT"
-    test: |
-      assert_match version.to_s, shell_output("#{bin}/transit --version")
-    repository:
+  - repository:
       owner: ismailshak
       name: homebrew-tap
       branch: "{{.ProjectName}}-{{.Version}}"
@@ -59,28 +62,16 @@ brews:
           owner: ismailshak
           name: homebrew-tap
           branch: main
-scoops:
-  -
-    name: transit
-    url_template: "https://github.com/ismailshak/transit/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-    folder: bucket
-    commit_author:
-      name: goreleaserbot
-      email: bot@goreleaser.com
-    commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
-    homepage: "https://transitcli.com/"
-    description: Cross platform tool that brings local transit information to the command line
+    folder: Formula
+    goarm: "7"
+    homepage: https://transitcli.com
+    description: "CLI tool that interacts with local transit information"
     license: MIT
-    # Setting this will prevent goreleaser to actually try to commit the updated
-    # manifest leaving the responsibility of publishing it to the user.
-    # If set to auto, the release will not be uploaded to the scoop bucket
-    # in case there is an indicator for prerelease in the tag e.g. v1.0.0-rc1
-    skip_upload: auto
-    # A two-dimensional array of string, specifies the shortcut values to make available in the startmenu.
-    # The array has to contain an executable/label pair. The third and fourth element are optional.
-    shortcuts: [["transit.exe", "transit"]]
-    goamd64: v3
-    repository:
+    test: |
+      assert_match version.to_s, shell_output("#{bin}/transit --version")
+
+scoops:
+  - repository:
       owner: ismailshak
       name: scoop-bucket
       branch: "{{.ProjectName}}-{{.Version}}"
@@ -91,6 +82,11 @@ scoops:
           owner: ismailshak
           name: scoop-bucket
           branch: main
+    folder: bucket
+    homepage: https://transitcli.com
+    description: "CLI tool that interacts with local transit information"
+    license: MIT
+
 # The lines beneath this are called `modelines`. See `:help modeline`
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
