@@ -44,7 +44,7 @@ archives:
         format: zip
 
 universal_binaries:
-  - replace: true
+  - replace: false
 
 checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
@@ -56,14 +56,6 @@ brews:
   - repository:
       owner: ismailshak
       name: homebrew-tap
-      branch: "{{.ProjectName}}-{{.Version}}"
-      pull_request:
-        enabled: true
-        draft: false
-        base:
-          owner: ismailshak
-          name: homebrew-tap
-          branch: main
     folder: Formula
     goarm: "7"
     homepage: https://transitcli.com
@@ -76,14 +68,6 @@ scoops:
   - repository:
       owner: ismailshak
       name: scoop-bucket
-      branch: "{{.ProjectName}}-{{.Version}}"
-      pull_request:
-        enabled: true
-        draft: false
-        base:
-          owner: ismailshak
-          name: scoop-bucket
-          branch: main
     folder: bucket
     homepage: https://transitcli.com
     description: "CLI tool that interacts with local transit information"
