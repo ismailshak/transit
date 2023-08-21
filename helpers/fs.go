@@ -9,6 +9,16 @@ import (
 	"github.com/ismailshak/transit/logger"
 )
 
+func GetConfigDir() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error(fmt.Sprint(err))
+		Exit(1)
+	}
+
+	return homeDir + "/.config/transit"
+}
+
 func FileExists(filePath string) bool {
 	_, err := os.Stat(filePath)
 	if err != nil {
