@@ -76,7 +76,7 @@ func TestSkippingMigrationsTableIfExists(t *testing.T) {
 	}
 
 	if count != 1 {
-		t.Errorf("Expected 1 migration. Got %q", count)
+		t.Errorf("Expected 1 migration. Got %d", count)
 	}
 
 	migrations, err := getCurrentMigrations(db, count)
@@ -85,11 +85,11 @@ func TestSkippingMigrationsTableIfExists(t *testing.T) {
 	}
 
 	if migrations[0].Id != 1 {
-		t.Errorf("Expected migration to have ID \"1\". Got %q", migrations[0].Id)
+		t.Errorf("Expected migration to have ID 1. Got %d", migrations[0].Id)
 	}
 
 	if migrations[0].Name != "1_FakeMigration" {
-		t.Errorf("Expected migration \"1_FakeMigration\". Got %q", migrations[0].Name)
+		t.Errorf("Expected migration name \"1_FakeMigration\". Got %q", migrations[0].Name)
 	}
 
 	if migrations[0].MigratedAt == "" {
