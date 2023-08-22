@@ -2,19 +2,17 @@ package data
 
 import (
 	"database/sql"
-	"fmt"
 	"path/filepath"
 
 	"github.com/ismailshak/transit/helpers"
-	"github.com/ismailshak/transit/logger"
 	_ "modernc.org/sqlite"
 )
 
 var db *sql.DB
 
-func GetDBConn() *sql.DB {
+func GetDBConn() (*sql.DB, error) {
 	if db != nil {
-		return db
+		return db, nil
 	}
 
 	configPath := helpers.GetConfigDir()
@@ -22,13 +20,12 @@ func GetDBConn() *sql.DB {
 	newDb, err := DbConnect(dbPath)
 
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to connect to database. %s", err))
-		helpers.Exit(1)
+		return nil, err
 	}
 
 	db = newDb
 
-	return db
+	return db, nil
 }
 
 func DbConnect(path string) (*sql.DB, error) {
