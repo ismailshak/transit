@@ -11,7 +11,7 @@ import (
 type Changeset func(ctx context.Context, trx *sql.Tx) error
 
 type MigrationChangeset struct {
-	// Name of the migration, will be stored in the migrations table
+	// Name of the migration. Value will be stored in the migrations table
 	Name string
 	// Applies forward changes to the database schema
 	Up Changeset

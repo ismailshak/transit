@@ -73,7 +73,7 @@ func getCurrentMigrations(db *sql.DB, rowCount int) ([]Migration, error) {
 
 	for rows.Next() {
 		var row Migration
-		err = rows.Scan(&row.Id, &row.Name, &row.MigratedAt)
+		err = rows.Scan(&row.ID, &row.Name, &row.MigratedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan migration row. %s", err)
 		}
@@ -91,7 +91,7 @@ func run(db *sql.DB, changeset *MigrationChangeset) error {
 	}
 
 	// Defer a rollback in case anything fails.
-	// Will no-op of Commit succeeds
+	// Will no-op if Commit succeeds
 	defer trx.Rollback()
 
 	logger.Debug(fmt.Sprintf("Running new database migration: %s", changeset.Name))
@@ -107,7 +107,7 @@ func run(db *sql.DB, changeset *MigrationChangeset) error {
 		return err
 	}
 
-	// Commit the transaction.
+	// Commit the transaction
 	if err = trx.Commit(); err != nil {
 		return err
 	}
