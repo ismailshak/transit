@@ -11,7 +11,7 @@ import (
 
 // Create and print a screen that resembles a station's. Will display
 // an arriving train's line, destination and arriving trains (in "minutes-away")
-func PrintArrivingScreen(client api.Api, destinationLookup *map[string][]api.Predictions, sortedDestinations []string) {
+func PrintArrivingScreen(client api.Api, destinationLookup *map[string][]api.Prediction, sortedDestinations []string) {
 	list := getScreen()
 
 	// since this is the same for all items, fishing it out from the first one
@@ -60,7 +60,7 @@ func genHeader(header string) string {
 }
 
 // Generates a row printed on the screen
-func genRow(client api.Api, destination []api.Predictions) string {
+func genRow(client api.Api, destination []api.Prediction) string {
 	formattedLine := genLine(client, destination[0].Line)
 	formattedDest := genDestination(destination[0].Destination)
 	formattedMins := genTimeList(destination)
@@ -70,7 +70,7 @@ func genRow(client api.Api, destination []api.Predictions) string {
 
 // Generate and color a metro's line
 func genLine(client api.Api, line string) string {
-	bg, fg := client.GetColorFromLine(line)
+	bg, fg := client.GetStopColor(line)
 	return lipgloss.NewStyle().
 		Bold(true).
 		Background(lipgloss.Color(bg)).
@@ -90,7 +90,7 @@ func genDestination(destination string) string {
 }
 
 // Generates a comma separated list of formatted minutes until
-func genTimeList(destination []api.Predictions) string {
+func genTimeList(destination []api.Prediction) string {
 	formatted := []string{}
 	for _, d := range destination {
 		formatted = append(formatted, genTimeEntry(d.Min))

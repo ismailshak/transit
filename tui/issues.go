@@ -57,7 +57,7 @@ func genAffected(client api.Api, affected []string) string {
 	builder := strings.Builder{}
 
 	for _, a := range affected {
-		bg, fg := client.GetColorFromLine(a)
+		bg, fg := client.GetStopColor(a)
 		line := lipgloss.NewStyle().Padding(0, 1).Margin(0, 1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg)).Render(a)
 		builder.WriteString(line)
 	}
