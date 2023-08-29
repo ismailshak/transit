@@ -1,3 +1,8 @@
+// Package api contains functions that manage transit information exposed by transit agencies.
+//
+// Each supported location implements the interface `Api` and encapsulates the details of fetching
+// and parsing data coming from a specific transit agency. There will exist a client for
+// each supported location, that can be retrieved dynamically via `GetClient("locationSlug")`.
 package api
 
 import (
@@ -30,16 +35,17 @@ type Prediction struct {
 
 // Disruptions and/or delays data
 type Incident struct {
-	// Message from the transit authority describing the situation
+	// Message from the transit authority describing the issue
 	Description string
-	// Last date & time update from the transit authority
+	// When the announcement was last updated by the transit authority
 	DateUpdated time.Time
-	// Lines, stations or stops affected by the incident
+	// Lines or stops affected by the incident
 	Affected []string
-	// Type of incident
+	// Type of incident (e.g. "alert")
 	Type string
 }
 
+// Base interface that defines what each location client api must implement
 type Api interface {
 	// Fetches all required static data. Used to hydrate database
 	FetchStaticData() (*data.Data, error)
@@ -49,21 +55,22 @@ type Api interface {
 	FetchIncidents() ([]Incident, error)
 	// Given user input for a location, returns the unique identifier (a stop can have multiple)
 	GetIDFromArg(arg string) ([]string, error)
-	// Given a stop name or abbreviation, return colors that represents it.
+	// Given a line name or abbreviation, return colors that represents it.
 	// (bg, fg) tuple returned
-	GetStopColor(stop string) (string, string)
+	GetLineColor(stop string) (string, string)
 	// Determines if a train isn't for passengers
 	IsGhostTrain(line, destination string) bool
 }
 
-func GetClient(location string) Api {
+// Dynamically retrieve the client associated with the provided location
+func GetClient(location data.LocationSlug) Api {
 	if location == "" {
 		logger.Error("No location found in config at 'core.location'")
 		return nil
 	}
 
 	switch location {
-	case "dmv":
+	case data.DMVSlug:
 		return DmvClient()
 	default:
 		logger.Error(fmt.Sprintf("Invalid location '%s'", location))
@@ -72,7 +79,7 @@ func GetClient(location string) Api {
 	return nil
 }
 
-// Build and return a client for the DMV Metro
+// Build and return a client for the DMV Metro Area
 func DmvClient() *DmvApi {
 	apiKey := &config.GetConfig().Dmv.ApiKey
 

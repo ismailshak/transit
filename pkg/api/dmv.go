@@ -39,6 +39,7 @@ type WMATA_Incident struct {
 	DateUpdated   string
 }
 
+// WMATA's incidents API response
 type IncidentsResponse struct {
 	Incidents []WMATA_Incident
 }
@@ -171,6 +172,7 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 	return incidents, nil
 }
 
+// Wrapper type to satisfy the fuzzy matching interface
 type SearchableStops []*data.Stop
 
 func (s SearchableStops) Len() int            { return len(s) }
@@ -182,7 +184,7 @@ func (dmv *DmvApi) GetIDFromArg(arg string) ([]string, error) {
 		return nil, err
 	}
 
-	stops, err := data.GetStopsByLocation(db, data.DmvSlug, true)
+	stops, err := data.GetStopsByLocation(db, data.DMVSlug, true)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +212,7 @@ func (dmv *DmvApi) GetIDFromArg(arg string) ([]string, error) {
 	return ids, nil
 }
 
-func (dmv *DmvApi) GetStopColor(stop string) (string, string) {
+func (dmv *DmvApi) GetLineColor(stop string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	switch stop {
 	case "SV", "Silver":
@@ -234,6 +236,7 @@ func (dmv *DmvApi) IsGhostTrain(line, destination string) bool {
 	return line == "--" || destination == "No Passenger" || line == "No"
 }
 
+// Parses the affected format in the incidents response. Semi-colon separated with a space
 func parseLinesAffected(lines string) []string {
 	splitSlice := strings.Split(strings.ReplaceAll(lines, " ", ""), ";")
 

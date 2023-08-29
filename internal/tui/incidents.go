@@ -14,7 +14,7 @@ const (
 	DATE_FORMAT = "2 Jan 06 3:04pm"
 )
 
-func PrintIssues(client api.Api, incidents []api.Incident) {
+func PrintIncidents(client api.Api, incidents []api.Incident) {
 	if len(incidents) == 0 {
 		logger.Print("No incidents reported")
 		return
@@ -39,13 +39,13 @@ func render(client api.Api, incident api.Incident, width int) {
 		Padding(1, 1).
 		BorderForeground(SUBTLE)
 
-	inc_type := lipgloss.NewStyle().Padding(0, 1).Bold(true).Render(incident.Type)
+	incType := lipgloss.NewStyle().Padding(0, 1).Bold(true).Render(incident.Type)
 
 	update := lipgloss.NewStyle().Margin(0, 1).Render(incident.DateUpdated.Format(DATE_FORMAT))
 
 	affected := genAffected(client, incident.Affected)
 
-	header := lipgloss.JoinHorizontal(lipgloss.Left, inc_type, affected, update)
+	header := lipgloss.JoinHorizontal(lipgloss.Left, incType, affected, update)
 
 	description := lipgloss.NewStyle().Width(width).Margin(1, 1, 0).Render(incident.Description)
 
@@ -57,7 +57,7 @@ func genAffected(client api.Api, affected []string) string {
 	builder := strings.Builder{}
 
 	for _, a := range affected {
-		bg, fg := client.GetStopColor(a)
+		bg, fg := client.GetLineColor(a)
 		line := lipgloss.NewStyle().Padding(0, 1).Margin(0, 1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg)).Render(a)
 		builder.WriteString(line)
 	}

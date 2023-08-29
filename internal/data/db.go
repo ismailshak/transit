@@ -28,10 +28,6 @@ func GetDBConn() (*sql.DB, error) {
 	return db, nil
 }
 
-func DbConnect(path string) (*sql.DB, error) {
-	return sql.Open("sqlite", path)
-}
-
 // Keep migrations up-to-date, and handle first time migration run
 func SyncMigrations(db *sql.DB) error {
 	err := createMigrationTable(db)
@@ -54,4 +50,9 @@ func SyncMigrations(db *sql.DB) error {
 	}
 
 	return nil
+}
+
+// Exists for testing purposes. Use GetDBConn instead
+func DbConnect(path string) (*sql.DB, error) {
+	return sql.Open("sqlite", path)
 }

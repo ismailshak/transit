@@ -15,7 +15,7 @@ import (
 // located at `path` into a destination provided by `dest`.
 //
 // Destination is assumed to already exist. Zip file will not be deleted
-// after it's unzipped
+// after it's unzipped.
 func UnzipStaticGTFS(path string, dest string) error {
 	reader, err := zip.OpenReader(path)
 	if err != nil {

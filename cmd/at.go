@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/tui"
 	"github.com/ismailshak/transit/internal/utils"
@@ -35,7 +36,7 @@ try being more specific by adding more characters.
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		location := config.GetConfig().Core.Location
-		client := api.GetClient(location)
+		client := api.GetClient(data.LocationSlug(location))
 		if client == nil {
 			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
@@ -73,7 +74,7 @@ func ExecuteAt(client api.Api, args []string) {
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(predictions)
-		tui.PrintArrivingScreen(client, &destinationLookup, sortedDestinations)
+		tui.PrintArrivalScreen(client, &destinationLookup, sortedDestinations)
 	}
 }
 

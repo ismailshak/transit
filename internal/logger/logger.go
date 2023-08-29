@@ -1,3 +1,9 @@
+// Package logger implements functions that print messages to the user's terminal.
+//
+// Follows a standard server-logger approach, which contains functions for writing errors to stderr
+// and messages to stdout. This package should not import other transit packages (excluding config)
+// to avoid import cycles. This package is not used to display pretty terminal renderings,
+// that is handled by the tui package
 package logger
 
 import (

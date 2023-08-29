@@ -8,7 +8,7 @@ import (
 type LocationSlug string
 
 const (
-	DmvSlug LocationSlug = "dmv"
+	DMVSlug LocationSlug = "dmv"
 )
 
 // Used in the database to differentiate between the different types

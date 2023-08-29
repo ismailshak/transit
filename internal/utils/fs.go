@@ -1,3 +1,6 @@
+// Package utils is collection of helper functions that are used throughout transit
+//
+// Has functions for things like interfacing with the file system and exiting the program
 package utils
 
 import (
@@ -19,6 +22,9 @@ const (
 	RW_ = 0776
 )
 
+// Returns the default path to the configuration file.
+//
+// Not affected by the config override flag
 func GetConfigDir() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

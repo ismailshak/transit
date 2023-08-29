@@ -64,7 +64,7 @@ func addDmvToLocations(ctx context.Context, trx *sql.Tx) error {
 	_, err := trx.ExecContext(
 		ctx,
 		INSERT_LOCATION,
-		"dmv",
+		DMVSlug,
 		"District Of Columbia, Maryland and Virginia",
 		true,
 	)
