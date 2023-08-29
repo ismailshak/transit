@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"runtime/debug"
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/logger"
@@ -31,9 +30,6 @@ var rootCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionFlag {
-			if bi, ok := debug.ReadBuildInfo(); ok {
-				fmt.Printf("%+v\n", bi)
-			}
 			version.Execute()
 			utils.Exit(utils.EXIT_SUCCESS)
 		}
@@ -59,7 +55,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "toggle verbose logging")
 
 	// Local to root flags
-	rootCmd.Flags().BoolVar(&versionFlag, "version", false, "print installed version number")
+	rootCmd.Flags().BoolVarP(&versionFlag, "version", "V", false, "print installed version number")
 }
 
 func initConfig() {
