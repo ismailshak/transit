@@ -1,9 +1,9 @@
-package helpers_test
+package utils_test
 
 import (
 	"testing"
 
-	"github.com/ismailshak/transit/helpers"
+	"github.com/ismailshak/transit/internal/utils"
 	"github.com/sahilm/fuzzy"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,7 +38,7 @@ func TestFuzzyFind(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		matches := helpers.FuzzyFind(test.input, testData)
+		matches := utils.FuzzyFind(test.input, testData)
 		assert.Len(t, test.expected, matches.Len())
 
 		result := convertMatchesToSlice(matches)

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/ismailshak/transit/logger"
+	"github.com/ismailshak/transit/internal/logger"
 )
 
 func createMigrationTable(db *sql.DB) error {

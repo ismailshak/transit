@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ismailshak/transit/data"
+	"github.com/ismailshak/transit/internal/data"
 	"github.com/stretchr/testify/assert"
 )
 

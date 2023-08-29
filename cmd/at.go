@@ -8,11 +8,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ismailshak/transit/api"
-	"github.com/ismailshak/transit/config"
-	"github.com/ismailshak/transit/helpers"
-	"github.com/ismailshak/transit/logger"
-	"github.com/ismailshak/transit/tui"
+	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/tui"
+	"github.com/ismailshak/transit/internal/utils"
+	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +37,7 @@ try being more specific by adding more characters.
 		location := config.GetConfig().Core.Location
 		client := api.GetClient(location)
 		if client == nil {
-			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
 		if watchFlag {
@@ -69,7 +69,7 @@ func ExecuteAt(client api.Api, args []string) {
 		predictions, err := client.FetchPredictions(codes)
 		if err != nil {
 			logger.Error(fmt.Sprint(err))
-			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(predictions)

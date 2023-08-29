@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ismailshak/transit/logger"
+	"github.com/ismailshak/transit/internal/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

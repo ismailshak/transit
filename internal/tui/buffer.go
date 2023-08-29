@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"github.com/ismailshak/transit/logger"
+	"github.com/ismailshak/transit/internal/logger"
 )
 
 // An alternate buffer drawn on top of active terminal screen

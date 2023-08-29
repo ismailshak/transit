@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ismailshak/transit/data"
-	"github.com/ismailshak/transit/helpers"
-	"github.com/ismailshak/transit/logger"
+	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/utils"
 )
 
 const (
@@ -73,7 +73,7 @@ func (dmv *DmvApi) FetchStaticData() (*data.Data, error) {
 
 	defer resp.Body.Close()
 
-	zipPath := filepath.Join(helpers.GetConfigDir(), "dmv_gtfs_static.zip")
+	zipPath := filepath.Join(utils.GetConfigDir(), "dmv_gtfs_static.zip")
 	f, err := os.Create(zipPath)
 	if err != nil {
 		return nil, err
@@ -90,8 +90,8 @@ func (dmv *DmvApi) FetchStaticData() (*data.Data, error) {
 	}
 
 	dirName := "gtfs_static_" + strconv.FormatInt(time.Now().Unix(), 10)
-	feed := filepath.Join(helpers.GetConfigDir(), dirName)
-	if err = helpers.CreateDir(feed); err != nil {
+	feed := filepath.Join(utils.GetConfigDir(), dirName)
+	if err = utils.CreateDir(feed); err != nil {
 		return nil, err
 	}
 
@@ -187,7 +187,7 @@ func (dmv *DmvApi) GetIDFromArg(arg string) ([]string, error) {
 		return nil, err
 	}
 
-	matches := helpers.FuzzyFindFrom(arg, SearchableStops(stops))
+	matches := utils.FuzzyFindFrom(arg, SearchableStops(stops))
 
 	if matches.Len() == 0 {
 		logger.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))

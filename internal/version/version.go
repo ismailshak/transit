@@ -1,6 +1,6 @@
 package version
 
-import "github.com/ismailshak/transit/logger"
+import "github.com/ismailshak/transit/internal/logger"
 
 // These variables are set by build flags (goreleaser injects values at release time)
 // To mimic locally:

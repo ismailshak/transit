@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/api"
-	"github.com/ismailshak/transit/logger"
+	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/pkg/api"
 )
 
 // Create and print a screen that resembles a station's. Will display

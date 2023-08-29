@@ -1,4 +1,4 @@
-package helpers
+package utils
 
 import (
 	"archive/zip"
@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ismailshak/transit/logger"
+	"github.com/ismailshak/transit/internal/logger"
 )
 
 const (

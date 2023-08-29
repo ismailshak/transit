@@ -1,29 +1,29 @@
-package helpers_test
+package utils_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/ismailshak/transit/helpers"
+	"github.com/ismailshak/transit/internal/utils"
 )
 
 func TestCreateIfNotFound_NotFound(t *testing.T) {
 	testFilePath := t.TempDir() + "./config/create-config.yml"
 
-	err := helpers.CreatePathIfNotFound(testFilePath)
+	err := utils.CreatePathIfNotFound(testFilePath)
 	if err != nil {
 		t.Logf("Failed to create path: %s", err)
 		t.FailNow()
 	}
 
-	if !helpers.FileExists(testFilePath) {
+	if !utils.FileExists(testFilePath) {
 		t.Logf("file '%s' was not created", testFilePath)
 		t.FailNow()
 	}
 
 	testContent := "Hello"
-	err = helpers.WriteFile(testFilePath, []byte(testContent))
+	err = utils.WriteFile(testFilePath, []byte(testContent))
 	if err != nil {
 		t.Logf("File created could not be written to: %s", err)
 		t.FailNow()
@@ -46,13 +46,13 @@ func TestCreateIfNotFound_Found(t *testing.T) {
 	os.MkdirAll(filepath.Dir(testFilePath), 0777)
 
 	testContent := "Already exists"
-	err := helpers.WriteFile(testFilePath, []byte(testContent))
+	err := utils.WriteFile(testFilePath, []byte(testContent))
 	if err != nil {
 		t.Logf("Failed to create test file: %s", err)
 		t.FailNow()
 	}
 
-	err = helpers.CreatePathIfNotFound(testFilePath)
+	err = utils.CreatePathIfNotFound(testFilePath)
 	if err != nil {
 		t.Logf("Failed to create path: %s", err)
 		t.FailNow()

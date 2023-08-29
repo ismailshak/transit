@@ -3,11 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 
-	"github.com/ismailshak/transit/config"
-	"github.com/ismailshak/transit/helpers"
-	"github.com/ismailshak/transit/logger"
-	"github.com/ismailshak/transit/version"
+	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/utils"
+	"github.com/ismailshak/transit/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -30,8 +31,11 @@ var rootCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionFlag {
+			if bi, ok := debug.ReadBuildInfo(); ok {
+				fmt.Printf("%+v\n", bi)
+			}
 			version.Execute()
-			helpers.Exit(helpers.EXIT_SUCCESS)
+			utils.Exit(utils.EXIT_SUCCESS)
 		}
 
 		cmd.Help()
@@ -71,14 +75,14 @@ func LoadConfig(path string) {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			logger.Error(fmt.Sprint(err))
-			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
 		fullConfigPath := homeDir + "/.config/transit/config.yml"
-		err = helpers.CreatePathIfNotFound(fullConfigPath)
+		err = utils.CreatePathIfNotFound(fullConfigPath)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to create config directory: %s", err))
-			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
 		vp.SetConfigName("config")
@@ -92,12 +96,12 @@ func LoadConfig(path string) {
 	err := vp.ReadInConfig()
 	if err != nil {
 		logger.Error(fmt.Sprint(err))
-		helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 
 	err = vp.Unmarshal(&configFile)
 	if err != nil {
 		logger.Error("Failed to parse config\n" + fmt.Sprint(err))
-		helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 }

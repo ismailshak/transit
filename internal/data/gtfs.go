@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ismailshak/transit/helpers"
+	"github.com/ismailshak/transit/internal/utils"
 )
 
 // Unzips file (which holds the content of a GTFS Static feed)
@@ -24,7 +24,7 @@ func UnzipStaticGTFS(path string, dest string) error {
 
 	defer reader.Close()
 
-	err = helpers.Unzip(reader, dest)
+	err = utils.Unzip(reader, dest)
 	if err != nil {
 		return fmt.Errorf("failed to unzip gtfs static: %s", err)
 	}

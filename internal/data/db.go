@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"path/filepath"
 
-	"github.com/ismailshak/transit/helpers"
+	"github.com/ismailshak/transit/internal/utils"
 	_ "modernc.org/sqlite"
 )
 
@@ -15,7 +15,7 @@ func GetDBConn() (*sql.DB, error) {
 		return db, nil
 	}
 
-	configPath := helpers.GetConfigDir()
+	configPath := utils.GetConfigDir()
 	dbPath := filepath.Join(configPath, "transit.db")
 	newDb, err := DbConnect(dbPath)
 

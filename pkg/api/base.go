@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ismailshak/transit/config"
-	"github.com/ismailshak/transit/data"
-	"github.com/ismailshak/transit/helpers"
-	"github.com/ismailshak/transit/logger"
+	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/utils"
 )
 
 const (
@@ -78,7 +78,7 @@ func DmvClient() *DmvApi {
 
 	if *apiKey == "" {
 		logger.Error("No api key found in config at 'dmv.api_key'")
-		helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 
 	return &DmvApi{

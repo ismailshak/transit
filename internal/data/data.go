@@ -1,8 +1,8 @@
 package data
 
 import (
-	"github.com/ismailshak/transit/helpers"
-	"github.com/ismailshak/transit/logger"
+	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -15,12 +15,12 @@ func CommandPre(cmd *cobra.Command, args []string) {
 	dbConn, err := GetDBConn()
 	if err != nil {
 		logger.Error("Failed to connect to database: " + err.Error())
-		helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 
 	err = SyncMigrations(dbConn)
 	if err != nil {
 		logger.Error("Database sync failed: " + err.Error())
-		helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 }

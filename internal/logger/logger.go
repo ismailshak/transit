@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/config"
+	"github.com/ismailshak/transit/internal/config"
 )
 
 const BLACK = "#000000"
