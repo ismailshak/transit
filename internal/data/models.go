@@ -1,9 +1,5 @@
 package data
 
-import (
-	"database/sql"
-)
-
 // The unique identifier for a location
 type LocationSlug string
 
@@ -65,80 +61,3 @@ type SearchableStops []*Stop
 
 func (s SearchableStops) Len() int            { return len(s) }
 func (s SearchableStops) String(i int) string { return s[i].Name }
-
-func GetStopsByLocation(db *sql.DB, location LocationSlug, parentsOnly bool) ([]*Stop, error) {
-	var statement string
-	if parentsOnly {
-		statement = SELECT_PARENT_STOPS_BY_LOCATION
-	} else {
-		statement = SELECT_STOPS_BY_LOCATION
-	}
-
-	rows, err := db.Query(statement, location)
-	if err != nil {
-		return nil, err
-	}
-
-	stops := make([]*Stop, 0, 64) // arbitrary capacity to avoid excessive reallocations
-
-	for rows.Next() {
-		var row Stop
-		rows.Scan(
-			&row.ID,
-			&row.StopID,
-			&row.Name,
-			&row.Location,
-			&row.Latitude,
-			&row.Longitude,
-			&row.Type,
-			&row.ParentID,
-			&row.CreatedAt,
-			&row.UpdatedAt,
-		)
-
-		stops = append(stops, &row)
-	}
-
-	return stops, nil
-}
-
-func InsertStops(db *sql.DB, stops []*Stop) error {
-	trx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-
-	// Defer a rollback in case anything fails.
-	// Will no-op if Commit succeeds
-	defer trx.Rollback()
-
-	stmt, err := trx.Prepare(INSERT_STOP)
-	if err != nil {
-		return err
-	}
-
-	for _, stop := range stops {
-		_, err = stmt.Exec(stop.StopID, stop.Name, stop.Location, stop.Latitude, stop.Longitude, stop.Type, stop.ParentID)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Commit the transaction
-	if err = trx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func CountStopsByLocation(db *sql.DB, location LocationSlug) (int, error) {
-	row := db.QueryRow(COUNT_STOPS_BY_LOCATION, location)
-
-	var count int
-	if err := row.Scan(&count); err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}

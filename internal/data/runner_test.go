@@ -1,59 +1,18 @@
-package data
+package data_test
 
 import (
-	"database/sql"
-	"path/filepath"
 	"testing"
+
+	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/testutils"
 )
-
-func getTestDb(t *testing.T) *sql.DB {
-	t.Helper()
-	testDir := t.TempDir()
-	dbPath := filepath.Join(testDir, "runner_test.db")
-
-	t.Logf("Temp database at: %s", dbPath)
-
-	db, err := DbConnect(dbPath)
-	if err != nil {
-		t.Fatal("Failed to connect to test database", err)
-	}
-
-	t.Cleanup(func() {
-		db.Close()
-	})
-
-	return db
-}
-
-func initMigrationsTable(t *testing.T, db *sql.DB) {
-	t.Helper()
-
-	tx, err := db.Begin()
-	if err != nil {
-		t.Fatalf("Failed to begin transaction: %s", err)
-	}
-
-	defer tx.Rollback()
-
-	_, err = tx.Exec(CREATE_MIGRATIONS_TABLE)
-	if err != nil {
-		t.Fatalf("Failed to create migration: %s", err)
-	}
-
-	_, err = tx.Exec(INSERT_MIGRATION, "1_FakeMigration")
-
-	tx.Commit()
-	if err != nil {
-		t.Fatalf("Failed to commit transaction: %s", err)
-	}
-}
 
 func TestCreatingMigrationTable(t *testing.T) {
 	t.Parallel()
 
-	db := getTestDb(t)
+	db := testutils.BlankDB(t)
 
-	err := createMigrationTable(db)
+	err := data.CreateMigrationTable(db.DB)
 	if err != nil {
 		t.Errorf("Failed to create migrations table: %s", err)
 	}
@@ -62,15 +21,15 @@ func TestCreatingMigrationTable(t *testing.T) {
 func TestSkippingMigrationsTableIfExists(t *testing.T) {
 	t.Parallel()
 
-	db := getTestDb(t)
-	initMigrationsTable(t, db)
+	db := testutils.BlankDB(t)
+	testutils.InitMigrationsTable(t, db.DB)
 
-	err := createMigrationTable(db)
+	err := data.CreateMigrationTable(db.DB)
 	if err != nil {
 		t.Errorf("Failed skipping migrations table: %s", err)
 	}
 
-	count, err := getMigrationCount(db)
+	count, err := data.GetMigrationCount(db.DB)
 	if err != nil {
 		t.Errorf("Failed to get migration count: %s", err)
 	}
@@ -79,7 +38,7 @@ func TestSkippingMigrationsTableIfExists(t *testing.T) {
 		t.Errorf("Expected 1 migration. Got %d", count)
 	}
 
-	migrations, err := getCurrentMigrations(db, count)
+	migrations, err := data.GetCurrentMigrations(db.DB, count)
 	if err != nil {
 		t.Errorf("Failed to get migrations: %s", err)
 	}

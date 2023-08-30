@@ -18,13 +18,13 @@ type StaticData struct {
 
 // PreRun helper that makes sure the database is up-to-date
 func CommandPre(cmd *cobra.Command, args []string) {
-	dbConn, err := GetDBConn()
+	db, err := GetDBConn()
 	if err != nil {
 		logger.Error("Failed to connect to database: " + err.Error())
 		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 
-	err = SyncMigrations(dbConn)
+	err = db.SyncMigrations()
 	if err != nil {
 		logger.Error("Database sync failed: " + err.Error())
 		utils.Exit(utils.EXIT_BAD_CONFIG)

@@ -8,7 +8,7 @@ import (
 	"github.com/ismailshak/transit/internal/logger"
 )
 
-func createMigrationTable(db *sql.DB) error {
+func CreateMigrationTable(db *sql.DB) error {
 	_, err := db.ExecContext(context.Background(), CREATE_MIGRATIONS_TABLE)
 	if err != nil {
 		return fmt.Errorf("failed to create migrations table: %s", err)
@@ -17,7 +17,7 @@ func createMigrationTable(db *sql.DB) error {
 	return nil
 }
 
-func getMigrationCount(db *sql.DB) (int, error) {
+func GetMigrationCount(db *sql.DB) (int, error) {
 	row := db.QueryRow(MIGRATIONS_COUNT)
 
 	var count int
@@ -33,8 +33,8 @@ func getMigrationCount(db *sql.DB) (int, error) {
 	return count, nil
 }
 
-func runMigrations(db *sql.DB, rowCount int) error {
-	migrationRows, err := getCurrentMigrations(db, rowCount)
+func RunMigrations(db *sql.DB, rowCount int) error {
+	migrationRows, err := GetCurrentMigrations(db, rowCount)
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func runMigrations(db *sql.DB, rowCount int) error {
 	return nil
 }
 
-func getCurrentMigrations(db *sql.DB, rowCount int) ([]Migration, error) {
+func GetCurrentMigrations(db *sql.DB, rowCount int) ([]Migration, error) {
 	if rowCount == 0 {
 		return []Migration{}, nil
 	}

@@ -178,7 +178,7 @@ func (dmv *DmvApi) GetIDFromArg(arg string) ([]string, error) {
 		return nil, err
 	}
 
-	stops, err := data.GetStopsByLocation(db, data.DMVSlug, true)
+	stops, err := db.GetStopsByLocation(data.DMVSlug, true)
 	if err != nil {
 		return nil, err
 	}
