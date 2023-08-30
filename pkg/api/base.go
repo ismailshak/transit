@@ -48,7 +48,7 @@ type Incident struct {
 // Base interface that defines what each location client api must implement
 type Api interface {
 	// Fetches all required static data. Used to hydrate database
-	FetchStaticData() (*data.Data, error)
+	FetchStaticData() (*data.StaticData, error)
 	// Fetches arrival information for list of location unique identifiers
 	FetchPredictions(ids []string) ([]Prediction, error)
 	// Fetch all incidents reported by the agency for a location

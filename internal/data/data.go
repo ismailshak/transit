@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// All static data that is stored in the database
-type Data struct {
+// Static data, that doesn't change often, that we store in the database
+type StaticData struct {
 	Stops []*Stop
 }
 

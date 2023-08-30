@@ -60,7 +60,7 @@ func (dmv *DmvApi) BuildRequest(method string, route ...string) (*http.Request, 
 	return req, nil
 }
 
-func (dmv *DmvApi) FetchStaticData() (*data.Data, error) {
+func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 	req, err := dmv.BuildRequest(http.MethodGet, "gtfs/rail-gtfs-static.zip")
 	if err != nil {
 		return nil, err

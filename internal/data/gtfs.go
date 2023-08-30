@@ -33,22 +33,22 @@ func UnzipStaticGTFS(path string, dest string) error {
 }
 
 // Parses an unzipped directory that contains the GTFS Static feed
-func ParseGTFS(path string, st StopType) (*Data, error) {
+func ParseGTFS(path string, st StopType) (*StaticData, error) {
 	stopsFile := filepath.Join(path, "stops.txt")
 
-	stops, err := parseStops(stopsFile, st)
+	stops, err := parseGTFSStops(stopsFile, st)
 	if err != nil {
 		return nil, err
 	}
 
-	gtfs := &Data{
+	static := &StaticData{
 		Stops: stops,
 	}
 
-	return gtfs, nil
+	return static, nil
 }
 
-func parseStops(path string, st StopType) ([]*Stop, error) {
+func parseGTFSStops(path string, st StopType) ([]*Stop, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
