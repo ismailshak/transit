@@ -8,11 +8,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ismailshak/transit/api"
-	"github.com/ismailshak/transit/config"
-	"github.com/ismailshak/transit/helpers"
-	"github.com/ismailshak/transit/logger"
-	"github.com/ismailshak/transit/tui"
+	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/tui"
+	"github.com/ismailshak/transit/internal/utils"
+	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -35,9 +36,9 @@ try being more specific by adding more characters.
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		location := config.GetConfig().Core.Location
-		client := api.GetClient(location)
+		client := api.GetClient(data.LocationSlug(location))
 		if client == nil {
-			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
 		if watchFlag {
@@ -56,6 +57,7 @@ func init() {
 }
 
 func ExecuteAt(client api.Api, args []string) {
+	// TODO: pull client.GetIDFromArg() out of this so that `Watch` is more performant
 	for _, arg := range args {
 		codes, err := client.GetIDFromArg(arg)
 		if err != nil {
@@ -69,11 +71,11 @@ func ExecuteAt(client api.Api, args []string) {
 		predictions, err := client.FetchPredictions(codes)
 		if err != nil {
 			logger.Error(fmt.Sprint(err))
-			helpers.Exit(helpers.EXIT_BAD_CONFIG)
+			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(predictions)
-		tui.PrintArrivingScreen(client, &destinationLookup, sortedDestinations)
+		tui.PrintArrivalScreen(client, &destinationLookup, sortedDestinations)
 	}
 }
 
