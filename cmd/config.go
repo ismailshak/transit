@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ismailshak/transit/logger"
+	"github.com/ismailshak/transit/internal/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -14,7 +14,7 @@ var configCmd = &cobra.Command{
 	Long: `
 Get and set configuration options.
 
-For nested config options, use a period/full-stop/dot as a delimiter.
+For nested config options, use a dot (.) as a delimiter.
 
 There is very minimal validation on the values you set. Whatever you decide
 to set will probably be written... will just not be parsed/read by any of the commands.`,
@@ -24,7 +24,7 @@ to set will probably be written... will just not be parsed/read by any of the co
 var configGetCommand = &cobra.Command{
 	Use:                   "get <key>",
 	Short:                 "Get a key from the config file",
-	Long:                  "Get a key from the config file\nFor all values, check the README at https://github.com/ismailshak/transit#config",
+	Long:                  "Get a key from the config file\nFor all values, check the docs https://transitcli.com/docs/config-reference",
 	Example:               "  transit config get core.location",
 	Args:                  cobra.ExactArgs(1),
 	DisableFlagsInUseLine: true,
@@ -36,7 +36,7 @@ var configGetCommand = &cobra.Command{
 var configSetCommand = &cobra.Command{
 	Use:                   "set <key> <value>",
 	Short:                 "Set a key in the config file",
-	Long:                  "Set a key in the config file\nFor all values, check the README at https://github.com/ismailshak/transit",
+	Long:                  "Set a key in the config file\nFor all values, check the docs https://transitcli.com/docs/config-reference",
 	Example:               "  transit config set core.location dmv\n  transit config set dmv.api_key abcdef",
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.ExactArgs(2),
@@ -108,6 +108,7 @@ func validateKey(key, value string) bool {
 	return true
 }
 
+// TODO: use DB's locations table for this instead
 var validLocations = map[string]bool{
 	"dmv": true,
 }

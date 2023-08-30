@@ -1,6 +1,6 @@
-# See here for image contents: https://github.com/devcontainers/images/blob/v0.2.40/src/go/manifest.json
+# See here for image contents: https://github.com/devcontainers/images/blob/v0.3.16/src/go/manifest.json
 ARG VARIANT="1"
-FROM mcr.microsoft.com/vscode/devcontainers/go:0-${VARIANT}
+FROM mcr.microsoft.com/vscode/devcontainers/go:1-${VARIANT}
 
 ARG INSTALL_NODE="true"
 ARG NODE_VERSION="lts/*"
@@ -14,6 +14,3 @@ RUN if [ "${INSTALL_NODE}" = "true" ]; then su vscode -c "source /usr/local/shar
 
 # Install the last released version of transit
 RUN go install github.com/ismailshak/transit@latest
-
-# Installing prettier for markdown formatting
-RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g prettier" 2>&1
