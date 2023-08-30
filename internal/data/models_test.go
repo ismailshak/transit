@@ -1,11 +1,10 @@
 package data_test
 
 import (
-	"database/sql"
-	"path/filepath"
 	"testing"
 
 	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/testutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,31 +17,10 @@ var fixture = []*data.Stop{
 	{StopID: "D", Name: "DDD", Location: fixtureLocation, Latitude: "12.1812341", Longitude: "-332.98833", Type: "train", ParentID: "C"},
 }
 
-func getMigratedTestDb(t *testing.T) *sql.DB {
-	t.Helper()
-	testDir := t.TempDir()
-	dbPath := filepath.Join(testDir, "models_test.db")
-
-	db, err := data.DbConnect(dbPath)
-	if err != nil {
-		t.Fatal("Failed to connect to test database", err)
-	}
-
-	if err = data.SyncMigrations(db); err != nil {
-		t.Fatal("Failed to migrate test database", err)
-	}
-
-	t.Cleanup(func() {
-		db.Close()
-	})
-
-	return db
-}
-
 func TestGetStopsByLocationExcludesParent(t *testing.T) {
 	t.Parallel()
 
-	db := getMigratedTestDb(t)
+	db := testutils.MigratedDB(t)
 
 	for _, f := range fixture {
 		_, err := db.Exec(
@@ -86,7 +64,7 @@ func TestGetStopsByLocationExcludesParent(t *testing.T) {
 func TestGetStopsByLocationIncludesParent(t *testing.T) {
 	t.Parallel()
 
-	db := getMigratedTestDb(t)
+	db := testutils.MigratedDB(t)
 
 	for _, f := range fixture {
 		_, err := db.Exec(
@@ -133,7 +111,7 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 func TestInsertManyStops(t *testing.T) {
 	t.Parallel()
 
-	db := getMigratedTestDb(t)
+	db := testutils.MigratedDB(t)
 	if err := data.InsertStops(db, fixture); err != nil {
 		t.Fatalf("InsertStops() returned an error: %s", err)
 	}
