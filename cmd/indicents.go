@@ -27,7 +27,7 @@ func init() {
 }
 
 func ExecuteIncidents(client api.Api) {
-	incidents, err := client.FetchTrainIncidents()
+	incidents, err := client.FetchIncidents()
 	if err != nil {
 		logger.Error(fmt.Sprint(err))
 	}
