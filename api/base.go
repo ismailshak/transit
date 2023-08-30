@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/config"
+	"github.com/ismailshak/transit/data"
 	"github.com/ismailshak/transit/helpers"
 	"github.com/ismailshak/transit/logger"
 )
@@ -14,7 +15,7 @@ const (
 )
 
 // Next train arrival prediction data
-type Predictions struct {
+type Prediction struct {
 	// Minutes until a train arrives
 	Min string
 	// The short name for a train station
@@ -40,15 +41,17 @@ type Incident struct {
 }
 
 type Api interface {
+	// Fetches all required static data. Used to hydrate database
+	FetchStaticData() (*data.Data, error)
 	// Fetches arrival information for list of location unique identifiers
-	FetchPredictions(ids []string) ([]Predictions, error)
-	// Fetch train incidents for a location
-	FetchTrainIncidents() ([]Incident, error)
-	// Given user input for a location, returns the unique identifier (location could have multiple)
-	GetCodeFromArg(arg string) []string
-	// Given a line name or abbreviation, return colors that represents it.
-	// (fg, bg) tuple returned
-	GetColorFromLine(arg string) (string, string)
+	FetchPredictions(ids []string) ([]Prediction, error)
+	// Fetch all incidents reported by the agency for a location
+	FetchIncidents() ([]Incident, error)
+	// Given user input for a location, returns the unique identifier (a stop can have multiple)
+	GetIDFromArg(arg string) ([]string, error)
+	// Given a stop name or abbreviation, return colors that represents it.
+	// (bg, fg) tuple returned
+	GetStopColor(stop string) (string, string)
 	// Determines if a train isn't for passengers
 	IsGhostTrain(line, destination string) bool
 }

@@ -9,3 +9,6 @@ dist/
 
 # vscode settings
 .vscode
+
+# Other artifacts
+.DS_Store

@@ -57,7 +57,11 @@ func init() {
 
 func ExecuteAt(client api.Api, args []string) {
 	for _, arg := range args {
-		codes := client.GetCodeFromArg(arg)
+		codes, err := client.GetIDFromArg(arg)
+		if err != nil {
+			// TODO: handle error
+			return
+		}
 		if codes == nil {
 			continue
 		}
@@ -79,7 +83,7 @@ func WatchExecuteAt(client api.Api, args []string) {
 	message := tui.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
 	cancelChan := make(chan os.Signal, 1)
 
-	// catch SIGETRM or SIGINTERRUPT
+	// catch SIGTERM or SIGINT
 	signal.Notify(cancelChan, syscall.SIGTERM, syscall.SIGINT)
 
 	buffer.StartAlternateBuffer()
@@ -101,8 +105,8 @@ func WatchExecuteAt(client api.Api, args []string) {
 
 // Groups predictions by destination (assumes already sorted by minutes).
 // Returns grouped map and returns a sorted list of destinations
-func groupByDestination(predictions []api.Predictions) (map[string][]api.Predictions, []string) {
-	destMap := make(map[string][]api.Predictions)
+func groupByDestination(predictions []api.Prediction) (map[string][]api.Prediction, []string) {
+	destMap := make(map[string][]api.Prediction)
 	var destinations []string
 
 	for _, p := range predictions {
@@ -110,7 +114,7 @@ func groupByDestination(predictions []api.Predictions) (map[string][]api.Predict
 		if exists {
 			destMap[p.Destination] = append(destMap[p.Destination], p)
 		} else {
-			destMap[p.Destination] = []api.Predictions{p}
+			destMap[p.Destination] = []api.Prediction{p}
 			destinations = append(destinations, p.Destination)
 		}
 	}

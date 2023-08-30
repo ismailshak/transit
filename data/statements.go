@@ -47,3 +47,11 @@ const CREATE_STOPS_TABLE = `CREATE TABLE stops (
 )`
 
 const CREATE_STOP_LOCATION_INDEX = "CREATE INDEX stop_location_index ON stops(location)"
+
+const COUNT_STOPS_BY_LOCATION = "SELECT COUNT(*) FROM stops WHERE location = ?"
+
+const SELECT_STOPS_BY_LOCATION = "SELECT rowid, * FROM stops WHERE location = ?"
+
+const SELECT_PARENT_STOPS_BY_LOCATION = `SELECT rowid, * FROM stops WHERE location = ? AND parent_id = ""`
+
+const INSERT_STOP = "INSERT INTO stops (stop_id, name, location, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
