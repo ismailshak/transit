@@ -69,7 +69,7 @@ func (t *TestApi) FetchIncidents() ([]api.Incident, error) {
 }
 
 func (t *TestApi) GetIDFromArg(arg string) ([]string, error) {
-	matches := utils.FuzzyFindFrom(arg, api.SearchableStops(ALL_STOPS))
+	matches := utils.FuzzyFindFrom(arg, data.SearchableStops(ALL_STOPS))
 
 	ids := make([]string, 0, matches.Len())
 

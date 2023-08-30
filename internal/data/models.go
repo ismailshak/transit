@@ -60,6 +60,12 @@ type Stop struct {
 	ParentID string
 }
 
+// Wrapper type to satisfy the fuzzy matching interface
+type SearchableStops []*Stop
+
+func (s SearchableStops) Len() int            { return len(s) }
+func (s SearchableStops) String(i int) string { return s[i].Name }
+
 func GetStopsByLocation(db *sql.DB, location LocationSlug, parentsOnly bool) ([]*Stop, error) {
 	var statement string
 	if parentsOnly {

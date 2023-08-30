@@ -172,12 +172,6 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 	return incidents, nil
 }
 
-// Wrapper type to satisfy the fuzzy matching interface
-type SearchableStops []*data.Stop
-
-func (s SearchableStops) Len() int            { return len(s) }
-func (s SearchableStops) String(i int) string { return s[i].Name }
-
 func (dmv *DmvApi) GetIDFromArg(arg string) ([]string, error) {
 	db, err := data.GetDBConn()
 	if err != nil {
@@ -189,7 +183,7 @@ func (dmv *DmvApi) GetIDFromArg(arg string) ([]string, error) {
 		return nil, err
 	}
 
-	matches := utils.FuzzyFindFrom(arg, SearchableStops(stops))
+	matches := utils.FuzzyFindFrom(arg, data.SearchableStops(stops))
 
 	if matches.Len() == 0 {
 		logger.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
