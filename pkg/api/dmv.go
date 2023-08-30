@@ -28,7 +28,7 @@ type DmvApi struct {
 }
 
 // WMATA's predictions API response
-type PredictionsResponse struct {
+type WMATA_PredictionsResponse struct {
 	Trains []Prediction
 }
 
@@ -40,7 +40,7 @@ type WMATA_Incident struct {
 }
 
 // WMATA's incidents API response
-type IncidentsResponse struct {
+type WMATA_IncidentsResponse struct {
 	Incidents []WMATA_Incident
 }
 
@@ -125,7 +125,7 @@ func (dmv *DmvApi) FetchPredictions(stations []string) ([]Prediction, error) {
 		return nil, fmt.Errorf("Failed to fetch. Received %d", resp.StatusCode)
 	}
 
-	var predictions PredictionsResponse
+	var predictions WMATA_PredictionsResponse
 	err = json.Unmarshal(body, &predictions)
 
 	return predictions.Trains, err
@@ -149,7 +149,7 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 		return nil, errors.New(fmt.Sprintf("Failed to fetch. Received %d", resp.StatusCode))
 	}
 
-	var incidentsRes IncidentsResponse
+	var incidentsRes WMATA_IncidentsResponse
 	err = json.Unmarshal(body, &incidentsRes)
 
 	if err != nil {

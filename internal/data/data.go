@@ -2,7 +2,7 @@
 // data used by transit CLI.
 //
 // This can be data stored in the SQLite database on a user's machine, or
-// data download from a server like GTFS.w
+// data downloaded from a server like GTFS
 package data
 
 import (

@@ -1,6 +1,6 @@
-// Package utils is collection of helper functions that are used throughout transit
+// Package utils is a collection of helper functions that are used throughout transit.
 //
-// Has functions for things like interfacing with the file system and exiting the program
+// Has functions for things like interfacing with the file system and exiting the program.
 package utils
 
 import (

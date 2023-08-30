@@ -57,6 +57,7 @@ func init() {
 }
 
 func ExecuteAt(client api.Api, args []string) {
+	// TODO: pull client.GetIDFromArg() out of this so that `Watch` is more performant
 	for _, arg := range args {
 		codes, err := client.GetIDFromArg(arg)
 		if err != nil {
