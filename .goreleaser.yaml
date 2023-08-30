@@ -21,6 +21,11 @@ builds:
     ignore:
       - goos: windows
         goarch: arm
+      # SQLite driver working on adding Windows 32-bit support
+      # https://gitlab.com/cznic/sqlite/-/issues/86
+      # https://pkg.go.dev/modernc.org/sqlite?utm_source=godoc#hdr-Supported_platforms_and_architectures
+      - goos: windows
+        goarch: "386"
     mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
       - -trimpath
