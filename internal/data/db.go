@@ -17,7 +17,7 @@ type TransitDB struct {
 	DB *sql.DB
 }
 
-func GetDBConn() (*TransitDB, error) {
+func GetDB() (*TransitDB, error) {
 	if db != nil {
 		return db, nil
 	}
@@ -154,7 +154,7 @@ func (t *TransitDB) CountStopsByLocation(location LocationSlug) (int, error) {
 	return count, nil
 }
 
-// Exists for testing purposes. Use GetDBConn instead
+// Exists for testing purposes. Use GetDB instead
 func NewTransitDB(path string) (*TransitDB, error) {
 	conn, err := sql.Open("sqlite", path)
 	if err != nil {

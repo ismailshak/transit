@@ -108,7 +108,7 @@ func validateKey(key, value string) bool {
 }
 
 func validateLocation(location string) bool {
-	db, _ := data.GetDBConn()
+	db, _ := data.GetDB()
 	l, err := db.GetLocation(data.LocationSlug(location))
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to validate location: %s", location))

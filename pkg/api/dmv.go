@@ -179,7 +179,7 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 }
 
 func (dmv *DmvApi) GetIDFromArg(arg string) ([]string, error) {
-	db, err := data.GetDBConn()
+	db, err := data.GetDB()
 	if err != nil {
 		return nil, err
 	}

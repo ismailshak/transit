@@ -62,7 +62,7 @@ func Execute() {
 }
 
 func dbSetupPreRun(cmd *cobra.Command, args []string) {
-	db, err := data.GetDBConn()
+	db, err := data.GetDB()
 	if err != nil {
 		logger.Error("Failed to connect to database: " + err.Error())
 		utils.Exit(utils.EXIT_BAD_CONFIG)
