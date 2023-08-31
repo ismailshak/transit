@@ -8,13 +8,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var fixtureLocation data.LocationSlug = "moon"
+var testLocation data.LocationSlug = "moon"
 
-var fixture = []*data.Stop{
-	{StopID: "A", Name: "AAA", Location: fixtureLocation, Latitude: "12.1818181", Longitude: "-332.99933", Type: "train", ParentID: ""},
-	{StopID: "B", Name: "BBB", Location: fixtureLocation, Latitude: "12.1813458", Longitude: "-332.99993", Type: "train", ParentID: "A"},
-	{StopID: "C", Name: "CCC", Location: fixtureLocation, Latitude: "12.1814451", Longitude: "-332.99773", Type: "train", ParentID: "B"},
-	{StopID: "D", Name: "DDD", Location: fixtureLocation, Latitude: "12.1812341", Longitude: "-332.98833", Type: "train", ParentID: "C"},
+var locationFixture = &data.Location{Slug: "x", Name: "XYZ", SupportsGTFS: true}
+
+var stopsFixture = []*data.Stop{
+	{StopID: "A", Name: "AAA", Location: testLocation, Latitude: "12.1818181", Longitude: "-332.99933", Type: "train", ParentID: ""},
+	{StopID: "B", Name: "BBB", Location: testLocation, Latitude: "12.1813458", Longitude: "-332.99993", Type: "train", ParentID: "A"},
+	{StopID: "C", Name: "CCC", Location: testLocation, Latitude: "12.1814451", Longitude: "-332.99773", Type: "train", ParentID: "B"},
+	{StopID: "D", Name: "DDD", Location: testLocation, Latitude: "12.1812341", Longitude: "-332.98833", Type: "train", ParentID: "C"},
 }
 
 func TestMigrationCompletes(t *testing.T) {
@@ -26,12 +28,68 @@ func TestMigrationCompletes(t *testing.T) {
 	}
 }
 
+func TestGetValidLocation(t *testing.T) {
+	t.Parallel()
+
+	db := testutils.MigratedDB(t)
+
+	_, err := db.DB.Exec(
+		"INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)",
+		locationFixture.Slug,
+		locationFixture.Name,
+		locationFixture.SupportsGTFS,
+	)
+
+	if err != nil {
+		t.Fatalf("Failed to insert location fixture data: %s", err)
+	}
+
+	locationRow, err := db.GetLocation(locationFixture.Slug)
+
+	if err != nil {
+		t.Fatalf("Failed to get location from db: %s", err)
+	}
+
+	assert.Equal(t, locationFixture.Slug, locationRow.Slug)
+	assert.Equal(t, locationFixture.Name, locationRow.Name)
+	assert.Equal(t, locationFixture.SupportsGTFS, locationRow.SupportsGTFS)
+	assert.NotEqual(t, locationRow.CreatedAt, "")
+	assert.NotNil(t, locationRow.CreatedAt)
+	assert.NotEqual(t, locationRow.UpdatedAt, "")
+	assert.NotNil(t, locationRow.UpdatedAt)
+}
+
+func TestGetInvalidLocation(t *testing.T) {
+	t.Parallel()
+
+	db := testutils.MigratedDB(t)
+
+	_, err := db.DB.Exec(
+		"INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)",
+		locationFixture.Slug,
+		locationFixture.Name,
+		locationFixture.SupportsGTFS,
+	)
+
+	if err != nil {
+		t.Fatalf("Failed to insert location fixture data: %s", err)
+	}
+
+	locationRow, err := db.GetLocation("invalid")
+
+	if err != nil {
+		t.Fatalf("Failed to get location from db: %s", err)
+	}
+
+	assert.Nil(t, locationRow)
+}
+
 func TestGetStopsByLocationExcludesParent(t *testing.T) {
 	t.Parallel()
 
 	db := testutils.MigratedDB(t)
 
-	for _, f := range fixture {
+	for _, f := range stopsFixture {
 		_, err := db.DB.Exec(
 			"INSERT INTO stops (stop_id, name, location, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
 			f.StopID,
@@ -44,11 +102,11 @@ func TestGetStopsByLocationExcludesParent(t *testing.T) {
 		)
 
 		if err != nil {
-			t.Fatalf("Failed to insert fixture data: %s", err)
+			t.Fatalf("Failed to insert stop fixture data: %s", err)
 		}
 	}
 
-	stops, err := db.GetStopsByLocation(fixtureLocation, true)
+	stops, err := db.GetStopsByLocation(testLocation, true)
 	if err != nil {
 		t.Fatalf("GetStopsByLocation() returned an error: %s", err)
 	}
@@ -57,13 +115,13 @@ func TestGetStopsByLocationExcludesParent(t *testing.T) {
 		t.Fatalf("Expected 1 stop without parent. Got %d", len(stops))
 	}
 
-	assert.Equal(t, fixture[0].StopID, stops[0].StopID)
-	assert.Equal(t, fixture[0].Location, stops[0].Location)
-	assert.Equal(t, fixture[0].Name, stops[0].Name)
-	assert.Equal(t, fixture[0].Latitude, stops[0].Latitude)
-	assert.Equal(t, fixture[0].Longitude, stops[0].Longitude)
-	assert.Equal(t, fixture[0].Type, stops[0].Type)
-	assert.Equal(t, fixture[0].ParentID, stops[0].ParentID)
+	assert.Equal(t, stopsFixture[0].StopID, stops[0].StopID)
+	assert.Equal(t, stopsFixture[0].Location, stops[0].Location)
+	assert.Equal(t, stopsFixture[0].Name, stops[0].Name)
+	assert.Equal(t, stopsFixture[0].Latitude, stops[0].Latitude)
+	assert.Equal(t, stopsFixture[0].Longitude, stops[0].Longitude)
+	assert.Equal(t, stopsFixture[0].Type, stops[0].Type)
+	assert.Equal(t, stopsFixture[0].ParentID, stops[0].ParentID)
 	assert.NotEqual(t, stops[0].CreatedAt, "")
 	assert.NotNil(t, stops[0].CreatedAt)
 	assert.NotEqual(t, stops[0].UpdatedAt, "")
@@ -75,7 +133,7 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 
 	db := testutils.MigratedDB(t)
 
-	for _, f := range fixture {
+	for _, f := range stopsFixture {
 		_, err := db.DB.Exec(
 			"INSERT INTO stops (stop_id, name, location, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
 			f.StopID,
@@ -92,7 +150,7 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 		}
 	}
 
-	stops, err := db.GetStopsByLocation(fixtureLocation, false)
+	stops, err := db.GetStopsByLocation(testLocation, false)
 	if err != nil {
 		t.Fatalf("GetStopsByLocation() returned an error: %s", err)
 	}
@@ -102,7 +160,7 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 	}
 
 	for i, stop := range stops {
-		expected := fixture[i]
+		expected := stopsFixture[i]
 		assert.Equal(t, expected.StopID, stop.StopID)
 		assert.Equal(t, expected.Location, stop.Location)
 		assert.Equal(t, expected.Name, stop.Name)
@@ -121,7 +179,7 @@ func TestInsertManyStops(t *testing.T) {
 	t.Parallel()
 
 	db := testutils.MigratedDB(t)
-	if err := db.InsertStops(fixture); err != nil {
+	if err := db.InsertStops(stopsFixture); err != nil {
 		t.Fatalf("InsertStops() returned an error: %s", err)
 	}
 
@@ -156,12 +214,12 @@ func TestInsertManyStops(t *testing.T) {
 		stopRows = append(stopRows, &row)
 	}
 
-	if len(fixture) != len(stopRows) {
-		t.Errorf("Expected length %d. Got %d", len(fixture), len(stopRows))
+	if len(stopsFixture) != len(stopRows) {
+		t.Errorf("Expected length %d. Got %d", len(stopsFixture), len(stopRows))
 	}
 
 	for i, stop := range stopRows {
-		expected := fixture[i]
+		expected := stopsFixture[i]
 
 		assert.Equal(t, i+1, stop.ID)
 		assert.Equal(t, expected.StopID, stop.StopID)

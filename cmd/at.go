@@ -33,7 +33,8 @@ Arguments are considered valid if it can be used to narrow
 the official station names to just 1. If something's too generic,
 try being more specific by adding more characters.
 	`,
-	Args: cobra.MinimumNArgs(1),
+	Args:   cobra.MinimumNArgs(1),
+	PreRun: defaultPreRun,
 	Run: func(cmd *cobra.Command, args []string) {
 		location := config.GetConfig().Core.Location
 		client := api.GetClient(data.LocationSlug(location))

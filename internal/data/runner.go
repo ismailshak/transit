@@ -18,7 +18,7 @@ func CreateMigrationTable(db *sql.DB) error {
 }
 
 func GetMigrationCount(db *sql.DB) (int, error) {
-	row := db.QueryRow(MIGRATIONS_COUNT)
+	row := db.QueryRow(COUNT_MIGRATIONS)
 
 	var count int
 	err := row.Scan(&count)

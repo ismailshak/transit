@@ -2,7 +2,7 @@
 transit
 
 # Local CLI config file (useful for symlinking to config dir while developing)
-config.yml
+config.*
 
 # goreleaser compiled binaries go here
 dist/
