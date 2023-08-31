@@ -9,7 +9,7 @@ const CREATE_MIGRATIONS_TABLE = `CREATE TABLE IF NOT EXISTS migrations (
 	migrated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`
 
-const MIGRATIONS_COUNT = "SELECT COUNT(*) FROM migrations"
+const COUNT_MIGRATIONS = "SELECT COUNT(*) FROM migrations"
 
 const SELECT_MIGRATIONS = "SELECT rowid, name, DATETIME(migrated_at, 'localtime') FROM migrations"
 
@@ -27,6 +27,8 @@ const CREATE_LOCATIONS_TABLE = `CREATE TABLE locations (
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`
+
+const SELECT_LOCATION = "SELECT rowid, * FROM locations WHERE slug = ?"
 
 const INSERT_LOCATION = "INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)"
 

@@ -8,7 +8,7 @@ import (
 	"github.com/ismailshak/transit/internal/utils"
 )
 
-func TestCreateIfNotFound_NotFound(t *testing.T) {
+func TestCreateIfNotFound(t *testing.T) {
 	testFilePath := t.TempDir() + "./config/create-config.yml"
 
 	err := utils.CreatePathIfNotFound(testFilePath)
@@ -41,7 +41,7 @@ func TestCreateIfNotFound_NotFound(t *testing.T) {
 	}
 }
 
-func TestCreateIfNotFound_Found(t *testing.T) {
+func TestSkipPathBecauseFound(t *testing.T) {
 	testFilePath := t.TempDir() + "./config/exists-config.yml"
 	os.MkdirAll(filepath.Dir(testFilePath), 0777)
 
