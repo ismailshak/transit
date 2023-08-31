@@ -16,6 +16,7 @@ var incidentsCmd = &cobra.Command{
 	Aliases: []string{"inc"},
 	Short:   "Display reported disruptions or delays",
 	Args:    cobra.NoArgs,
+	PreRun:  defaultPreRun,
 	Run: func(cmd *cobra.Command, args []string) {
 		location := config.GetConfig().Core.Location
 		client := api.GetClient(data.LocationSlug(location))

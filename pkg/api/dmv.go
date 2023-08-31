@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/utils"
@@ -74,7 +75,12 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 
 	defer resp.Body.Close()
 
-	zipPath := filepath.Join(utils.GetConfigDir(), "dmv_gtfs_static.zip")
+	configDir, err := config.GetConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	zipPath := filepath.Join(configDir, "dmv_gtfs_static.zip")
 	f, err := os.Create(zipPath)
 	if err != nil {
 		return nil, err
@@ -91,7 +97,7 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 	}
 
 	dirName := "gtfs_static_" + strconv.FormatInt(time.Now().Unix(), 10)
-	feed := filepath.Join(utils.GetConfigDir(), dirName)
+	feed := filepath.Join(configDir, dirName)
 	if err = utils.CreateDir(feed); err != nil {
 		return nil, err
 	}

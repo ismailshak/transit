@@ -1,18 +1,16 @@
 // Package utils is a collection of helper functions that are used throughout transit.
 //
 // Has functions for things like interfacing with the file system and exiting the program.
+// utils should not import any other transit packages, no exceptions.
 package utils
 
 import (
 	"archive/zip"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/ismailshak/transit/internal/logger"
 )
 
 const (
@@ -22,44 +20,18 @@ const (
 	RW_ = 0776
 )
 
-// Returns the default path to the configuration file.
-//
-// Not affected by the config override flag
-func GetConfigDir() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		logger.Error(fmt.Sprint(err))
-		Exit(1)
-	}
-
-	return filepath.Join(homeDir, ".config", "transit")
-}
-
 func FileExists(filePath string) bool {
 	_, err := os.Stat(filePath)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			logger.Debug(fmt.Sprint(err))
-		}
-
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 func DirExists(dirPath string) bool {
 	info, err := os.Stat(dirPath)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			logger.Debug(fmt.Sprint(err))
-		}
-
 		return false
 	}
 
 	if !info.IsDir() {
-		logger.Debug(fmt.Sprintf("Expected a directory but found a file: %s", dirPath))
 		return false
 	}
 

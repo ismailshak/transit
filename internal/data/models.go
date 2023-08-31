@@ -35,7 +35,10 @@ type Location struct {
 	Entity
 	// The shorthand used to refer to this location. This is the value set in a user's config file
 	Slug LocationSlug
+	// Rider-facing name
 	Name string
+	// Whether the API behind it supports GTFS data
+	SupportsGTFS bool
 }
 
 type Stop struct {

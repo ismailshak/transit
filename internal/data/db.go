@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"path/filepath"
 
-	"github.com/ismailshak/transit/internal/utils"
+	"github.com/ismailshak/transit/internal/config"
 	_ "modernc.org/sqlite"
 )
 
@@ -22,7 +22,11 @@ func GetDBConn() (*TransitDB, error) {
 		return db, nil
 	}
 
-	configPath := utils.GetConfigDir()
+	configPath, err := config.GetConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
 	dbPath := filepath.Join(configPath, "transit.db")
 	newDb, err := NewTransitDB(dbPath)
 
@@ -57,6 +61,20 @@ func (t *TransitDB) SyncMigrations() error {
 	}
 
 	return nil
+}
+
+func (t *TransitDB) GetLocation(location LocationSlug) (*Location, error) {
+	row := t.DB.QueryRow(SELECT_LOCATION, location)
+
+	var l Location
+
+	err := row.Scan(&l.ID, &l.Slug, &l.Name, &l.SupportsGTFS, &l.CreatedAt, &l.UpdatedAt)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+
+	return &l, nil
 }
 
 func (t *TransitDB) GetStopsByLocation(location LocationSlug, parentsOnly bool) ([]*Stop, error) {
