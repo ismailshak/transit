@@ -3,10 +3,11 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ismailshak/transit/api"
-	"github.com/ismailshak/transit/config"
-	"github.com/ismailshak/transit/logger"
-	"github.com/ismailshak/transit/tui"
+	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/tui"
+	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -15,9 +16,10 @@ var incidentsCmd = &cobra.Command{
 	Aliases: []string{"inc"},
 	Short:   "Display reported disruptions or delays",
 	Args:    cobra.NoArgs,
+	PreRun:  defaultPreRun,
 	Run: func(cmd *cobra.Command, args []string) {
 		location := config.GetConfig().Core.Location
-		client := api.GetClient(location)
+		client := api.GetClient(data.LocationSlug(location))
 		ExecuteIncidents(client)
 	},
 }
@@ -27,10 +29,10 @@ func init() {
 }
 
 func ExecuteIncidents(client api.Api) {
-	incidents, err := client.FetchTrainIncidents()
+	incidents, err := client.FetchIncidents()
 	if err != nil {
 		logger.Error(fmt.Sprint(err))
 	}
 
-	tui.PrintIssues(client, incidents)
+	tui.PrintIncidents(client, incidents)
 }

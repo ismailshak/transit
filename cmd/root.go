@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ismailshak/transit/config"
-	"github.com/ismailshak/transit/helpers"
-	"github.com/ismailshak/transit/logger"
-	"github.com/ismailshak/transit/version"
+	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/utils"
+	"github.com/ismailshak/transit/internal/version"
 	"github.com/spf13/cobra"
 )
 
@@ -27,15 +28,28 @@ var rootCmd = &cobra.Command{
 			configFile := config.GetConfig()
 			configFile.Core.Verbose = true
 		}
+
+		if configFile != "" {
+			config.SetCustomConfigPath(configFile)
+		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionFlag {
 			version.Execute()
-			helpers.Exit(helpers.EXIT_SUCCESS)
+			utils.Exit(utils.EXIT_SUCCESS)
 		}
 
 		cmd.Help()
 	},
+}
+
+func init() {
+	// Global, persistent flags
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "config file (defaults to $HOME/.config/transit/config.yml)")
+	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "turn on verbose logging")
+
+	// Local to root flags
+	rootCmd.Flags().BoolVarP(&versionFlag, "version", "V", false, "print installed version number")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -43,61 +57,33 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
-		os.Exit(1)
+		os.Exit(1) // TODO: exit code
 	}
 }
 
-func init() {
-	cobra.OnInitialize(initConfig)
-
-	// Global, persistent flags
-	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "config file (default is $HOME/.config/transit/config.yml)")
-	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "toggle verbose logging")
-
-	// Local to root flags
-	rootCmd.Flags().BoolVar(&versionFlag, "version", false, "print installed version number")
-}
-
-func initConfig() {
-	LoadConfig(configFile)
-}
-
-// This should be called before any command gets parsed & executed
-func LoadConfig(path string) {
-	configFile := config.GetConfig()
-	if path != "" {
-		vp.SetConfigFile(path)
-	} else {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			logger.Error(fmt.Sprint(err))
-			helpers.Exit(helpers.EXIT_BAD_CONFIG)
-		}
-
-		fullConfigPath := homeDir + "/.config/transit/config.yml"
-		err = helpers.CreatePathIfNotFound(fullConfigPath)
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to create config directory: %s", err))
-			helpers.Exit(helpers.EXIT_BAD_CONFIG)
-		}
-
-		vp.SetConfigName("config")
-		vp.SetConfigType("yaml")
-		vp.AddConfigPath(homeDir + "/.config/transit/")
-	}
-
-	// config defaults
-	vp.SetDefault("core.watch_interval", 10)
-
-	err := vp.ReadInConfig()
+func dbSetupPreRun(cmd *cobra.Command, args []string) {
+	db, err := data.GetDB()
 	if err != nil {
-		logger.Error(fmt.Sprint(err))
-		helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		logger.Error("Failed to connect to database: " + err.Error())
+		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 
-	err = vp.Unmarshal(&configFile)
+	err = db.SyncMigrations()
 	if err != nil {
-		logger.Error("Failed to parse config\n" + fmt.Sprint(err))
-		helpers.Exit(helpers.EXIT_BAD_CONFIG)
+		logger.Error("Database sync failed: " + err.Error())
+		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
+}
+
+func configSetupPreRun(cmd *cobra.Command, args []string) {
+	err := config.LoadConfig()
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to load config file: %s", err))
+		utils.Exit(utils.EXIT_BAD_CONFIG)
+	}
+}
+
+func defaultPreRun(cmd *cobra.Command, args []string) {
+	configSetupPreRun(cmd, args)
+	dbSetupPreRun(cmd, args)
 }

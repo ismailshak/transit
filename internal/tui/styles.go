@@ -1,3 +1,7 @@
+// Package tui contains functions that print pretty output to the terminal.
+//
+// Generally encompasses functions that are transit's user interface, where visual aesthetic matters.
+// Regular messaging should be deferred to the `logger` package
 package tui
 
 import "github.com/charmbracelet/lipgloss"

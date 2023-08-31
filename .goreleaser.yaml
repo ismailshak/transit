@@ -21,14 +21,19 @@ builds:
     ignore:
       - goos: windows
         goarch: arm
+      # SQLite driver working on adding Windows 32-bit support
+      # https://gitlab.com/cznic/sqlite/-/issues/86
+      # https://pkg.go.dev/modernc.org/sqlite?utm_source=godoc#hdr-Supported_platforms_and_architectures
+      - goos: windows
+        goarch: "386"
     mod_timestamp: "{{ .CommitTimestamp }}"
     flags:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/ismailshak/transit/version.version={{.Version}}
-      - -X github.com/ismailshak/transit/version.commit={{.Commit}}
-      - -X github.com/ismailshak/transit/version.date={{.Date}}
+      - -X github.com/ismailshak/transit/internal/version.version={{.Version}}
+      - -X github.com/ismailshak/transit/internal/version.commit={{.Commit}}
+      - -X github.com/ismailshak/transit/internal/version.date={{.Date}}
 
 archives:
   - name_template: >-
