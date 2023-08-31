@@ -15,7 +15,7 @@ import (
 func BlankDB(t *testing.T) *data.TransitDB {
 	t.Helper()
 	testDir := t.TempDir()
-	dbPath := filepath.Join(testDir, "db_test.db")
+	dbPath := filepath.Join(testDir, "transit-test-blank.db")
 
 	t.Logf("Temp database at: %s", dbPath)
 
@@ -35,7 +35,7 @@ func BlankDB(t *testing.T) *data.TransitDB {
 func MigratedDB(t *testing.T) *data.TransitDB {
 	t.Helper()
 	testDir := t.TempDir()
-	dbPath := filepath.Join(testDir, "models_test.db")
+	dbPath := filepath.Join(testDir, "transit-test-migrated.db")
 
 	db, err := data.NewTransitDB(dbPath)
 	if err != nil {
