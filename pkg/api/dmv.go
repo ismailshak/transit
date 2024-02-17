@@ -75,6 +75,10 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("failed to fetch: received %d", resp.StatusCode)
+	}
+
 	configDir, err := config.GetConfigDir()
 	if err != nil {
 		return nil, err
@@ -109,7 +113,7 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 		return nil, err
 	}
 
-	return data.ParseGTFS(feed, data.TrainStation)
+	return data.ParseGTFS(feed, data.DMVSlug, data.TrainStation, "MET")
 }
 
 func (dmv *DmvApi) FetchPredictions(stations []string) ([]Prediction, error) {
@@ -128,7 +132,7 @@ func (dmv *DmvApi) FetchPredictions(stations []string) ([]Prediction, error) {
 	logger.Debug(string(body))
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Failed to fetch. Received %d", resp.StatusCode)
+		return nil, fmt.Errorf("failed to fetch: received %d", resp.StatusCode)
 	}
 
 	var predictions WMATA_PredictionsResponse
@@ -152,14 +156,14 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 	logger.Debug(string(body))
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New(fmt.Sprintf("Failed to fetch. Received %d", resp.StatusCode))
+		return nil, errors.New(fmt.Sprintf("failed to fetch: received %d", resp.StatusCode))
 	}
 
 	var incidentsRes WMATA_IncidentsResponse
 	err = json.Unmarshal(body, &incidentsRes)
 
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Failed to parse response: %s", err))
+		return nil, errors.New(fmt.Sprintf("failed to parse response: %s", err))
 	}
 
 	var incidents []Incident

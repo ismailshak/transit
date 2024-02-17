@@ -7,6 +7,10 @@ package api
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
@@ -17,6 +21,7 @@ import (
 
 const (
 	DMV_BASE_URL = "https://api.wmata.com"
+	SF_BASE_URL  = "http://api.511.org"
 )
 
 // Next train arrival prediction data
@@ -72,6 +77,8 @@ func GetClient(location data.LocationSlug) Api {
 	switch location {
 	case data.DMVSlug:
 		return DmvClient()
+	case data.SFSlug:
+		return SFClient()
 	default:
 		logger.Error(fmt.Sprintf("Invalid location '%s'", location))
 	}
@@ -81,7 +88,7 @@ func GetClient(location data.LocationSlug) Api {
 
 // Build and return a client for the DMV Metro Area
 func DmvClient() *DmvApi {
-	apiKey := &config.GetConfig().Dmv.ApiKey
+	apiKey := &config.GetConfig().DMV.ApiKey
 
 	if *apiKey == "" {
 		logger.Error("No api key found in config at 'dmv.api_key'")
@@ -92,4 +99,59 @@ func DmvClient() *DmvApi {
 		apiKey:  apiKey,
 		baseUrl: DMV_BASE_URL,
 	}
+}
+
+// Build and return a client for the DMV Metro Area
+func SFClient() *SFApi {
+	apiKey := &config.GetConfig().SF.ApiKey
+
+	if *apiKey == "" {
+		logger.Error("No api key found in config at 'sf.api_key'")
+		utils.Exit(utils.EXIT_BAD_CONFIG)
+	}
+
+	return &SFApi{
+		apiKey:  apiKey,
+		baseUrl: SF_BASE_URL,
+	}
+}
+
+func saveStaticGTFS(r *io.ReadCloser, l data.LocationSlug, st data.StopType, a string) (*data.StaticData, error) {
+	defer (*r).Close()
+
+	configDir, err := config.GetConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	zipPath := filepath.Join(configDir, a+"_gtfs_static.zip")
+	f, err := os.Create(zipPath)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		f.Close()
+		os.RemoveAll(zipPath)
+	}()
+
+	_, err = io.Copy(f, *r)
+	if err != nil {
+		return nil, err
+	}
+
+	dirName := "gtfs_static_" + strconv.FormatInt(time.Now().Unix(), 10)
+	feed := filepath.Join(configDir, dirName)
+	if err = utils.CreateDir(feed); err != nil {
+		return nil, err
+	}
+
+	// defer os.RemoveAll(feed)
+
+	err = data.UnzipStaticGTFS(zipPath, feed)
+	if err != nil {
+		return nil, err
+	}
+
+	return data.ParseGTFS(feed, l, st, a)
 }

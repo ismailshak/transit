@@ -75,6 +75,10 @@ func ExecuteAt(client api.Api, args []string) {
 			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
+		if predictions == nil {
+			continue
+		}
+
 		destinationLookup, sortedDestinations := groupByDestination(predictions)
 		tui.PrintArrivalScreen(client, &destinationLookup, sortedDestinations)
 	}
