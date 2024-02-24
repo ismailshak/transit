@@ -161,14 +161,14 @@ func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
 	return &staticData, nil
 }
 
-// Removes the `-X` from the line name where X is a direction (e.g. -N, -S, -E, -W)
+// Removes the `-X` suffix from the line name where X is a direction (e.g. -N, -S, -E, -W)
 // and adds padding so that it's always 6 characters long
 func (sf *SFApi) formatLine(line string) string {
 	trimmed := strings.Split(line, "-")[0]
 	return fmt.Sprintf("%-6s", trimmed)
 }
 
-func (sf *SFApi) FetchPredictions(ids []string) ([]Prediction, error) {
+func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 	req, err := sf.BuildRequest(http.MethodGet, "transit", "StopMonitoring")
 	if err != nil {
 		return nil, err
@@ -176,8 +176,8 @@ func (sf *SFApi) FetchPredictions(ids []string) ([]Prediction, error) {
 
 	q := req.URL.Query()
 	q.Add("api_key", *sf.apiKey)
-	q.Add("agency", "BA")
-	q.Add("stopcode", ids[0])
+	q.Add("agency", in.AgencyID)
+	q.Add("stopcode", in.StopID)
 	q.Add("format", "json")
 	req.URL.RawQuery = q.Encode()
 
@@ -239,6 +239,21 @@ func (sf *SFApi) FetchPredictions(ids []string) ([]Prediction, error) {
 	return predictions, nil
 }
 
+func (sf *SFApi) FetchPredictions(input []PredictionInput) ([]Prediction, error) {
+	predictions := make([]Prediction, 0)
+
+	for _, in := range input {
+		p, err := sf.fetchPrediction(in)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch predictions for %s: %s", in.StopID, err)
+		}
+
+		predictions = append(predictions, p...)
+	}
+
+	return predictions, nil
+}
+
 func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 	i := []Incident{
 		{Description: "Trains delayed by 3 hours", DateUpdated: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), Affected: []string{"Outer"}, Type: "Delay"},
@@ -248,7 +263,7 @@ func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 	return i, nil
 }
 
-func (sf *SFApi) GetIDFromArg(arg string) ([]string, error) {
+func (sf *SFApi) GetPredictionInput(arg string) ([]PredictionInput, error) {
 	db, err := data.GetDB()
 	if err != nil {
 		return nil, err
@@ -266,14 +281,20 @@ func (sf *SFApi) GetIDFromArg(arg string) ([]string, error) {
 		return nil, nil
 	}
 
-	ids := make([]string, 0, matches.Len())
+	if matches.Len() > 5 {
+		logger.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
+		return nil, nil
+	}
+
+	input := make([]PredictionInput, 0, matches.Len())
 
 	for _, m := range matches {
 		id := stops[m.Index].StopID
-		ids = append(ids, id)
+		agency := stops[m.Index].AgencyID
+		input = append(input, PredictionInput{id, agency})
 	}
 
-	return ids, nil
+	return input, nil
 }
 
 func (sf *SFApi) GetLineColor(stop string) (string, string) {

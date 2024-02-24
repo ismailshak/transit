@@ -116,10 +116,14 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 	return data.ParseGTFS(feed, data.DMVSlug, data.TrainStation, "MET")
 }
 
-func (dmv *DmvApi) FetchPredictions(stations []string) ([]Prediction, error) {
-	codes := strings.Join(stations, ",")
+func (dmv *DmvApi) FetchPredictions(input []PredictionInput) ([]Prediction, error) {
+	codes := make([]string, 0, len(input))
+	for _, i := range input {
+		codes = append(codes, i.StopID)
+	}
+
 	client := http.Client{}
-	req, _ := dmv.BuildRequest(http.MethodGet, "StationPrediction.svc/json/GetPrediction", codes)
+	req, _ := dmv.BuildRequest(http.MethodGet, "StationPrediction.svc/json/GetPrediction", strings.Join(codes, ","))
 	resp, err := client.Do(req)
 
 	if err != nil {
@@ -182,7 +186,7 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 	return incidents, nil
 }
 
-func (dmv *DmvApi) GetIDFromArg(arg string) ([]string, error) {
+func (dmv *DmvApi) GetPredictionInput(arg string) ([]PredictionInput, error) {
 	db, err := data.GetDB()
 	if err != nil {
 		return nil, err
@@ -205,15 +209,17 @@ func (dmv *DmvApi) GetIDFromArg(arg string) ([]string, error) {
 		return nil, nil
 	}
 
-	ids := make([]string, 0, matches.Len())
+	input := make([]PredictionInput, 0, matches.Len())
 
 	for _, m := range matches {
 		id := stops[m.Index].StopID
 		formattedId := formatDmvStopId(id)
-		ids = append(ids, formattedId...)
+		for _, id := range formattedId {
+			input = append(input, PredictionInput{id, stops[m.Index].AgencyID})
+		}
 	}
 
-	return ids, nil
+	return input, nil
 }
 
 func (dmv *DmvApi) GetLineColor(stop string) (string, string) {
