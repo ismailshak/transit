@@ -87,7 +87,7 @@ func (sf *SFApi) BuildRequest(method string, route ...string) (*http.Request, er
 	return req, nil
 }
 
-func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
+func (sf *SFApi) fetchStopsForAgency(agency *data.Agency) ([]*data.Stop, error) {
 	req, err := sf.BuildRequest(http.MethodGet, "transit", "stopplaces")
 	if err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
 
 	q := req.URL.Query()
 	q.Add("api_key", *sf.apiKey)
-	q.Add("operator_id", "BA")
+	q.Add("operator_id", agency.AgencyID)
 	q.Add("format", "json")
 	req.URL.RawQuery = q.Encode()
 
@@ -122,22 +122,18 @@ func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
 		return nil, err
 	}
 
-	agency := &data.Agency{
-		AgencyID: "BA",
-		Language: "en",
-		Location: data.SFSlug,
-		Name:     "Bay Area Rapid Transit",
-		Timezone: "America/Los_Angeles",
-	}
-
 	var stops []*data.Stop
 
 	for _, sp := range stopPlaces.Siri.ServiceDelivery.DataObjectDelivery.DataObjects.SiteFrame.StopPlaces.StopPlace {
 		var stopType data.StopType
 		if sp.TrasnsportMode == "bus" {
 			stopType = data.BusStop
-		} else {
+		} else if sp.TrasnsportMode == "rail" { // CT train type
 			stopType = data.TrainStation
+		} else if sp.TrasnsportMode == "intercityRail" { // BART train type
+			stopType = data.TrainStation
+		} else {
+			continue
 		}
 
 		stop := data.Stop{
@@ -153,8 +149,42 @@ func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
 		stops = append(stops, &stop)
 	}
 
+	return stops, nil
+}
+
+func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
+	bart := &data.Agency{
+		AgencyID: "BA",
+		Language: "en",
+		Location: data.SFSlug,
+		Name:     "Bay Area Rapid Transit",
+		Timezone: "America/Los_Angeles",
+	}
+
+	bartStops, err := sf.fetchStopsForAgency(bart)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch BART stops: %s", err)
+	}
+
+	cal := &data.Agency{
+		AgencyID: "CT",
+		Language: "en",
+		Location: data.SFSlug,
+		Name:     "Caltrain",
+		Timezone: "America/Los_Angeles",
+	}
+
+	calStops, err := sf.fetchStopsForAgency(cal)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch Caltrain stops: %s", err)
+	}
+
+	var stops []*data.Stop
+
+	stops = append(bartStops, calStops...)
+
 	staticData := data.StaticData{
-		Agencies: []*data.Agency{agency},
+		Agencies: []*data.Agency{bart, cal},
 		Stops:    stops,
 	}
 
@@ -217,7 +247,15 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 
 	for _, msv := range stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit {
 		mvj := msv.MonitoredVehicleJourney
-		arrival_time, err := time.Parse(time.RFC3339, mvj.MonitoredCall.ExpectedArrivalTime)
+		var arrival_string string
+		// Caltain API does not return ExpectedArrivalTime, it's set to null
+		if mvj.MonitoredCall.ExpectedArrivalTime != "" {
+			arrival_string = mvj.MonitoredCall.ExpectedArrivalTime
+		} else {
+			arrival_string = mvj.MonitoredCall.AimedArrivalTime
+		}
+
+		arrival_time, err := time.Parse(time.RFC3339, arrival_string)
 		if err != nil {
 			return nil, err
 		}
