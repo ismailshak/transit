@@ -192,10 +192,23 @@ func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
 }
 
 // Removes the `-X` suffix from the line name where X is a direction (e.g. -N, -S, -E, -W)
-// and adds padding so that it's always 6 characters long
+// and abbreviates the line name
 func (sf *SFApi) formatLine(line string) string {
 	trimmed := strings.Split(line, "-")[0]
-	return fmt.Sprintf("%-6s", trimmed)
+	switch trimmed {
+	case "Yellow":
+		return "YL"
+	case "Red":
+		return "RD"
+	case "Orange":
+		return "OR"
+	case "Green":
+		return "GR"
+	case "Blue":
+		return "BL"
+	default:
+		return trimmed
+	}
 }
 
 func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
@@ -339,15 +352,15 @@ func (sf *SFApi) GetLineColor(stop string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	trimmed := strings.Trim(stop, " ")
 	switch trimmed {
-	case "Red":
+	case "RD":
 		return "#ED1D24", black
-	case "Orange":
+	case "OR":
 		return "#FAA61A", black
-	case "Yellow":
+	case "YL":
 		return "#FFE600", black
-	case "Green":
+	case "GR":
 		return "#50B848", white
-	case "Blue":
+	case "BL":
 		return "#009AD9", white
 	default:
 		return white, black
