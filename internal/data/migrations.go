@@ -27,9 +27,14 @@ var migrationChangesets = []MigrationChangeset{
 		Down: dropInitialTables,
 	},
 	{
-		Name: "0002_AddDmv",
-		Up:   addDmvToLocations,
-		Down: deleteDmvFromLocations,
+		Name: "0002_Add_DMV",
+		Up:   addDMVToLocations,
+		Down: deleteDMVFromLocations,
+	},
+	{
+		Name: "0003_Add_SF",
+		Up:   addSFToLocations,
+		Down: deleteSFFromLocations,
 	},
 }
 
@@ -41,6 +46,11 @@ func createInitialTables(ctx context.Context, trx *sql.Tx) error {
 	_, err := trx.ExecContext(ctx, CREATE_LOCATIONS_TABLE)
 	if err != nil {
 		return failedMigration("failed to create 'locations' table: ", err)
+	}
+
+	_, err = trx.ExecContext(ctx, CREATE_AGENCIES_TABLE)
+	if err != nil {
+		return failedMigration("failed to create 'agencies' table: ", err)
 	}
 
 	_, err = trx.ExecContext(ctx, CREATE_STOPS_TABLE)
@@ -60,22 +70,42 @@ func dropInitialTables(ctx context.Context, trx *sql.Tx) error {
 	return nil
 }
 
-func addDmvToLocations(ctx context.Context, trx *sql.Tx) error {
+func addDMVToLocations(ctx context.Context, trx *sql.Tx) error {
 	_, err := trx.ExecContext(
 		ctx,
 		INSERT_LOCATION,
 		DMVSlug,
-		"District Of Columbia, Maryland and Virginia",
+		"District Of Columbia, Maryland and Virginia (US)",
 		true,
 	)
 
 	if err != nil {
-		return failedMigration("Failed to insert 'dmv' into 'locations': ", err)
+		return failedMigration("failed to insert 'dmv' into 'locations': ", err)
 	}
 
 	return nil
 }
 
-func deleteDmvFromLocations(ctx context.Context, trx *sql.Tx) error {
+func deleteDMVFromLocations(ctx context.Context, trx *sql.Tx) error {
+	return nil
+}
+
+func addSFToLocations(ctx context.Context, trx *sql.Tx) error {
+	_, err := trx.ExecContext(
+		ctx,
+		INSERT_LOCATION,
+		SFSlug,
+		"San Francisco Bay Area (US)",
+		true,
+	)
+
+	if err != nil {
+		return failedMigration("failed to insert 'sf' into 'locations': ", err)
+	}
+
+	return nil
+}
+
+func deleteSFFromLocations(ctx context.Context, trx *sql.Tx) error {
 	return nil
 }

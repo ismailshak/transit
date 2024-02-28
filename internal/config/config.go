@@ -18,6 +18,11 @@ type DmvConfig struct {
 	ApiKey string `mapstructure:"api_key"`
 }
 
+// Options for the `dmv` section of a user config file
+type SFConfig struct {
+	ApiKey string `mapstructure:"api_key"`
+}
+
 // Options for the `core` section of a user config file
 type CoreConfig struct {
 	Location      string `mapstructure:"location"`
@@ -27,7 +32,8 @@ type CoreConfig struct {
 
 type Config struct {
 	Core CoreConfig `mapstructure:"core"`
-	Dmv  DmvConfig  `mapstructure:"dmv"`
+	DMV  DmvConfig  `mapstructure:"dmv"`
+	SF   DmvConfig  `mapstructure:"sf"`
 }
 
 var (

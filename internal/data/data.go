@@ -7,5 +7,6 @@ package data
 
 // Static data, that doesn't change often, that we store in the database
 type StaticData struct {
-	Stops []*Stop
+	Agencies []*Agency
+	Stops    []*Stop
 }

@@ -60,7 +60,7 @@ func init() {
 func ExecuteAt(client api.Api, args []string) {
 	// TODO: pull client.GetIDFromArg() out of this so that `Watch` is more performant
 	for _, arg := range args {
-		codes, err := client.GetIDFromArg(arg)
+		codes, err := client.GetPredictionInput(arg)
 		if err != nil {
 			// TODO: handle error
 			return
@@ -73,6 +73,10 @@ func ExecuteAt(client api.Api, args []string) {
 		if err != nil {
 			logger.Error(fmt.Sprint(err))
 			utils.Exit(utils.EXIT_BAD_CONFIG)
+		}
+
+		if predictions == nil {
+			continue
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(predictions)

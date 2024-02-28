@@ -115,7 +115,7 @@ func validateLocation(location string) bool {
 		return false
 	}
 
-	if l != nil {
+	if l == nil {
 		logger.Error(fmt.Sprintf("'%s' is not a valid location", location))
 		return false
 	}

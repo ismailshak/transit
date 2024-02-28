@@ -63,6 +63,36 @@ func (t *TransitDB) SyncMigrations() error {
 	return nil
 }
 
+func (t *TransitDB) InsertAgencies(agencies []*Agency) error {
+	trx, err := t.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Defer a rollback in case anything fails.
+	// Will no-op if Commit succeeds
+	defer trx.Rollback()
+
+	stmt, err := trx.Prepare(INSERT_AGENCY)
+	if err != nil {
+		return err
+	}
+
+	for _, agency := range agencies {
+		_, err = stmt.Exec(agency.AgencyID, agency.Name, agency.Location, agency.Timezone, agency.Language)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Commit the transaction
+	if err = trx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (t *TransitDB) GetLocation(location LocationSlug) (*Location, error) {
 	row := t.DB.QueryRow(SELECT_LOCATION, location)
 
@@ -99,6 +129,7 @@ func (t *TransitDB) GetStopsByLocation(location LocationSlug, parentsOnly bool) 
 			&row.StopID,
 			&row.Name,
 			&row.Location,
+			&row.AgencyID,
 			&row.Latitude,
 			&row.Longitude,
 			&row.Type,
@@ -129,7 +160,7 @@ func (t *TransitDB) InsertStops(stops []*Stop) error {
 	}
 
 	for _, stop := range stops {
-		_, err = stmt.Exec(stop.StopID, stop.Name, stop.Location, stop.Latitude, stop.Longitude, stop.Type, stop.ParentID)
+		_, err = stmt.Exec(stop.StopID, stop.Name, stop.Location, stop.AgencyID, stop.Latitude, stop.Longitude, stop.Type, stop.ParentID)
 		if err != nil {
 			return err
 		}

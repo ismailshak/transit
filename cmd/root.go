@@ -24,11 +24,6 @@ var rootCmd = &cobra.Command{
 	Use:   "transit",
 	Short: "Tool for interacting with local transit information",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if verboseFlag {
-			configFile := config.GetConfig()
-			configFile.Core.Verbose = true
-		}
-
 		if configFile != "" {
 			config.SetCustomConfigPath(configFile)
 		}
@@ -81,6 +76,12 @@ func configSetupPreRun(cmd *cobra.Command, args []string) {
 		logger.Error(fmt.Sprintf("Failed to load config file: %s", err))
 		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
+
+	if verboseFlag {
+		configFile := config.GetConfig()
+		configFile.Core.Verbose = true
+	}
+
 }
 
 func defaultPreRun(cmd *cobra.Command, args []string) {

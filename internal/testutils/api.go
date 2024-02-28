@@ -46,7 +46,7 @@ func (t *TestApi) FetchStaticData() (*data.StaticData, error) {
 	return d, nil
 }
 
-func (t *TestApi) FetchPredictions(ids []string) ([]api.Prediction, error) {
+func (t *TestApi) FetchPredictions(input []api.PredictionInput) ([]api.Prediction, error) {
 	p := []api.Prediction{
 		{Min: "1", LocationName: "Stn 1", Destination: "Dest A", DestinationName: "Destination A", Line: "Central"},
 		{Min: "3", LocationName: "Stn 1", Destination: "NO PASSENGERS", DestinationName: "Destination A", Line: "Central"},
@@ -68,14 +68,15 @@ func (t *TestApi) FetchIncidents() ([]api.Incident, error) {
 	return i, nil
 }
 
-func (t *TestApi) GetIDFromArg(arg string) ([]string, error) {
+func (t *TestApi) GetPredictionInput(arg string) ([]api.PredictionInput, error) {
 	matches := utils.FuzzyFindFrom(arg, data.SearchableStops(ALL_STOPS))
 
-	ids := make([]string, 0, matches.Len())
+	ids := make([]api.PredictionInput, 0, matches.Len())
 
 	for _, m := range matches {
 		id := ALL_STOPS[m.Index].StopID
-		ids = append(ids, id)
+		agency := ALL_STOPS[m.Index].AgencyID
+		ids = append(ids, api.PredictionInput{StopID: id, AgencyID: agency})
 	}
 
 	return ids, nil
