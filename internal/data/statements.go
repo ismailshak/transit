@@ -31,6 +31,8 @@ const CREATE_AGENCIES_TABLE = `CREATE TABLE agencies (
 
 const INSERT_AGENCY = "INSERT INTO agencies (agency_id, name, location, timezone, language) VALUES (?, ?, ?, ?, ?)"
 
+const SELECT_AGENCIES_BY_LOCATION = "SELECT rowid, * FROM agencies WHERE location = ?"
+
 /*
 	LOCATIONS TABLE
 */

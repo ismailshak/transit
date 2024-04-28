@@ -11,6 +11,35 @@ import (
 	"github.com/ismailshak/transit/internal/utils"
 )
 
+// Resolves the GTFS Service Alert "Effect" field to a human-readable string.
+// An invalid effect will return an empty string
+func ResolveGTFSAlertEffect(effect int) string {
+	switch effect {
+	case 1:
+		return "No Service"
+	case 2:
+		return "Reduced Service"
+	case 3:
+		return "Significant Delays"
+	case 4:
+		return "Detour"
+	case 5:
+		return "Additional Service"
+	case 6:
+		return "Modified Service"
+	case 7:
+		return "Other Effect"
+	case 8:
+		return "Unknown Effect"
+	case 9:
+		return "No Effect"
+	case 10:
+		return "Accessibility Issue"
+	default:
+		return "Notice"
+	}
+}
+
 // Unzips file (which holds the content of a GTFS Static feed)
 // located at `path` into a destination provided by `dest`.
 // Destination is assumed to already exist. Zip file will not be deleted

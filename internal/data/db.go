@@ -185,6 +185,33 @@ func (t *TransitDB) CountStopsByLocation(location LocationSlug) (int, error) {
 	return count, nil
 }
 
+func (t *TransitDB) GetLocationAgencies(location LocationSlug) ([]Agency, error) {
+	rows, err := t.DB.Query(SELECT_AGENCIES_BY_LOCATION, location)
+	if err != nil {
+		return nil, err
+	}
+
+	agencies := make([]Agency, 0, 4) // arbitrary capacity to avoid excessive reallocations
+
+	for rows.Next() {
+		var row Agency
+		rows.Scan(
+			&row.ID,
+			&row.AgencyID,
+			&row.Name,
+			&row.Location,
+			&row.Timezone,
+			&row.Language,
+			&row.CreatedAt,
+			&row.UpdatedAt,
+		)
+
+		agencies = append(agencies, row)
+	}
+
+	return agencies, nil
+}
+
 // Exists for testing purposes. Use GetDB instead
 func NewTransitDB(path string) (*TransitDB, error) {
 	conn, err := sql.Open("sqlite", path)

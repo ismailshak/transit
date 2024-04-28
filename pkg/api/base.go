@@ -46,12 +46,18 @@ type Prediction struct {
 
 // Disruptions and/or delays data
 type Incident struct {
+	// The start date/time of the active period for the incident
+	ActivePeriodStart time.Time
+	// The end date/time of the active period for the incident
+	ActivePeriodEnd time.Time
+	// Lines or stops affected by the incident
+	Affected []string
+	// The name of the transit agency that reported the incident
+	Agency string
 	// Message from the transit authority describing the issue
 	Description string
 	// When the announcement was last updated by the transit authority
 	DateUpdated time.Time
-	// Lines or stops affected by the incident
-	Affected []string
 	// Type of incident (e.g. "alert")
 	Type string
 }

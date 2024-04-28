@@ -7,6 +7,7 @@ import (
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/tui"
+	"github.com/ismailshak/transit/internal/utils"
 	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +21,10 @@ var incidentsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		location := config.GetConfig().Core.Location
 		client := api.GetClient(data.LocationSlug(location))
+		if client == nil {
+			utils.Exit(utils.EXIT_BAD_CONFIG)
+		}
+
 		ExecuteIncidents(client)
 	},
 }

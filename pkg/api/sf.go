@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/utils"
@@ -68,6 +69,30 @@ type SF_StopMonitoringResponse struct {
 		StopMonitoringDelivery struct {
 			MonitoredStopVisit []struct {
 				MonitoredVehicleJourney SF_MonitoredVehicleJourney
+			}
+		}
+	}
+}
+
+type SF_ServiceAlertsResponse struct {
+	Entities []struct {
+		ID    string `json:"Id"`
+		Alert struct {
+			ActivePeriods []struct {
+				Start int64
+				End   int64
+			}
+			InformedEntities []struct {
+				AgencyID string
+				StopID   string
+			}
+			Cause           int `json:"cause"`
+			Effect          int `json:"effect"`
+			DescriptionText struct {
+				Translations []struct {
+					Language string
+					Text     string
+				}
 			}
 		}
 	}
@@ -306,12 +331,93 @@ func (sf *SFApi) FetchPredictions(input []PredictionInput) ([]Prediction, error)
 }
 
 func (sf *SFApi) FetchIncidents() ([]Incident, error) {
-	i := []Incident{
-		{Description: "Trains delayed by 3 hours", DateUpdated: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), Affected: []string{"Outer"}, Type: "Delay"},
-		{Description: "All trains are broken", DateUpdated: time.Date(2009, time.December, 11, 23, 0, 0, 0, time.UTC), Affected: []string{"Central"}, Type: "Alert"},
+	db, err := data.GetDB()
+	if err != nil {
+		return nil, err
 	}
 
-	return i, nil
+	agencies, err := db.GetLocationAgencies(data.SFSlug)
+	if err != nil {
+		return nil, err
+	}
+
+	shouldDisplayAgency := len(agencies) > 1
+
+	incidents := make([]Incident, 0, 16) // TODO: figure out a good capacity (16 is arbitrary)
+
+	// TODO surely there's a way to fetch multiple agencies at once
+	for _, agency := range agencies {
+		req, err := sf.BuildRequest(http.MethodGet, "transit", "servicealerts")
+		if err != nil {
+			return nil, err
+		}
+
+		q := req.URL.Query()
+		q.Add("api_key", *sf.apiKey)
+		q.Add("agency", agency.AgencyID)
+		q.Add("format", "json")
+		req.URL.RawQuery = q.Encode()
+
+		client := http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != 200 {
+			return nil, fmt.Errorf("received %d", resp.StatusCode)
+		}
+
+		// Remove BOM from response
+		body = bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))
+
+		var serviceAlerts SF_ServiceAlertsResponse
+		err = json.Unmarshal(body, &serviceAlerts)
+		if err != nil {
+			return nil, err
+		}
+
+		if config.GetConfig().Core.Verbose {
+			logger.Debug(string(body))
+		}
+
+		for _, entity := range serviceAlerts.Entities {
+			var start, end time.Time
+			if len(entity.Alert.ActivePeriods) > 0 {
+				start = time.Unix(entity.Alert.ActivePeriods[0].Start, 0)
+				end = time.Unix(entity.Alert.ActivePeriods[0].End, 0)
+			}
+
+			var affected []string
+			// TODO: StopID could be duplicated because they would have different RouteIDs * sigh *
+			for _, e := range entity.Alert.InformedEntities {
+				if e.StopID != "" {
+					affected = append(affected, e.StopID) // TODO: stop name instead? hopefully not a performance hit (but maybe doesn't matter due to incidents being rare)
+				}
+			}
+
+			inc := Incident{
+				ActivePeriodStart: start,                                               // TODO: Figure out what scenario triggers multiple active periods
+				ActivePeriodEnd:   end,                                                 // TODO: ^ here too
+				Affected:          affected,                                            // TODO: parse informed entities
+				Agency:            utils.Ternary(shouldDisplayAgency, agency.Name, ""), // Derive from header?
+				Description:       entity.Alert.DescriptionText.Translations[0].Text,   // TODO: assumes english is always first
+				DateUpdated:       time.Time{},                                         // TODO: figure out where this is
+				Type:              data.ResolveGTFSAlertEffect(entity.Alert.Effect),
+			}
+
+			incidents = append(incidents, inc)
+		}
+	}
+
+	return incidents, nil
 }
 
 func (sf *SFApi) GetPredictionInput(arg string) ([]PredictionInput, error) {
