@@ -16,6 +16,24 @@ const SELECT_MIGRATIONS = "SELECT rowid, name, DATETIME(migrated_at, 'localtime'
 const INSERT_MIGRATION = "INSERT INTO migrations (name) VALUES (?)"
 
 /*
+	AGENCIES TABLE
+*/
+
+const CREATE_AGENCIES_TABLE = `CREATE TABLE agencies (
+	agency_id TEXT NOT NULL,
+	name TEXT NOT NULL,
+	location REFERENCES locations(slug),
+	timezone TEXT NOT NULL,
+	language TEXT NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`
+
+const INSERT_AGENCY = "INSERT INTO agencies (agency_id, name, location, timezone, language) VALUES (?, ?, ?, ?, ?)"
+
+const SELECT_AGENCIES_BY_LOCATION = "SELECT rowid, * FROM agencies WHERE location = ?"
+
+/*
 	LOCATIONS TABLE
 */
 
@@ -40,6 +58,7 @@ const CREATE_STOPS_TABLE = `CREATE TABLE stops (
 	stop_id TEXT NOT NULL,
 	name TEXT NOT NULL,
 	location REFERENCES locations(slug),
+	agency_id REFERENCES agencies(agency_id),
 	latitude TEXT,
 	longitude TEXT,
 	type TEXT NOT NULL,
@@ -56,4 +75,4 @@ const SELECT_STOPS_BY_LOCATION = "SELECT rowid, * FROM stops WHERE location = ?"
 
 const SELECT_PARENT_STOPS_BY_LOCATION = `SELECT rowid, * FROM stops WHERE location = ? AND parent_id = ""`
 
-const INSERT_STOP = "INSERT INTO stops (stop_id, name, location, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+const INSERT_STOP = "INSERT INTO stops (stop_id, name, location, agency_id, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"

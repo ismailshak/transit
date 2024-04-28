@@ -63,6 +63,36 @@ func (t *TransitDB) SyncMigrations() error {
 	return nil
 }
 
+func (t *TransitDB) InsertAgencies(agencies []*Agency) error {
+	trx, err := t.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Defer a rollback in case anything fails.
+	// Will no-op if Commit succeeds
+	defer trx.Rollback()
+
+	stmt, err := trx.Prepare(INSERT_AGENCY)
+	if err != nil {
+		return err
+	}
+
+	for _, agency := range agencies {
+		_, err = stmt.Exec(agency.AgencyID, agency.Name, agency.Location, agency.Timezone, agency.Language)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Commit the transaction
+	if err = trx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (t *TransitDB) GetLocation(location LocationSlug) (*Location, error) {
 	row := t.DB.QueryRow(SELECT_LOCATION, location)
 
@@ -99,6 +129,7 @@ func (t *TransitDB) GetStopsByLocation(location LocationSlug, parentsOnly bool) 
 			&row.StopID,
 			&row.Name,
 			&row.Location,
+			&row.AgencyID,
 			&row.Latitude,
 			&row.Longitude,
 			&row.Type,
@@ -129,7 +160,7 @@ func (t *TransitDB) InsertStops(stops []*Stop) error {
 	}
 
 	for _, stop := range stops {
-		_, err = stmt.Exec(stop.StopID, stop.Name, stop.Location, stop.Latitude, stop.Longitude, stop.Type, stop.ParentID)
+		_, err = stmt.Exec(stop.StopID, stop.Name, stop.Location, stop.AgencyID, stop.Latitude, stop.Longitude, stop.Type, stop.ParentID)
 		if err != nil {
 			return err
 		}
@@ -152,6 +183,33 @@ func (t *TransitDB) CountStopsByLocation(location LocationSlug) (int, error) {
 	}
 
 	return count, nil
+}
+
+func (t *TransitDB) GetLocationAgencies(location LocationSlug) ([]Agency, error) {
+	rows, err := t.DB.Query(SELECT_AGENCIES_BY_LOCATION, location)
+	if err != nil {
+		return nil, err
+	}
+
+	agencies := make([]Agency, 0, 4) // arbitrary capacity to avoid excessive reallocations
+
+	for rows.Next() {
+		var row Agency
+		rows.Scan(
+			&row.ID,
+			&row.AgencyID,
+			&row.Name,
+			&row.Location,
+			&row.Timezone,
+			&row.Language,
+			&row.CreatedAt,
+			&row.UpdatedAt,
+		)
+
+		agencies = append(agencies, row)
+	}
+
+	return agencies, nil
 }
 
 // Exists for testing purposes. Use GetDB instead

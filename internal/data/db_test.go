@@ -13,10 +13,10 @@ var testLocation data.LocationSlug = "moon"
 var locationFixture = &data.Location{Slug: "x", Name: "XYZ", SupportsGTFS: true}
 
 var stopsFixture = []*data.Stop{
-	{StopID: "A", Name: "AAA", Location: testLocation, Latitude: "12.1818181", Longitude: "-332.99933", Type: "train", ParentID: ""},
-	{StopID: "B", Name: "BBB", Location: testLocation, Latitude: "12.1813458", Longitude: "-332.99993", Type: "train", ParentID: "A"},
-	{StopID: "C", Name: "CCC", Location: testLocation, Latitude: "12.1814451", Longitude: "-332.99773", Type: "train", ParentID: "B"},
-	{StopID: "D", Name: "DDD", Location: testLocation, Latitude: "12.1812341", Longitude: "-332.98833", Type: "train", ParentID: "C"},
+	{StopID: "A", Name: "AAA", Location: testLocation, AgencyID: "MET", Latitude: "12.1818181", Longitude: "-332.99933", Type: "train", ParentID: ""},
+	{StopID: "B", Name: "BBB", Location: testLocation, AgencyID: "MET", Latitude: "12.1813458", Longitude: "-332.99993", Type: "train", ParentID: "A"},
+	{StopID: "C", Name: "CCC", Location: testLocation, AgencyID: "MET", Latitude: "12.1814451", Longitude: "-332.99773", Type: "train", ParentID: "B"},
+	{StopID: "D", Name: "DDD", Location: testLocation, AgencyID: "MET", Latitude: "12.1812341", Longitude: "-332.98833", Type: "train", ParentID: "C"},
 }
 
 func TestMigrationCompletes(t *testing.T) {
@@ -91,10 +91,11 @@ func TestGetStopsByLocationExcludesParent(t *testing.T) {
 
 	for _, f := range stopsFixture {
 		_, err := db.DB.Exec(
-			"INSERT INTO stops (stop_id, name, location, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+			"INSERT INTO stops (stop_id, name, location, agency_id, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 			f.StopID,
 			f.Name,
 			f.Location,
+			f.AgencyID,
 			f.Latitude,
 			f.Longitude,
 			f.Type,
@@ -116,8 +117,9 @@ func TestGetStopsByLocationExcludesParent(t *testing.T) {
 	}
 
 	assert.Equal(t, stopsFixture[0].StopID, stops[0].StopID)
-	assert.Equal(t, stopsFixture[0].Location, stops[0].Location)
 	assert.Equal(t, stopsFixture[0].Name, stops[0].Name)
+	assert.Equal(t, stopsFixture[0].Location, stops[0].Location)
+	assert.Equal(t, stopsFixture[0].AgencyID, stops[0].AgencyID)
 	assert.Equal(t, stopsFixture[0].Latitude, stops[0].Latitude)
 	assert.Equal(t, stopsFixture[0].Longitude, stops[0].Longitude)
 	assert.Equal(t, stopsFixture[0].Type, stops[0].Type)
@@ -135,10 +137,11 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 
 	for _, f := range stopsFixture {
 		_, err := db.DB.Exec(
-			"INSERT INTO stops (stop_id, name, location, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+			"INSERT INTO stops (stop_id, name, location, agency_id, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 			f.StopID,
 			f.Name,
 			f.Location,
+			f.AgencyID,
 			f.Latitude,
 			f.Longitude,
 			f.Type,
@@ -162,8 +165,9 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 	for i, stop := range stops {
 		expected := stopsFixture[i]
 		assert.Equal(t, expected.StopID, stop.StopID)
-		assert.Equal(t, expected.Location, stop.Location)
 		assert.Equal(t, expected.Name, stop.Name)
+		assert.Equal(t, expected.Location, stop.Location)
+		assert.Equal(t, expected.AgencyID, stop.AgencyID)
 		assert.Equal(t, expected.Latitude, stop.Latitude)
 		assert.Equal(t, expected.Longitude, stop.Longitude)
 		assert.Equal(t, expected.Type, stop.Type)
@@ -199,6 +203,7 @@ func TestInsertManyStops(t *testing.T) {
 			&row.StopID,
 			&row.Name,
 			&row.Location,
+			&row.AgencyID,
 			&row.Latitude,
 			&row.Longitude,
 			&row.Type,
@@ -223,8 +228,9 @@ func TestInsertManyStops(t *testing.T) {
 
 		assert.Equal(t, i+1, stop.ID)
 		assert.Equal(t, expected.StopID, stop.StopID)
-		assert.Equal(t, expected.Location, stop.Location)
 		assert.Equal(t, expected.Name, stop.Name)
+		assert.Equal(t, expected.Location, stop.Location)
+		assert.Equal(t, expected.AgencyID, stop.AgencyID)
 		assert.Equal(t, expected.Latitude, stop.Latitude)
 		assert.Equal(t, expected.Longitude, stop.Longitude)
 		assert.Equal(t, expected.Type, stop.Type)
