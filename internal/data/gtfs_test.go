@@ -64,7 +64,7 @@ func TestParseGTFS(t *testing.T) {
 	cwd, _ := os.Getwd() // Resolves to this file's directory
 	pathToFeed := filepath.Join(cwd, "testdata", "sample-feed")
 
-	gtfs, err := data.ParseGTFS(pathToFeed, "train")
+	gtfs, err := data.ParseGTFS(pathToFeed, "someplace", "train", "DTA")
 	if err != nil {
 		t.Fatalf("ParseGTFS() returned an error: %s", err)
 	}
@@ -73,33 +73,54 @@ func TestParseGTFS(t *testing.T) {
 		t.Errorf("Expected 9 stops. Got %d", len(gtfs.Stops))
 	}
 
+	expectedAgencies := []struct {
+		AgencyID string
+		Name     string
+		Location data.LocationSlug
+		Timezone string
+		Language string
+	}{
+		{"DTA", "Demo Transit Authority", "someplace", "America/Los_Angeles", ""},
+	}
+
+	for i, agency := range gtfs.Agencies {
+		expected := expectedAgencies[i]
+		assert.Equal(t, expected.AgencyID, agency.AgencyID)
+		assert.Equal(t, expected.Name, agency.Name)
+		assert.Equal(t, expected.Location, agency.Location)
+		assert.Equal(t, expected.Timezone, agency.Timezone)
+		assert.Equal(t, expected.Language, agency.Language)
+	}
+
 	expectedStops := []struct {
 		StopId    string
 		Name      string
+		Location  data.LocationSlug
 		Latitude  string
 		Longitude string
 		Type      data.StopType
 		ParentID  string
 	}{
-		{"FUR_CREEK_RES", "Furnace Creek Resort (Demo)", "36.425288", "-117.133162", "train", ""},
-		{"BEATTY_AIRPORT", "Nye County Airport (Demo)", "36.868446", "-116.784582", "train", ""},
-		{"BULLFROG", "Bullfrog (Demo)", "36.88108", "-116.81797", "train", ""},
-		{"STAGECOACH", "Stagecoach Hotel & Casino (Demo)", "36.915682", "-116.751677", "train", ""},
-		{"NADAV", "North Ave / D Ave N (Demo)", "36.914893", "-116.76821", "train", ""},
-		{"NANAA", "North Ave / N A Ave (Demo)", "36.914944", "-116.761472", "train", ""},
-		{"DADAN", "Doing Ave / D Ave N (Demo)", "36.909489", "-116.768242", "train", ""},
-		{"EMSI", "E Main St / S Irving St (Demo)", "36.905697", "-116.76218", "train", ""},
-		{"AMV", "Amargosa Valley (Demo)", "36.641496", "-116.40094", "train", ""},
+		{"FUR_CREEK_RES", "Furnace Creek Resort (Demo)", "someplace", "36.425288", "-117.133162", "train", ""},
+		{"BEATTY_AIRPORT", "Nye County Airport (Demo)", "someplace", "36.868446", "-116.784582", "train", ""},
+		{"BULLFROG", "Bullfrog (Demo)", "someplace", "36.88108", "-116.81797", "train", ""},
+		{"STAGECOACH", "Stagecoach Hotel & Casino (Demo)", "someplace", "36.915682", "-116.751677", "train", ""},
+		{"NADAV", "North Ave / D Ave N (Demo)", "someplace", "36.914893", "-116.76821", "train", ""},
+		{"NANAA", "North Ave / N A Ave (Demo)", "someplace", "36.914944", "-116.761472", "train", ""},
+		{"DADAN", "Doing Ave / D Ave N (Demo)", "someplace", "36.909489", "-116.768242", "train", ""},
+		{"EMSI", "E Main St / S Irving St (Demo)", "someplace", "36.905697", "-116.76218", "train", ""},
+		{"AMV", "Amargosa Valley (Demo)", "someplace", "36.641496", "-116.40094", "train", ""},
 	}
 
 	for i, stop := range gtfs.Stops {
 		expected := expectedStops[i]
-
 		assert.Equal(t, expected.StopId, stop.StopID)
 		assert.Equal(t, expected.Name, stop.Name)
+		assert.Equal(t, expected.Location, stop.Location)
 		assert.Equal(t, expected.Latitude, stop.Latitude)
 		assert.Equal(t, expected.Longitude, stop.Longitude)
 	}
+
 }
 
 // Filters out `\r` to make testing on Windows easier

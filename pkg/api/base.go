@@ -7,6 +7,10 @@ package api
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
@@ -17,7 +21,14 @@ import (
 
 const (
 	DMV_BASE_URL = "https://api.wmata.com"
+	SF_BASE_URL  = "http://api.511.org"
 )
+
+// Data required to make a prediction request
+type PredictionInput struct {
+	StopID   string
+	AgencyID string
+}
 
 // Next train arrival prediction data
 type Prediction struct {
@@ -35,12 +46,18 @@ type Prediction struct {
 
 // Disruptions and/or delays data
 type Incident struct {
+	// The start date/time of the active period for the incident
+	ActivePeriodStart time.Time
+	// The end date/time of the active period for the incident
+	ActivePeriodEnd time.Time
+	// Lines or stops affected by the incident
+	Affected []string
+	// The name of the transit agency that reported the incident
+	Agency string
 	// Message from the transit authority describing the issue
 	Description string
 	// When the announcement was last updated by the transit authority
 	DateUpdated time.Time
-	// Lines or stops affected by the incident
-	Affected []string
 	// Type of incident (e.g. "alert")
 	Type string
 }
@@ -50,11 +67,11 @@ type Api interface {
 	// Fetches all required static data. Used to hydrate database
 	FetchStaticData() (*data.StaticData, error)
 	// Fetches arrival information for list of location unique identifiers
-	FetchPredictions(ids []string) ([]Prediction, error)
+	FetchPredictions(input []PredictionInput) ([]Prediction, error)
 	// Fetch all incidents reported by the agency for a location
 	FetchIncidents() ([]Incident, error)
-	// Given user input for a location, returns the unique identifier (a stop can have multiple)
-	GetIDFromArg(arg string) ([]string, error)
+	// Given user input for a location, returns the formatted input required to make a prediction request
+	GetPredictionInput(arg string) ([]PredictionInput, error)
 	// Given a line name or abbreviation, return colors that represents it.
 	// (bg, fg) tuple returned
 	GetLineColor(stop string) (string, string)
@@ -72,6 +89,8 @@ func GetClient(location data.LocationSlug) Api {
 	switch location {
 	case data.DMVSlug:
 		return DmvClient()
+	case data.SFSlug:
+		return SFClient()
 	default:
 		logger.Error(fmt.Sprintf("Invalid location '%s'", location))
 	}
@@ -81,7 +100,7 @@ func GetClient(location data.LocationSlug) Api {
 
 // Build and return a client for the DMV Metro Area
 func DmvClient() *DmvApi {
-	apiKey := &config.GetConfig().Dmv.ApiKey
+	apiKey := &config.GetConfig().DMV.ApiKey
 
 	if *apiKey == "" {
 		logger.Error("No api key found in config at 'dmv.api_key'")
@@ -92,4 +111,59 @@ func DmvClient() *DmvApi {
 		apiKey:  apiKey,
 		baseUrl: DMV_BASE_URL,
 	}
+}
+
+// Build and return a client for the DMV Metro Area
+func SFClient() *SFApi {
+	apiKey := &config.GetConfig().SF.ApiKey
+
+	if *apiKey == "" {
+		logger.Error("No api key found in config at 'sf.api_key'")
+		utils.Exit(utils.EXIT_BAD_CONFIG)
+	}
+
+	return &SFApi{
+		apiKey:  apiKey,
+		baseUrl: SF_BASE_URL,
+	}
+}
+
+func saveStaticGTFS(r *io.ReadCloser, l data.LocationSlug, st data.StopType, a string) (*data.StaticData, error) {
+	defer (*r).Close()
+
+	configDir, err := config.GetConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	zipPath := filepath.Join(configDir, a+"_gtfs_static.zip")
+	f, err := os.Create(zipPath)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		f.Close()
+		os.RemoveAll(zipPath)
+	}()
+
+	_, err = io.Copy(f, *r)
+	if err != nil {
+		return nil, err
+	}
+
+	dirName := "gtfs_static_" + strconv.FormatInt(time.Now().Unix(), 10)
+	feed := filepath.Join(configDir, dirName)
+	if err = utils.CreateDir(feed); err != nil {
+		return nil, err
+	}
+
+	// defer os.RemoveAll(feed)
+
+	err = data.UnzipStaticGTFS(zipPath, feed)
+	if err != nil {
+		return nil, err
+	}
+
+	return data.ParseGTFS(feed, l, st, a)
 }

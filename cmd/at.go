@@ -60,7 +60,7 @@ func init() {
 func ExecuteAt(client api.Api, args []string) {
 	// TODO: pull client.GetIDFromArg() out of this so that `Watch` is more performant
 	for _, arg := range args {
-		codes, err := client.GetIDFromArg(arg)
+		codes, err := client.GetPredictionInput(arg)
 		if err != nil {
 			// TODO: handle error
 			return
@@ -73,6 +73,10 @@ func ExecuteAt(client api.Api, args []string) {
 		if err != nil {
 			logger.Error(fmt.Sprint(err))
 			utils.Exit(utils.EXIT_BAD_CONFIG)
+		}
+
+		if predictions == nil {
+			continue
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(predictions)
@@ -107,18 +111,20 @@ func WatchExecuteAt(client api.Api, args []string) {
 }
 
 // Groups predictions by destination (assumes already sorted by minutes).
+// Sometimes the same destination can have multiple lines, so we group by both.
 // Returns grouped map and returns a sorted list of destinations
 func groupByDestination(predictions []api.Prediction) (map[string][]api.Prediction, []string) {
 	destMap := make(map[string][]api.Prediction)
 	var destinations []string
 
 	for _, p := range predictions {
-		_, exists := destMap[p.Destination]
+		key := fmt.Sprintf("%s-%s", p.Destination, p.Line)
+		_, exists := destMap[key]
 		if exists {
-			destMap[p.Destination] = append(destMap[p.Destination], p)
+			destMap[key] = append(destMap[key], p)
 		} else {
-			destMap[p.Destination] = []api.Prediction{p}
-			destinations = append(destinations, p.Destination)
+			destMap[key] = []api.Prediction{p}
+			destinations = append(destinations, key)
 		}
 	}
 
