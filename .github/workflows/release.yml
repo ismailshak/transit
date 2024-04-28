@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: GoReleaser build
+    name: GoReleaser
     runs-on: ubuntu-latest
 
     steps:
@@ -16,11 +16,11 @@ jobs:
         with:
           fetch-depth: 0 # See: https://goreleaser.com/ci/actions/
 
-      - name: Set up Go 1.21
+      - name: Set up Go 1.22
         uses: actions/setup-go@v4
         id: go
         with:
-          go-version: 1.21.x
+          go-version: 1.22.x
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v4
