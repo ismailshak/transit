@@ -269,6 +269,10 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 	// Remove BOM from response
 	body = bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))
 
+	if config.GetConfig().Core.Verbose {
+		logger.Debug(string(body))
+	}
+
 	var stopMonitoring SF_StopMonitoringResponse
 
 	err = json.Unmarshal(body, &stopMonitoring)
