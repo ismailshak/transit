@@ -49,7 +49,7 @@ func ExecuteInit(client api.Api, location data.LocationSlug) {
 	}
 
 	if count > 0 {
-		// TODO: add a log about stuff being downloaded, and if they want to refresh data to run X
+		logger.Print("Location already initialized")
 		return
 	}
 
@@ -72,5 +72,5 @@ func ExecuteInit(client api.Api, location data.LocationSlug) {
 		return
 	}
 
-	// TODO: print something like "All done. Use transit --help for usage help"
+	logger.Print("All done. Use transit --help for list of commands")
 }
