@@ -15,7 +15,7 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize transit",
 	Long: `
-Adds missing config properties and download static data for the first time for the chosen location`,
+Adds missing config properties and downloads static data for the chosen location`,
 	Args:   cobra.NoArgs,
 	PreRun: defaultPreRun,
 	Run: func(cmd *cobra.Command, args []string) {
