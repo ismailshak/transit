@@ -6,6 +6,7 @@ import (
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/tui"
 	"github.com/ismailshak/transit/internal/utils"
 	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
@@ -44,33 +45,43 @@ func ExecuteInit(client api.Api, location data.LocationSlug) {
 	count, err := db.CountStopsByLocation(location)
 
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to get status of current location: %s", err))
+		logger.Error(fmt.Sprintf("failed to get status of current location: %s", err))
 		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
 	}
 
 	if count > 0 {
-		logger.Print("Location already initialized")
+		logger.Print("Already initialized")
 		return
 	}
 
-	// TODO:
-	// Wrap in goroutine and show spinner ":spinner: Fetching data" -> ":check: Fetching data"
+	fetchSpinner := tui.NewSpinner("Fetching data...")
+	go fetchSpinner.Start()
+
 	d, err := client.FetchStaticData()
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to fetch data: %s", err))
-		return
+		fetchSpinner.Stop()
+		logger.Error(err)
+		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	// TODO:
-	// Wrap in a goroutine and show spinner ":spinner: Saving data" -> ":check: Saving data"
+	fetchSpinner.Success("Data fetched")
+
+	insertSpinner := tui.NewSpinner("Saving data...")
+	go insertSpinner.Start()
+
 	if err = db.InsertAgencies(d.Agencies); err != nil {
-		logger.Error(fmt.Sprintf("Failed to save agencies: %s", err))
-		return
-	}
-	if err = db.InsertStops(d.Stops); err != nil {
-		logger.Error(fmt.Sprintf("Failed to save stops: %s", err))
-		return
+		insertSpinner.Stop()
+		logger.Error(err)
+		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	logger.Print("All done. Use transit --help for list of commands")
+	if err = db.InsertStops(d.Stops); err != nil {
+		insertSpinner.Stop()
+		logger.Error(err)
+		utils.Exit(utils.EXIT_FAILURE)
+	}
+
+	insertSpinner.Success("Data saved")
+
+	logger.Print("\nAll done. Use transit --help for list of commands")
 }
