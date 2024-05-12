@@ -7,7 +7,7 @@ import (
 )
 
 type Spinner struct {
-	spinner *model
+	spinner *spinnerModel
 	program *tea.Program
 }
 
@@ -17,7 +17,7 @@ func NewSpinner(msg string) *Spinner {
 	m.Spinner = spinner.Dot
 	m.Style = SPINNER_STYLE
 
-	spinner := &model{
+	spinner := &spinnerModel{
 		spinner: m,
 		msg:     &msg,
 	}
@@ -27,8 +27,10 @@ func NewSpinner(msg string) *Spinner {
 	return &Spinner{spinner: spinner, program: program}
 }
 
-// Begin the spinner animation
+// Begin the spinner animation.
 // NOTE: This function is blocking and you should call it in a goroutine
+// if you want to execute other code while the spinner is running. Use
+// the `Stop` function to stop the spinner.
 func (s *Spinner) Start() {
 	s.program.Run()
 }
@@ -43,7 +45,7 @@ func (s *Spinner) Stop() {
 func (s *Spinner) Error(msg string) {
 	s.program.Quit()
 	s.program.Wait()
-	icon := SPINNER_ERROR(ERROR_ICON)
+	icon := OP_FAILED_STYLE(ERROR_ICON)
 	logger.Print(icon, msg)
 }
 
@@ -51,7 +53,7 @@ func (s *Spinner) Error(msg string) {
 func (s *Spinner) Success(msg string) {
 	s.program.Quit()
 	s.program.Wait()
-	icon := SPINNER_SUCCESS(SUCCESS_ICON)
+	icon := OP_SUCCESS_STYLE(SUCCESS_ICON)
 	logger.Print(icon, msg)
 }
 
@@ -59,16 +61,16 @@ func (s *Spinner) Success(msg string) {
 // Internal model for the spinner component
 //
 
-type model struct {
+type spinnerModel struct {
 	spinner spinner.Model
 	msg     *string
 }
 
-func (m model) Init() tea.Cmd {
+func (m spinnerModel) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m spinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -83,7 +85,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) View() string {
+func (m spinnerModel) View() string {
 	// TODO: maybe we don't concatenate the message here? (runs every frame)
 	return m.spinner.View() + *m.msg
 }

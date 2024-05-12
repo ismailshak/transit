@@ -20,6 +20,8 @@ Adds missing config properties and downloads static data for the chosen location
 	Args:   cobra.NoArgs,
 	PreRun: defaultPreRun,
 	Run: func(cmd *cobra.Command, args []string) {
+		ExecuteInitConfig()
+
 		location := config.GetConfig().Core.Location
 		client := api.GetClient(data.LocationSlug(location))
 
@@ -27,7 +29,7 @@ Adds missing config properties and downloads static data for the chosen location
 			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
-		ExecuteInit(client, data.LocationSlug(location))
+		ExecuteInitData(client, data.LocationSlug(location))
 	},
 }
 
@@ -35,22 +37,72 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-func ExecuteInit(client api.Api, location data.LocationSlug) {
+func ExecuteInitConfig() {
 	db, err := data.GetDB()
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to connect to database: %s", err))
+		logger.Error(fmt.Sprintf("failed to connect to database: %s", err))
+		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
+	}
+
+	locations, err := db.GetAllLocations()
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to get available locations: %s", err))
+		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
+	}
+
+	location := config.GetConfig().Core.Location
+	if location == "" {
+		selection := tui.NewListPrompt("Select a location", tui.ToListItems(locations)).Render()
+		if selection == "" {
+			tui.OperationSkipped("Canceled... Exiting")
+			utils.Exit(utils.EXIT_SUCCESS)
+		}
+
+		err = ExecuteSet("core.location", selection)
+		if err != nil {
+			logger.Error(err)
+			utils.Exit(utils.EXIT_BAD_CONFIG)
+		}
+
+		location = selection
+	}
+
+	tui.OperationSuccessful("Location set to " + location)
+
+	keyPath := fmt.Sprintf("%s.api_key", location)
+	apiKey := ExecuteGet(keyPath)
+	if apiKey == "" {
+		key := tui.NewPasswordPrompt(fmt.Sprintf("Enter your API key for %s", location)).Render()
+		if key == "" {
+			tui.OperationSkipped("Canceled... Exiting")
+			utils.Exit(utils.EXIT_SUCCESS)
+		}
+
+		err = ExecuteSet(keyPath, key)
+		if err != nil {
+			logger.Error(err)
+			utils.Exit(utils.EXIT_BAD_CONFIG)
+		}
+	}
+
+	tui.OperationSuccessful("API key set")
+}
+
+func ExecuteInitData(client api.Api, location data.LocationSlug) {
+	db, err := data.GetDB()
+	if err != nil {
+		logger.Error(fmt.Sprintf("failed to connect to database: %s", err))
 		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
 	}
 
 	count, err := db.CountStopsByLocation(location)
-
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to get status of current location: %s", err))
 		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
 	}
 
 	if count > 0 {
-		logger.Print("Already initialized")
+		tui.OperationSuccessful("Data initialized")
 		return
 	}
 
@@ -83,5 +135,5 @@ func ExecuteInit(client api.Api, location data.LocationSlug) {
 
 	insertSpinner.Success("Data saved")
 
-	logger.Print("\nAll done. Use transit --help for list of commands")
+	logger.Print("\nAll done. Use transit --help for commands and examples")
 }

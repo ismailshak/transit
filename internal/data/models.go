@@ -61,6 +61,21 @@ type Location struct {
 	SupportsGTFS bool
 }
 
+// Implements Item required by SelectPrompt (tui/select.go)
+// TODO: Figure out a way to separate that out from the actual model?
+func (l Location) FilterValue() string {
+	return l.Name
+}
+func (l Location) Key() string {
+	return string(l.Slug)
+}
+func (l Location) Title() string {
+	return string(l.Slug)
+}
+func (l Location) Description() string {
+	return l.Name
+}
+
 // A place where vehicles pick up or drop off riders
 type Stop struct {
 	Entity

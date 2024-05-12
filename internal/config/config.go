@@ -6,6 +6,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -73,7 +74,12 @@ func SetValue(key, value string) error {
 	vp.Set(key, value)
 	err := vp.WriteConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to write config file: %s", err)
+	}
+
+	err = vp.Unmarshal(&config)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal config after write: %s", err)
 	}
 
 	return nil
