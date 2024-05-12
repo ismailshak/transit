@@ -7,6 +7,7 @@ import (
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,13 @@ var configGetCommand = &cobra.Command{
 	Args:                  cobra.ExactArgs(1),
 	DisableFlagsInUseLine: true,
 	Run: func(cmd *cobra.Command, args []string) {
-		ExecuteGet(args[0])
+		value := ExecuteGet(args[0])
+		if value == "" {
+			logger.Warn("No config property found matching '", args[0], "'")
+			return
+		}
+
+		logger.Print(value)
 	},
 }
 
@@ -44,7 +51,13 @@ var configSetCommand = &cobra.Command{
 	DisableFlagsInUseLine: true,
 	Args:                  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		ExecuteSet(args[0], args[1])
+		err := ExecuteSet(args[0], args[1])
+		if err != nil {
+			logger.Error(err)
+			utils.Exit(utils.EXIT_BAD_CONFIG)
+		}
+
+		logger.Print(fmt.Sprintf("'%s' has been set to '%s'\n", args[0], args[1]))
 	},
 }
 
@@ -67,26 +80,24 @@ func init() {
 }
 
 // Entry point for `config get`
-func ExecuteGet(key string) {
+func ExecuteGet(key string) string {
 	result := config.GetValue(key)
 
 	if result == nil {
-		logger.Warn(fmt.Sprintf("No config property found matching '%s'\n", key))
-		return
+		return ""
 	}
 
-	logger.Print(fmt.Sprint(result))
+	return fmt.Sprint(result)
 }
 
 // Entry point for `config set`
-func ExecuteSet(key, value string) {
+func ExecuteSet(key, value string) error {
 	valid := validateKey(key, value)
 	if !valid {
-		return
+		return fmt.Errorf("invalid value for key '%s'", key)
 	}
 
-	config.SetValue(key, value)
-	logger.Print(fmt.Sprintf("'%s' has been set to '%s'\n", key, value))
+	return config.SetValue(key, value)
 }
 
 // Entry point for `config path`

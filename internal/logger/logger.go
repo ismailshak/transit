@@ -22,22 +22,22 @@ var (
 	WARN_PREFIX  = lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color("#FFC34D")).Foreground(lipgloss.Color(BLACK)).Render("Warn")
 )
 
-func Debug(message string) {
+func Debug(message ...any) {
 	if config.GetConfig().Core.Verbose {
-		fmt.Println(DEBUG_PREFIX, message)
+		fmt.Println(DEBUG_PREFIX, fmt.Sprint(message...))
 	}
 }
 
-func Error(message string) {
-	fmt.Println(ERR_PREFIX, message)
+func Error(message ...any) {
+	fmt.Println(ERR_PREFIX, fmt.Sprint(message...))
 }
 
-func Info(message string) {
-	fmt.Println(INFO_PREFIX, message)
+func Info(message ...any) {
+	fmt.Println(INFO_PREFIX, fmt.Sprint(message...))
 }
 
-func Warn(message string) {
-	fmt.Println(WARN_PREFIX, message)
+func Warn(message ...any) {
+	fmt.Println(WARN_PREFIX, fmt.Sprint(message...))
 }
 
 // Print to standard out without any formatting or prefixes

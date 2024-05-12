@@ -107,6 +107,24 @@ func (t *TransitDB) GetLocation(location LocationSlug) (*Location, error) {
 	return &l, nil
 }
 
+func (t *TransitDB) GetAllLocations() ([]Location, error) {
+	rows, err := t.DB.Query(SELECT_ALL_LOCATIONS)
+	if err != nil {
+		return nil, err
+	}
+
+	locations := make([]Location, 0, 4)
+
+	for rows.Next() {
+		var row Location
+		rows.Scan(&row.ID, &row.Slug, &row.Name, &row.SupportsGTFS, &row.CreatedAt, &row.UpdatedAt)
+
+		locations = append(locations, row)
+	}
+
+	return locations, nil
+}
+
 func (t *TransitDB) GetStopsByLocation(location LocationSlug, parentsOnly bool) ([]*Stop, error) {
 	var statement string
 	if parentsOnly {

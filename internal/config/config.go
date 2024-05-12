@@ -6,6 +6,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -73,8 +74,18 @@ func SetValue(key, value string) error {
 	vp.Set(key, value)
 	err := vp.WriteConfig()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to write config file: %s", err)
 	}
+
+	verbose := config.Core.Verbose
+	err = vp.Unmarshal(&config)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal config after write: %s", err)
+	}
+
+	// This is a hack to ensure that the verbose flag is not overwritten by unmashalling
+	// TODO: Find a better way to handle this
+	config.Core.Verbose = verbose
 
 	return nil
 }
@@ -140,6 +151,7 @@ func setDefaults() {
 }
 
 func configFileExists(baseDir string) bool {
+	// This is the order of precedence for config files
 	allowedFileTypes := []string{".yml", ".yaml", ".json", ".toml", ".ini"}
 
 	for _, ft := range allowedFileTypes {

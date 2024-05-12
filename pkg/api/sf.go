@@ -134,7 +134,7 @@ func (sf *SFApi) fetchStopsForAgency(agency *data.Agency) ([]*data.Stop, error) 
 	body, err := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("received %d", resp.StatusCode)
+		return nil, fmt.Errorf("received code %d", resp.StatusCode)
 	}
 
 	// Remove BOM from response
@@ -263,7 +263,7 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("received %d", resp.StatusCode)
+		return nil, fmt.Errorf("received code %d", resp.StatusCode)
 	}
 
 	// Remove BOM from response
@@ -376,7 +376,7 @@ func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 		}
 
 		if resp.StatusCode != 200 {
-			return nil, fmt.Errorf("received %d", resp.StatusCode)
+			return nil, fmt.Errorf("received code %d", resp.StatusCode)
 		}
 
 		// Remove BOM from response

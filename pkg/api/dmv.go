@@ -136,7 +136,7 @@ func (dmv *DmvApi) FetchPredictions(input []PredictionInput) ([]Prediction, erro
 	logger.Debug(string(body))
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("failed to fetch: received %d", resp.StatusCode)
+		return nil, fmt.Errorf("failed to fetch: received code %d", resp.StatusCode)
 	}
 
 	var predictions WMATA_PredictionsResponse
@@ -160,7 +160,7 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 	logger.Debug(string(body))
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New(fmt.Sprintf("failed to fetch: received %d", resp.StatusCode))
+		return nil, fmt.Errorf("failed to fetch: received code %d", resp.StatusCode)
 	}
 
 	var incidentsRes WMATA_IncidentsResponse

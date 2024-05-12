@@ -48,6 +48,8 @@ const CREATE_LOCATIONS_TABLE = `CREATE TABLE locations (
 
 const SELECT_LOCATION = "SELECT rowid, * FROM locations WHERE slug = ?"
 
+const SELECT_ALL_LOCATIONS = "SELECT rowid, * FROM locations"
+
 const INSERT_LOCATION = "INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)"
 
 /*
