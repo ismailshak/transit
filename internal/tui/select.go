@@ -7,20 +7,24 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type List struct {
+type Select struct {
 	list listModel
 }
 
-// TODO: Not enforced
 // Convenience interface for items in the list so I can access Key/Title/Description
 type Item interface {
+	// Key is the unique identifier for the item and will be the value returned when the user selects an item
 	Key() string
+	// Title is the primary display value for the item
 	Title() string
+	// Description is the secondary display value for the item that adds more context
 	Description() string
+	// FilterValue is the value that will be used for fuzzy matching when filtering the list
 	FilterValue() string
 }
 
-func NewListPrompt(title string, items []list.Item) *List {
+func NewSelectPrompt[T Item](title string, items []T) *Select {
+	listItems := convertListItems(items)
 	keys := &delegateKeyMap{
 		choose: key.NewBinding(
 			key.WithKeys("enter"),
@@ -29,19 +33,19 @@ func NewListPrompt(title string, items []list.Item) *List {
 	}
 
 	d := newItemDelegate(keys)
-	l := list.New(items, d, 0, 0)
+	l := list.New(listItems, d, 0, 0)
 	l.Title = title
 
 	listModel := listModel{
 		list: l,
 	}
 
-	return &List{
+	return &Select{
 		list: listModel,
 	}
 }
 
-func ToListItems[T list.Item](items []T) []list.Item {
+func convertListItems[T list.Item](items []T) []list.Item {
 	listItems := make([]list.Item, 0, len(items))
 	for _, item := range items {
 		listItems = append(listItems, item)
@@ -50,16 +54,14 @@ func ToListItems[T list.Item](items []T) []list.Item {
 	return listItems
 }
 
-// Render the list and block until the user exits or selects an item
-// Returns the index of the selected item
-func (l *List) Render() string {
+// Render the list and block until the user exits or selects an item.
+// Returns the `Key` of the selected item or empty string if the user canceled
+func (l *Select) Render() string {
 	m, _ := tea.NewProgram(l.list, tea.WithAltScreen()).Run() // TODO: handle error
 	return m.(listModel).selectedKey
 }
 
-//
 // Internal model for the list component
-//
 
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
 

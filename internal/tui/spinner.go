@@ -28,11 +28,11 @@ func NewSpinner(msg string) *Spinner {
 }
 
 // Begin the spinner animation.
-// NOTE: This function is blocking and you should call it in a goroutine
-// if you want to execute other code while the spinner is running. Use
-// the `Stop` function to stop the spinner.
+//
+// NOTE: This function is starts the spinner in a goroutine so code can
+// keep executing. Use the `Stop` function to stop the spinner.
 func (s *Spinner) Start() {
-	s.program.Run()
+	go s.program.Run()
 }
 
 // Stop and clear the spinner from the terminal

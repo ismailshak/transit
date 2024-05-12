@@ -37,7 +37,12 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-func ExecuteInitConfig() {
+func getConfiguredLocation() string {
+	location := config.GetConfig().Core.Location
+	if location != "" {
+		return location
+	}
+
 	db, err := data.GetDB()
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to connect to database: %s", err))
@@ -46,45 +51,50 @@ func ExecuteInitConfig() {
 
 	locations, err := db.GetAllLocations()
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to get available locations: %s", err))
+		logger.Error(fmt.Sprintf("failed to get locations: %s", err))
 		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
 	}
 
-	location := config.GetConfig().Core.Location
-	if location == "" {
-		selection := tui.NewListPrompt("Select a location", tui.ToListItems(locations)).Render()
-		if selection == "" {
-			tui.OperationSkipped("Canceled... Exiting")
-			utils.Exit(utils.EXIT_SUCCESS)
-		}
-
-		err = ExecuteSet("core.location", selection)
-		if err != nil {
-			logger.Error(err)
-			utils.Exit(utils.EXIT_BAD_CONFIG)
-		}
-
-		location = selection
+	selection := tui.NewSelectPrompt("Select a location", locations).Render()
+	if selection == "" {
+		tui.OperationSkipped("Canceled... Exiting")
+		utils.Exit(utils.EXIT_SUCCESS)
 	}
 
-	tui.OperationSuccessful("Location set to " + location)
+	err = ExecuteSet("core.location", selection)
+	if err != nil {
+		logger.Error(err)
+		utils.Exit(utils.EXIT_BAD_CONFIG)
+	}
 
+	return selection
+}
+
+func confirmConfiguredKey(location string) {
 	keyPath := fmt.Sprintf("%s.api_key", location)
 	apiKey := ExecuteGet(keyPath)
-	if apiKey == "" {
-		key := tui.NewPasswordPrompt(fmt.Sprintf("Enter your API key for %s", location)).Render()
-		if key == "" {
-			tui.OperationSkipped("Canceled... Exiting")
-			utils.Exit(utils.EXIT_SUCCESS)
-		}
-
-		err = ExecuteSet(keyPath, key)
-		if err != nil {
-			logger.Error(err)
-			utils.Exit(utils.EXIT_BAD_CONFIG)
-		}
+	if apiKey != "" {
+		return
 	}
 
+	key := tui.NewPasswordPrompt(fmt.Sprintf("Enter your API key for %s", location)).Render()
+
+	if key == "" {
+		tui.OperationSkipped("Canceled... Exiting")
+		utils.Exit(utils.EXIT_SUCCESS)
+	}
+
+	err := ExecuteSet(keyPath, key)
+	if err != nil {
+		logger.Error(err)
+		utils.Exit(utils.EXIT_BAD_CONFIG)
+	}
+}
+
+func ExecuteInitConfig() {
+	location := getConfiguredLocation()
+	tui.OperationSuccessful("Location set to " + location)
+	confirmConfiguredKey(location)
 	tui.OperationSuccessful("API key set")
 }
 
@@ -107,7 +117,7 @@ func ExecuteInitData(client api.Api, location data.LocationSlug) {
 	}
 
 	fetchSpinner := tui.NewSpinner("Fetching data...")
-	go fetchSpinner.Start()
+	fetchSpinner.Start()
 
 	d, err := client.FetchStaticData()
 	if err != nil {
@@ -119,7 +129,7 @@ func ExecuteInitData(client api.Api, location data.LocationSlug) {
 	fetchSpinner.Success("Data fetched")
 
 	insertSpinner := tui.NewSpinner("Saving data...")
-	go insertSpinner.Start()
+	insertSpinner.Start()
 
 	if err = db.InsertAgencies(d.Agencies); err != nil {
 		insertSpinner.Stop()
