@@ -19,7 +19,7 @@ type DmvConfig struct {
 	ApiKey string `mapstructure:"api_key"`
 }
 
-// Options for the `dmv` section of a user config file
+// Options for the `sf` section of a user config file
 type SFConfig struct {
 	ApiKey string `mapstructure:"api_key"`
 }
