@@ -158,7 +158,7 @@ func saveStaticGTFS(r *io.ReadCloser, l data.LocationSlug, st data.StopType, a s
 		return nil, err
 	}
 
-	// defer os.RemoveAll(feed)
+	defer os.RemoveAll(feed)
 
 	err = data.UnzipStaticGTFS(zipPath, feed)
 	if err != nil {

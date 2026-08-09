@@ -13,13 +13,6 @@ import (
 	"strings"
 )
 
-const (
-	// File mode for read+write+execute
-	RWX = 0777
-	// File mode for read+write
-	RW_ = 0776
-)
-
 func FileExists(filePath string) bool {
 	_, err := os.Stat(filePath)
 	return err == nil
@@ -39,12 +32,12 @@ func DirExists(dirPath string) bool {
 }
 
 func WriteFile(filePath string, content []byte) error {
-	return os.WriteFile(filePath, content, RW_)
+	return os.WriteFile(filePath, content, 0o644)
 }
 
 // If directory already exists, nothing will happen
 func CreateDir(dirPath string) error {
-	return os.MkdirAll(dirPath, RW_)
+	return os.MkdirAll(dirPath, 0o755)
 }
 
 func CreatePathIfNotFound(configPath string) error {

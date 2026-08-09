@@ -34,7 +34,7 @@ type CoreConfig struct {
 type Config struct {
 	Core CoreConfig `mapstructure:"core"`
 	DMV  DmvConfig  `mapstructure:"dmv"`
-	SF   DmvConfig  `mapstructure:"sf"`
+	SF   SFConfig   `mapstructure:"sf"`
 }
 
 var (
