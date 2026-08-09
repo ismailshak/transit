@@ -7,10 +7,6 @@ package api
 
 import (
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
@@ -126,44 +122,4 @@ func SFClient() *SFApi {
 		apiKey:  apiKey,
 		baseUrl: SF_BASE_URL,
 	}
-}
-
-func saveStaticGTFS(r *io.ReadCloser, l data.LocationSlug, st data.StopType, a string) (*data.StaticData, error) {
-	defer (*r).Close()
-
-	configDir, err := config.GetConfigDir()
-	if err != nil {
-		return nil, err
-	}
-
-	zipPath := filepath.Join(configDir, a+"_gtfs_static.zip")
-	f, err := os.Create(zipPath)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		f.Close()
-		os.RemoveAll(zipPath)
-	}()
-
-	_, err = io.Copy(f, *r)
-	if err != nil {
-		return nil, err
-	}
-
-	dirName := "gtfs_static_" + strconv.FormatInt(time.Now().Unix(), 10)
-	feed := filepath.Join(configDir, dirName)
-	if err = utils.CreateDir(feed); err != nil {
-		return nil, err
-	}
-
-	// defer os.RemoveAll(feed)
-
-	err = data.UnzipStaticGTFS(zipPath, feed)
-	if err != nil {
-		return nil, err
-	}
-
-	return data.ParseGTFS(feed, l, st, a)
 }

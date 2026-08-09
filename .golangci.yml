@@ -1,10 +1,5 @@
 version: "2"
 
-# Temporarily make issues not blocking in CI while I clean this up.
-# Remove once ready to enforce
-run:
-  issues-exit-code: 0
-
 linters:
   default: none
   enable:
