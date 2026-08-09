@@ -1,0 +1,27 @@
+on: [pull_request]
+name: Verify
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
+        with:
+          version: 2026.8.3
+          install: true
+          cache: true
+      - name: Build binary
+        run: go build ./...
+      - name: Lint project
+        uses: golangci/golangci-lint-action@v9
+        with:
+          install-mode: "none" # Installed by mise
+          only-new-issues: true
