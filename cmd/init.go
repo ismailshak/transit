@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/tui"
+	"github.com/ismailshak/transit/internal/ui"
 	"github.com/ismailshak/transit/internal/utils"
 	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
@@ -20,7 +23,7 @@ Adds missing config properties and downloads static data for the chosen location
 	Args:   cobra.NoArgs,
 	PreRun: defaultPreRun,
 	Run: func(cmd *cobra.Command, args []string) {
-		ExecuteInitConfig()
+		ExecuteInitConfig(cmd.Context())
 
 		location := config.GetConfig().Core.Location
 		client := api.GetClient(data.LocationSlug(location))
@@ -37,7 +40,16 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-func getConfiguredLocation() string {
+func toChoices(locations []data.Location) []ui.Choice {
+	choices := make([]ui.Choice, len(locations))
+	for i, l := range locations {
+		choices[i] = ui.Choice{Key: string(l.Slug), Title: string(l.Slug), Description: l.Name, FilterValue: l.Name}
+	}
+
+	return choices
+}
+
+func getConfiguredLocation(ctx context.Context) string {
 	location := config.GetConfig().Core.Location
 	if location != "" {
 		return location
@@ -55,10 +67,17 @@ func getConfiguredLocation() string {
 		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
 	}
 
-	selection := tui.NewSelectPrompt("Select a location", locations).Render()
-	if selection == "" {
-		tui.OperationSkipped("Canceled... Exiting")
+	choices := toChoices(locations)
+
+	selection, err := ui.Select(ctx, "Select a location", choices)
+	if errors.Is(err, ui.ErrCancelled) {
+		tui.OperationSkipped("Cancelled... Exiting")
 		utils.Exit(utils.EXIT_SUCCESS)
+	}
+
+	if errors.Is(err, ui.ErrNoSelection) {
+		tui.OperationSkipped("Nothing selected... Exiting")
+		utils.Exit(utils.EXIT_BAD_USAGE)
 	}
 
 	err = ExecuteSet("core.location", selection)
@@ -91,8 +110,8 @@ func confirmConfiguredKey(location string) {
 	}
 }
 
-func ExecuteInitConfig() {
-	location := getConfiguredLocation()
+func ExecuteInitConfig(ctx context.Context) {
+	location := getConfiguredLocation(ctx)
 	tui.OperationSuccessful("Location set to " + location)
 	confirmConfiguredKey(location)
 	tui.OperationSuccessful("API key set")
