@@ -1,0 +1,24 @@
+version: "2"
+
+# Temporarily make issues not blocking in CI while I clean this up.
+# Remove once ready to enforce
+run:
+  issues-exit-code: 0
+
+linters:
+  default: none
+  enable:
+    - errcheck    # unchecked error return values
+    - govet       # go vet's suite
+    - ineffassign # assignments never read
+    - staticcheck # bugs, deprecated API use, simplifications
+    - unused      # dead code
+    - gocritic    # broader diagnostics: suspicious appends, if/else chains, etc.
+    - bodyclose   # HTTP response bodies that are opened but never closed
+    - noctx       # HTTP requests built without a context.Context
+    - unconvert   # redundant type conversions
+    - misspell    # typos in comments and strings
+
+formatters:
+  enable:
+    - gofmt
