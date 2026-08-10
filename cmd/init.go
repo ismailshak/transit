@@ -1,12 +1,15 @@
 package cmd
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/tui"
+	"github.com/ismailshak/transit/internal/ui"
 	"github.com/ismailshak/transit/internal/utils"
 	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
@@ -20,7 +23,7 @@ Adds missing config properties and downloads static data for the chosen location
 	Args:   cobra.NoArgs,
 	PreRun: defaultPreRun,
 	Run: func(cmd *cobra.Command, args []string) {
-		ExecuteInitConfig()
+		ExecuteInitConfig(cmd.Context())
 
 		location := config.GetConfig().Core.Location
 		client := api.GetClient(data.LocationSlug(location))
@@ -29,7 +32,7 @@ Adds missing config properties and downloads static data for the chosen location
 			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
-		ExecuteInitData(client, data.LocationSlug(location))
+		ExecuteInitData(cmd.Context(), client, data.LocationSlug(location))
 	},
 }
 
@@ -37,7 +40,16 @@ func init() {
 	rootCmd.AddCommand(initCmd)
 }
 
-func getConfiguredLocation() string {
+func toChoices(locations []data.Location) []ui.Choice {
+	choices := make([]ui.Choice, len(locations))
+	for i, l := range locations {
+		choices[i] = ui.Choice{Key: string(l.Slug), Title: string(l.Slug), Description: l.Name, FilterValue: l.Name}
+	}
+
+	return choices
+}
+
+func getConfiguredLocation(ctx context.Context) string {
 	location := config.GetConfig().Core.Location
 	if location != "" {
 		return location
@@ -55,10 +67,23 @@ func getConfiguredLocation() string {
 		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
 	}
 
-	selection := tui.NewSelectPrompt("Select a location", locations).Render()
-	if selection == "" {
-		tui.OperationSkipped("Canceled... Exiting")
-		utils.Exit(utils.EXIT_SUCCESS)
+	choices := toChoices(locations)
+
+	selection, err := ui.Select(ctx, "Select a location", choices)
+	if err != nil {
+		if errors.Is(err, ui.ErrCancelled) {
+			tui.OperationSkipped("Cancelled... Exiting")
+			utils.Exit(utils.EXIT_SUCCESS)
+		}
+
+		if errors.Is(err, ui.ErrNoSelection) {
+			tui.OperationSkipped("Nothing selected... Exiting")
+			utils.Exit(utils.EXIT_BAD_USAGE)
+		}
+
+		tui.OperationFailed("Failed to select location")
+		logger.Error(err)
+		utils.Exit(utils.EXIT_FAILURE)
 	}
 
 	err = ExecuteSet("core.location", selection)
@@ -70,35 +95,46 @@ func getConfiguredLocation() string {
 	return selection
 }
 
-func confirmConfiguredKey(location string) {
+func confirmConfiguredKey(ctx context.Context, location string) {
 	keyPath := fmt.Sprintf("%s.api_key", location)
 	apiKey := ExecuteGet(keyPath)
 	if apiKey != "" {
 		return
 	}
 
-	key := tui.NewPasswordPrompt(fmt.Sprintf("Enter your API key for %s", location)).Render()
+	key, err := ui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
 
-	if key == "" {
-		tui.OperationSkipped("Canceled... Exiting")
-		utils.Exit(utils.EXIT_SUCCESS)
+	if err != nil {
+		if errors.Is(err, ui.ErrCancelled) {
+			tui.OperationSkipped("Cancelled... Exiting")
+			utils.Exit(utils.EXIT_SUCCESS)
+		}
+
+		if errors.Is(err, ui.ErrNoInput) {
+			tui.OperationFailed("No input... Exiting")
+			utils.Exit(utils.EXIT_BAD_USAGE)
+		}
+
+		tui.OperationFailed("Failed to capture input")
+		logger.Error(err)
+		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	err := ExecuteSet(keyPath, key)
+	err = ExecuteSet(keyPath, key)
 	if err != nil {
 		logger.Error(err)
 		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 }
 
-func ExecuteInitConfig() {
-	location := getConfiguredLocation()
+func ExecuteInitConfig(ctx context.Context) {
+	location := getConfiguredLocation(ctx)
 	tui.OperationSuccessful("Location set to " + location)
-	confirmConfiguredKey(location)
+	confirmConfiguredKey(ctx, location)
 	tui.OperationSuccessful("API key set")
 }
 
-func ExecuteInitData(client api.Api, location data.LocationSlug) {
+func ExecuteInitData(ctx context.Context, client api.Api, location data.LocationSlug) {
 	db, err := data.GetDB()
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to connect to database: %s", err))
@@ -116,34 +152,54 @@ func ExecuteInitData(client api.Api, location data.LocationSlug) {
 		return
 	}
 
-	fetchSpinner := tui.NewSpinner("Fetching data...")
-	fetchSpinner.Start()
+	var d *data.StaticData
+	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
+		SpinMessage:    "Fetching data...",
+		ErrorMessage:   "Failed to fetch data",
+		SuccessMessage: "Data fetched",
+		CallbackFn: func() error {
+			var fetchErr error
+			d, fetchErr = client.FetchStaticData()
+			return fetchErr
+		},
+	})
 
-	d, err := client.FetchStaticData()
+	if errors.Is(err, ui.ErrCancelled) {
+		tui.OperationSkipped("Cancelled... Exiting")
+		utils.Exit(utils.EXIT_SUCCESS)
+	}
+
 	if err != nil {
-		fetchSpinner.Stop()
 		logger.Error(err)
 		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	fetchSpinner.Success("Data fetched")
+	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
+		SpinMessage:    "Saving data...",
+		ErrorMessage:   "Failed to save data",
+		SuccessMessage: "Data saved",
+		CallbackFn: func() error {
+			if insertErr := db.InsertAgencies(d.Agencies); insertErr != nil {
+				return insertErr
+			}
 
-	insertSpinner := tui.NewSpinner("Saving data...")
-	insertSpinner.Start()
+			if insertErr := db.InsertStops(d.Stops); insertErr != nil {
+				return insertErr
+			}
 
-	if err = db.InsertAgencies(d.Agencies); err != nil {
-		insertSpinner.Stop()
+			return nil
+		},
+	})
+
+	if errors.Is(err, ui.ErrCancelled) {
+		tui.OperationSkipped("Cancelled... Exiting")
+		utils.Exit(utils.EXIT_SUCCESS)
+	}
+
+	if err != nil {
 		logger.Error(err)
 		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	if err = db.InsertStops(d.Stops); err != nil {
-		insertSpinner.Stop()
-		logger.Error(err)
-		utils.Exit(utils.EXIT_FAILURE)
-	}
-
-	insertSpinner.Success("Data saved")
-
-	logger.Print("\nAll done. Use transit --help for commands and examples")
+	logger.Print("\nSuccessfully initialized. Use transit --help for commands and examples")
 }
