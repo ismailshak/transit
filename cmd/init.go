@@ -70,14 +70,20 @@ func getConfiguredLocation(ctx context.Context) string {
 	choices := toChoices(locations)
 
 	selection, err := ui.Select(ctx, "Select a location", choices)
-	if errors.Is(err, ui.ErrCancelled) {
-		tui.OperationSkipped("Cancelled... Exiting")
-		utils.Exit(utils.EXIT_SUCCESS)
-	}
+	if err != nil {
+		if errors.Is(err, ui.ErrCancelled) {
+			tui.OperationSkipped("Cancelled... Exiting")
+			utils.Exit(utils.EXIT_SUCCESS)
+		}
 
-	if errors.Is(err, ui.ErrNoSelection) {
-		tui.OperationSkipped("Nothing selected... Exiting")
-		utils.Exit(utils.EXIT_BAD_USAGE)
+		if errors.Is(err, ui.ErrNoSelection) {
+			tui.OperationSkipped("Nothing selected... Exiting")
+			utils.Exit(utils.EXIT_BAD_USAGE)
+		}
+
+		tui.OperationFailed("Failed to select location")
+		logger.Error(err)
+		utils.Exit(utils.EXIT_FAILURE)
 	}
 
 	err = ExecuteSet("core.location", selection)
