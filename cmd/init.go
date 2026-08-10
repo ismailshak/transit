@@ -89,21 +89,26 @@ func getConfiguredLocation(ctx context.Context) string {
 	return selection
 }
 
-func confirmConfiguredKey(location string) {
+func confirmConfiguredKey(ctx context.Context, location string) {
 	keyPath := fmt.Sprintf("%s.api_key", location)
 	apiKey := ExecuteGet(keyPath)
 	if apiKey != "" {
 		return
 	}
 
-	key := tui.NewPasswordPrompt(fmt.Sprintf("Enter your API key for %s", location)).Render()
+	key, err := ui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
 
-	if key == "" {
-		tui.OperationSkipped("Canceled... Exiting")
+	if errors.Is(err, ui.ErrCancelled) {
+		tui.OperationSkipped("Cancelled... Exiting")
 		utils.Exit(utils.EXIT_SUCCESS)
 	}
 
-	err := ExecuteSet(keyPath, key)
+	if errors.Is(err, ui.ErrNoInput) {
+		tui.OperationFailed("No input... Exiting")
+		utils.Exit(utils.EXIT_BAD_USAGE)
+	}
+
+	err = ExecuteSet(keyPath, key)
 	if err != nil {
 		logger.Error(err)
 		utils.Exit(utils.EXIT_BAD_CONFIG)
@@ -113,7 +118,7 @@ func confirmConfiguredKey(location string) {
 func ExecuteInitConfig(ctx context.Context) {
 	location := getConfiguredLocation(ctx)
 	tui.OperationSuccessful("Location set to " + location)
-	confirmConfiguredKey(location)
+	confirmConfiguredKey(ctx, location)
 	tui.OperationSuccessful("API key set")
 }
 

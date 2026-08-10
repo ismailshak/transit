@@ -80,8 +80,10 @@ func (m spinnerModel) Init() tea.Cmd {
 func (m spinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	//nolint:gocritic // bubbletea Update always type-switches on tea.Msg; more cases land as we handle more message types
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		//nolint:gocritic
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
