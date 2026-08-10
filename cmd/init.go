@@ -104,14 +104,20 @@ func confirmConfiguredKey(ctx context.Context, location string) {
 
 	key, err := ui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
 
-	if errors.Is(err, ui.ErrCancelled) {
-		tui.OperationSkipped("Cancelled... Exiting")
-		utils.Exit(utils.EXIT_SUCCESS)
-	}
+	if err != nil {
+		if errors.Is(err, ui.ErrCancelled) {
+			tui.OperationSkipped("Cancelled... Exiting")
+			utils.Exit(utils.EXIT_SUCCESS)
+		}
 
-	if errors.Is(err, ui.ErrNoInput) {
-		tui.OperationFailed("No input... Exiting")
-		utils.Exit(utils.EXIT_BAD_USAGE)
+		if errors.Is(err, ui.ErrNoInput) {
+			tui.OperationFailed("No input... Exiting")
+			utils.Exit(utils.EXIT_BAD_USAGE)
+		}
+
+		tui.OperationFailed("Failed to capture input")
+		logger.Error(err)
+		utils.Exit(utils.EXIT_FAILURE)
 	}
 
 	err = ExecuteSet(keyPath, key)
