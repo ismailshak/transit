@@ -32,7 +32,7 @@ Adds missing config properties and downloads static data for the chosen location
 			utils.Exit(utils.EXIT_BAD_CONFIG)
 		}
 
-		ExecuteInitData(client, data.LocationSlug(location))
+		ExecuteInitData(cmd.Context(), client, data.LocationSlug(location))
 	},
 }
 
@@ -117,7 +117,7 @@ func ExecuteInitConfig(ctx context.Context) {
 	tui.OperationSuccessful("API key set")
 }
 
-func ExecuteInitData(client api.Api, location data.LocationSlug) {
+func ExecuteInitData(ctx context.Context, client api.Api, location data.LocationSlug) {
 	db, err := data.GetDB()
 	if err != nil {
 		logger.Error(fmt.Sprintf("failed to connect to database: %s", err))
@@ -135,34 +135,44 @@ func ExecuteInitData(client api.Api, location data.LocationSlug) {
 		return
 	}
 
-	fetchSpinner := tui.NewSpinner("Fetching data...")
-	fetchSpinner.Start()
+	var d *data.StaticData
+	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
+		SpinMessage:    "Fetching data...",
+		ErrorMessage:   "Failed to fetch data",
+		SuccessMessage: "Data fetched",
+		CallbackFn: func() error {
+			var fetchErr error
+			d, fetchErr = client.FetchStaticData()
+			return fetchErr
+		},
+	})
 
-	d, err := client.FetchStaticData()
 	if err != nil {
-		fetchSpinner.Stop()
 		logger.Error(err)
 		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	fetchSpinner.Success("Data fetched")
+	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
+		SpinMessage:    "Saving data...",
+		ErrorMessage:   "Failed to save data",
+		SuccessMessage: "Data saved",
+		CallbackFn: func() error {
+			if insertErr := db.InsertAgencies(d.Agencies); insertErr != nil {
+				return insertErr
+			}
 
-	insertSpinner := tui.NewSpinner("Saving data...")
-	insertSpinner.Start()
+			if insertErr := db.InsertStops(d.Stops); insertErr != nil {
+				return insertErr
+			}
 
-	if err = db.InsertAgencies(d.Agencies); err != nil {
-		insertSpinner.Stop()
+			return nil
+		},
+	})
+
+	if err != nil {
 		logger.Error(err)
 		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	if err = db.InsertStops(d.Stops); err != nil {
-		insertSpinner.Stop()
-		logger.Error(err)
-		utils.Exit(utils.EXIT_FAILURE)
-	}
-
-	insertSpinner.Success("Data saved")
-
-	logger.Print("\nAll done. Use transit --help for commands and examples")
+	logger.Print("\nSuccessfully initialized. Use transit --help for commands and examples")
 }
