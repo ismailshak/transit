@@ -22,7 +22,9 @@ type SpinnerOptions struct {
 
 // WithSpinner animates a spinner while opts.CallbackFn runs, then swaps it
 // for a success or error message depending on the result. Blocks until
-// CallbackFn returns and the spinner has cleaned up after itself.
+// CallbackFn returns and the spinner has cleaned up after itself. Cancelling
+// (Esc, Ctrl+C) returns ErrCancelled, same as Password — it only stops the
+// animation, opts.CallbackFn keeps running to completion regardless.
 func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	sp := spinnerModel{
 		spinner: spinner.New(
@@ -38,13 +40,16 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	)
 
 	// Run the spinner on its own goroutine so it can animate while
-	// CallbackFn runs on this one
+	// CallbackFn runs on this one. Buffered so the goroutine's send
+	// never blocks on us reading it below.
+	modelCh := make(chan tea.Model, 1)
 	go func() {
-		_, err := program.Run()
+		m, err := program.Run()
 		if err != nil {
 			// TODO: Handle this better? Maybe send via channel and errors.Join
 			logger.Debug(err)
 		}
+		modelCh <- m
 	}()
 
 	err := opts.CallbackFn()
@@ -54,6 +59,11 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	// terminal's restored before we print anything below
 	program.Quit()
 	program.Wait()
+
+	sp = (<-modelCh).(spinnerModel)
+	if sp.cancelled {
+		return ErrCancelled
+	}
 
 	if err != nil {
 		tui.OperationFailed(opts.ErrorMessage)
@@ -71,6 +81,8 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 type spinnerModel struct {
 	spinner spinner.Model
 	msg     *string
+	// cancelled distinguishes "user backed out" from "CallbackFn finished"
+	cancelled bool
 }
 
 func (m spinnerModel) Init() tea.Cmd {
@@ -84,8 +96,9 @@ func (m spinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		//nolint:gocritic
-		switch msg.String() {
-		case "ctrl+c":
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc:
+			m.cancelled = true
 			return m, tea.Quit
 		}
 	}

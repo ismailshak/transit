@@ -152,6 +152,11 @@ func ExecuteInitData(ctx context.Context, client api.Api, location data.Location
 		},
 	})
 
+	if errors.Is(err, ui.ErrCancelled) {
+		tui.OperationSkipped("Cancelled... Exiting")
+		utils.Exit(utils.EXIT_SUCCESS)
+	}
+
 	if err != nil {
 		logger.Error(err)
 		utils.Exit(utils.EXIT_FAILURE)
@@ -173,6 +178,11 @@ func ExecuteInitData(ctx context.Context, client api.Api, location data.Location
 			return nil
 		},
 	})
+
+	if errors.Is(err, ui.ErrCancelled) {
+		tui.OperationSkipped("Cancelled... Exiting")
+		utils.Exit(utils.EXIT_SUCCESS)
+	}
 
 	if err != nil {
 		logger.Error(err)
