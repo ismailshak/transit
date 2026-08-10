@@ -9,6 +9,8 @@ import (
 )
 
 func TestToChoices(t *testing.T) {
+	t.Parallel()
+
 	tests := map[string]struct {
 		input    []data.Location
 		expected []ui.Choice
@@ -29,6 +31,7 @@ func TestToChoices(t *testing.T) {
 
 	for name, testCase := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			got := toChoices(testCase.input)
 
 			if !slices.Equal(got, testCase.expected) {
