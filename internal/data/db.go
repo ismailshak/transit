@@ -2,39 +2,31 @@ package data
 
 import (
 	"database/sql"
-	"path/filepath"
 
-	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/logger"
 	_ "modernc.org/sqlite"
 )
-
-// Singleton DB connection throughout execution
-var db *TransitDB
 
 type TransitDB struct {
 	// Exposing the direct database connection if needed
 	// but queries and mutations should be made through methods on this struct
 	DB *sql.DB
+
+	log *logger.Logger
 }
 
-func GetDB() (*TransitDB, error) {
-	if db != nil {
-		return db, nil
-	}
-
-	configPath, err := config.GetConfigDir()
+// NewDB opens the SQLite database at path. The file is created if it doesn't
+// exist, and no connection is made until the first query.
+func NewDB(path string, log *logger.Logger) (*TransitDB, error) {
+	conn, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
 	}
 
-	dbPath := filepath.Join(configPath, "transit.db")
-	newDb, err := NewTransitDB(dbPath)
-
-	if err != nil {
-		return nil, err
+	db := &TransitDB{
+		DB:  conn,
+		log: log,
 	}
-
-	db = newDb
 
 	return db, nil
 }
@@ -55,7 +47,7 @@ func (t *TransitDB) SyncMigrations() error {
 		return nil
 	}
 
-	err = RunMigrations(t.DB, count)
+	err = RunMigrations(t.DB, t.log, count)
 	if err != nil {
 		return err
 	}
@@ -228,18 +220,4 @@ func (t *TransitDB) GetLocationAgencies(location LocationSlug) ([]Agency, error)
 	}
 
 	return agencies, nil
-}
-
-// Exists for testing purposes. Use GetDB instead
-func NewTransitDB(path string) (*TransitDB, error) {
-	conn, err := sql.Open("sqlite", path)
-	if err != nil {
-		return nil, err
-	}
-
-	db := &TransitDB{
-		DB: conn,
-	}
-
-	return db, nil
 }

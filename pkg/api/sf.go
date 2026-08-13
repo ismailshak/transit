@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/utils"
@@ -18,8 +17,11 @@ import (
 
 // API to interact with San Francisco's 511 API
 type SFApi struct {
-	apiKey  *string
+	apiKey  string
 	baseUrl string
+	log     *logger.Logger
+	now     func() time.Time
+	store   *data.TransitDB
 }
 
 type SF_StopPlace struct {
@@ -119,7 +121,7 @@ func (sf *SFApi) fetchStopsForAgency(agency *data.Agency) ([]*data.Stop, error) 
 	}
 
 	q := req.URL.Query()
-	q.Add("api_key", *sf.apiKey)
+	q.Add("api_key", sf.apiKey)
 	q.Add("operator_id", agency.AgencyID)
 	q.Add("format", "json")
 	req.URL.RawQuery = q.Encode()
@@ -243,7 +245,7 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 	}
 
 	q := req.URL.Query()
-	q.Add("api_key", *sf.apiKey)
+	q.Add("api_key", sf.apiKey)
 	q.Add("agency", in.AgencyID)
 	q.Add("stopcode", in.StopID)
 	q.Add("format", "json")
@@ -269,8 +271,9 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 	// Remove BOM from response
 	body = bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))
 
-	if config.GetConfig().Core.Verbose {
-		logger.Debug(string(body))
+	// Avoid the expensive conversion unless we have to
+	if sf.log.Verbose() {
+		sf.log.Debug(string(body))
 	}
 
 	var stopMonitoring SF_StopMonitoringResponse
@@ -302,7 +305,7 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 			return nil, err
 		}
 
-		now := time.Now()
+		now := sf.now()
 		arrival := strconv.Itoa(int(arrival_time.Sub(now).Minutes()))
 
 		p := Prediction{
@@ -335,12 +338,7 @@ func (sf *SFApi) FetchPredictions(input []PredictionInput) ([]Prediction, error)
 }
 
 func (sf *SFApi) FetchIncidents() ([]Incident, error) {
-	db, err := data.GetDB()
-	if err != nil {
-		return nil, err
-	}
-
-	agencies, err := db.GetLocationAgencies(data.SFSlug)
+	agencies, err := sf.store.GetLocationAgencies(data.SFSlug)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +355,7 @@ func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 		}
 
 		q := req.URL.Query()
-		q.Add("api_key", *sf.apiKey)
+		q.Add("api_key", sf.apiKey)
 		q.Add("agency", agency.AgencyID)
 		q.Add("format", "json")
 		req.URL.RawQuery = q.Encode()
@@ -388,8 +386,9 @@ func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 			return nil, err
 		}
 
-		if config.GetConfig().Core.Verbose {
-			logger.Debug(string(body))
+		// Avoid the expensive conversion unless we have to
+		if sf.log.Verbose() {
+			sf.log.Debug(string(body))
 		}
 
 		for _, entity := range serviceAlerts.Entities {
@@ -425,12 +424,7 @@ func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 }
 
 func (sf *SFApi) GetPredictionInput(arg string) ([]PredictionInput, error) {
-	db, err := data.GetDB()
-	if err != nil {
-		return nil, err
-	}
-
-	stops, err := db.GetStopsByLocation(data.SFSlug, true)
+	stops, err := sf.store.GetStopsByLocation(data.SFSlug, true)
 	if err != nil {
 		return nil, err
 	}
@@ -438,12 +432,12 @@ func (sf *SFApi) GetPredictionInput(arg string) ([]PredictionInput, error) {
 	matches := utils.FuzzyFindFrom(arg, data.SearchableStops(stops))
 
 	if matches.Len() == 0 {
-		logger.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
+		sf.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
 		return nil, nil
 	}
 
 	if matches.Len() > 5 {
-		logger.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
+		sf.log.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
 		return nil, nil
 	}
 

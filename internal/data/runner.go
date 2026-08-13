@@ -33,7 +33,7 @@ func GetMigrationCount(db *sql.DB) (int, error) {
 	return count, nil
 }
 
-func RunMigrations(db *sql.DB, rowCount int) error {
+func RunMigrations(db *sql.DB, log *logger.Logger, rowCount int) error {
 	migrationRows, err := GetCurrentMigrations(db, rowCount)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func RunMigrations(db *sql.DB, rowCount int) error {
 
 	for i, changeset := range migrationChangesets {
 		if i+1 > len(migrationRows) {
-			err = run(db, &changeset)
+			err = run(db, log, &changeset)
 			if err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func GetCurrentMigrations(db *sql.DB, rowCount int) ([]Migration, error) {
 	return migrationRows, nil
 }
 
-func run(db *sql.DB, changeset *MigrationChangeset) error {
+func run(db *sql.DB, log *logger.Logger, changeset *MigrationChangeset) error {
 	trx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to begin database transaction. %s", err)
@@ -94,7 +94,7 @@ func run(db *sql.DB, changeset *MigrationChangeset) error {
 	// Will no-op if Commit succeeds
 	defer trx.Rollback()
 
-	logger.Debug(fmt.Sprintf("Running new database migration: %s", changeset.Name))
+	log.Debug(fmt.Sprintf("Running new database migration: %s", changeset.Name))
 
 	err = changeset.Up(context.Background(), trx)
 

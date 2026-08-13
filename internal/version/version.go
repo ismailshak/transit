@@ -8,7 +8,7 @@
 // go build -ldflags "-X <path>.version={{.Version}} -X <path>.commit={{.Commit}} -X <path>.date={{.Date}}" -o transit
 package version
 
-import "github.com/ismailshak/transit/internal/logger"
+import "fmt"
 
 var (
 	version = "dev"
@@ -17,7 +17,7 @@ var (
 )
 
 func Execute() {
-	logger.Print(formatVersion())
+	fmt.Println(formatVersion())
 }
 
 func formatVersion() string {

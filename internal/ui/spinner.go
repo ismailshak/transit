@@ -2,10 +2,10 @@ package ui
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/tui"
 )
 
@@ -47,7 +47,7 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 		m, err := program.Run()
 		if err != nil {
 			// TODO: Handle this better? Maybe send via channel and errors.Join
-			logger.Debug(err)
+			fmt.Println(err)
 		}
 		modelCh <- m
 	}()

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/logger"
 )
 
 // Creates a temporary database that has no tables
@@ -19,7 +20,7 @@ func BlankDB(t *testing.T) *data.TransitDB {
 
 	t.Logf("Temp database at: %s", dbPath)
 
-	db, err := data.NewTransitDB(dbPath)
+	db, err := data.NewDB(dbPath, logger.New(false))
 	if err != nil {
 		t.Fatal("Failed to connect to test database", err)
 	}
@@ -37,7 +38,7 @@ func MigratedDB(t *testing.T) *data.TransitDB {
 	testDir := t.TempDir()
 	dbPath := filepath.Join(testDir, "transit-test-migrated.db")
 
-	db, err := data.NewTransitDB(dbPath)
+	db, err := data.NewDB(dbPath, logger.New(false))
 	if err != nil {
 		t.Fatal("Failed to connect to test database", err)
 	}

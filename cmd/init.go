@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/tui"
 	"github.com/ismailshak/transit/internal/ui"
 	"github.com/ismailshak/transit/internal/utils"
@@ -15,29 +13,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Initialize transit",
-	Long: `
+func (a *App) newInitCmd() *cobra.Command {
+	initCmd := &cobra.Command{
+		Use:   "init",
+		Short: "Initialize transit",
+		Long: `
 Adds missing config properties and downloads static data for the chosen location`,
-	Args:   cobra.NoArgs,
-	PreRun: defaultPreRun,
-	Run: func(cmd *cobra.Command, args []string) {
-		ExecuteInitConfig(cmd.Context())
+		Args:   cobra.NoArgs,
+		PreRun: a.defaultPreRun,
+		Run: func(cmd *cobra.Command, args []string) {
+			a.executeInitConfig(cmd.Context())
 
-		location := config.GetConfig().Core.Location
-		client := api.GetClient(data.LocationSlug(location))
+			client, err := a.client()
+			if err != nil {
+				a.Log.Error(err.Error())
+				utils.Exit(utils.EXIT_BAD_CONFIG)
+			}
 
-		if client == nil {
-			utils.Exit(utils.EXIT_BAD_CONFIG)
-		}
+			a.executeInitData(cmd.Context(), client, data.LocationSlug(a.Cfg.Core.Location))
+		},
+	}
 
-		ExecuteInitData(cmd.Context(), client, data.LocationSlug(location))
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(initCmd)
+	return initCmd
 }
 
 func toChoices(locations []data.Location) []ui.Choice {
@@ -49,21 +46,15 @@ func toChoices(locations []data.Location) []ui.Choice {
 	return choices
 }
 
-func getConfiguredLocation(ctx context.Context) string {
-	location := config.GetConfig().Core.Location
+func (a *App) getConfiguredLocation(ctx context.Context) string {
+	location := a.Cfg.Core.Location
 	if location != "" {
 		return location
 	}
 
-	db, err := data.GetDB()
+	locations, err := a.Store.GetAllLocations()
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to connect to database: %s", err))
-		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
-	}
-
-	locations, err := db.GetAllLocations()
-	if err != nil {
-		logger.Error(fmt.Sprintf("failed to get locations: %s", err))
+		a.Log.Error(fmt.Sprintf("failed to get locations: %s", err))
 		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
 	}
 
@@ -82,22 +73,22 @@ func getConfiguredLocation(ctx context.Context) string {
 		}
 
 		tui.OperationFailed("Failed to select location")
-		logger.Error(err)
+		a.Log.Error(err.Error())
 		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	err = ExecuteSet("core.location", selection)
+	err = a.executeSet("core.location", selection)
 	if err != nil {
-		logger.Error(err)
+		a.Log.Error(err.Error())
 		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 
 	return selection
 }
 
-func confirmConfiguredKey(ctx context.Context, location string) {
+func (a *App) confirmConfiguredKey(ctx context.Context, location string) {
 	keyPath := fmt.Sprintf("%s.api_key", location)
-	apiKey := ExecuteGet(keyPath)
+	apiKey := a.executeGet(keyPath)
 	if apiKey != "" {
 		return
 	}
@@ -116,34 +107,28 @@ func confirmConfiguredKey(ctx context.Context, location string) {
 		}
 
 		tui.OperationFailed("Failed to capture input")
-		logger.Error(err)
+		a.Log.Error(err.Error())
 		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	err = ExecuteSet(keyPath, key)
+	err = a.executeSet(keyPath, key)
 	if err != nil {
-		logger.Error(err)
+		a.Log.Error(err.Error())
 		utils.Exit(utils.EXIT_BAD_CONFIG)
 	}
 }
 
-func ExecuteInitConfig(ctx context.Context) {
-	location := getConfiguredLocation(ctx)
+func (a *App) executeInitConfig(ctx context.Context) {
+	location := a.getConfiguredLocation(ctx)
 	tui.OperationSuccessful("Location set to " + location)
-	confirmConfiguredKey(ctx, location)
+	a.confirmConfiguredKey(ctx, location)
 	tui.OperationSuccessful("API key set")
 }
 
-func ExecuteInitData(ctx context.Context, client api.Api, location data.LocationSlug) {
-	db, err := data.GetDB()
+func (a *App) executeInitData(ctx context.Context, client api.Api, location data.LocationSlug) {
+	count, err := a.Store.CountStopsByLocation(location)
 	if err != nil {
-		logger.Error(fmt.Sprintf("failed to connect to database: %s", err))
-		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
-	}
-
-	count, err := db.CountStopsByLocation(location)
-	if err != nil {
-		logger.Error(fmt.Sprintf("failed to get status of current location: %s", err))
+		a.Log.Error(fmt.Sprintf("failed to get status of current location: %s", err))
 		utils.Exit(utils.EXIT_BAD_USAGE) // TODO: replace error code with something database specific
 	}
 
@@ -170,7 +155,7 @@ func ExecuteInitData(ctx context.Context, client api.Api, location data.Location
 	}
 
 	if err != nil {
-		logger.Error(err)
+		a.Log.Error(err.Error())
 		utils.Exit(utils.EXIT_FAILURE)
 	}
 
@@ -179,11 +164,11 @@ func ExecuteInitData(ctx context.Context, client api.Api, location data.Location
 		ErrorMessage:   "Failed to save data",
 		SuccessMessage: "Data saved",
 		CallbackFn: func() error {
-			if insertErr := db.InsertAgencies(d.Agencies); insertErr != nil {
+			if insertErr := a.Store.InsertAgencies(d.Agencies); insertErr != nil {
 				return insertErr
 			}
 
-			if insertErr := db.InsertStops(d.Stops); insertErr != nil {
+			if insertErr := a.Store.InsertStops(d.Stops); insertErr != nil {
 				return insertErr
 			}
 
@@ -197,9 +182,9 @@ func ExecuteInitData(ctx context.Context, client api.Api, location data.Location
 	}
 
 	if err != nil {
-		logger.Error(err)
+		a.Log.Error(err.Error())
 		utils.Exit(utils.EXIT_FAILURE)
 	}
 
-	logger.Print("\nSuccessfully initialized. Use transit --help for commands and examples")
+	_, _ = fmt.Fprintln(a.Out, "\nSuccessfully initialized. Use transit --help for commands and examples")
 }
