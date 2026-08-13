@@ -28,98 +28,108 @@ type SFConfig struct {
 type CoreConfig struct {
 	Location      string `mapstructure:"location"`
 	WatchInterval int    `mapstructure:"watch_interval"`
-	Verbose       bool
 }
 
 type Config struct {
 	Core CoreConfig `mapstructure:"core"`
 	DMV  DmvConfig  `mapstructure:"dmv"`
 	SF   SFConfig   `mapstructure:"sf"`
+
+	// The file these values were decoded from. Kept so that Get and Set can
+	// address keys by a runtime string, which a struct can't do.
+	vp *viper.Viper
 }
 
-var (
-	config             *Config
-	vp                 *viper.Viper = viper.New()
-	configFileOverride string
-)
+// Load reads the config file and decodes it into a Config. An override path is
+// used as-is when non-empty, otherwise the default config directory is used and
+// an empty config file is created there if none exists yet.
+func Load(override string) (*Config, error) {
+	vp := viper.New()
+	c := &Config{vp: vp}
 
-// Returns the user's config singleton object
-func GetConfig() *Config {
-	if config == nil {
-		config = &Config{}
-	}
+	c.setDefaults()
 
-	return config
-}
+	if override != "" {
+		vp.SetConfigFile(override)
+		if err := c.read(); err != nil {
+			return nil, err
+		}
 
-// Returns the config file that was used to load in user options
-func GetConfigFileUsed() string {
-	return vp.ConfigFileUsed()
-}
-
-// Returns the location of transit's config directory
-func GetConfigDir() (string, error) {
-	return getDefaultConfigDir()
-}
-
-// Gets a config value from user input. Nested fields are addressable
-// by using a dot (.) as a delimiter e.g. `core.location`
-func GetValue(key string) interface{} {
-	return vp.Get(key)
-}
-
-// Set a config value from user input. Nested fields are addressable
-// by using a dot (.) as a delimiter e.g. `core.location`
-func SetValue(key, value string) error {
-	vp.Set(key, value)
-	err := vp.WriteConfig()
-	if err != nil {
-		return fmt.Errorf("failed to write config file: %s", err)
-	}
-
-	verbose := config.Core.Verbose
-	err = vp.Unmarshal(&config)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal config after write: %s", err)
-	}
-
-	// This is a hack to ensure that the verbose flag is not overwritten by unmashalling
-	// TODO: Find a better way to handle this
-	config.Core.Verbose = verbose
-
-	return nil
-}
-
-// Reads the config file and loads it's content
-func LoadConfig() error {
-	if configFileOverride != "" {
-		vp.SetConfigFile(configFileOverride)
-		setDefaults()
-		return readConfig()
+		return c, nil
 	}
 
 	configDir, err := getDefaultConfigDir()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	// TODO: We should also create the override if it doesn't exist
 	if !configFileExists(configDir) {
 		err = utils.CreatePathIfNotFound(filepath.Join(configDir, "config.yml"))
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	vp.SetConfigName("config")
 	vp.AddConfigPath(configDir)
 
-	setDefaults()
+	if err := c.read(); err != nil {
+		return nil, err
+	}
 
-	return readConfig()
+	return c, nil
 }
 
-func SetCustomConfigPath(path string) {
-	configFileOverride = path
+// Get returns a config value looked up by a key from user input, or nil if the
+// key isn't set. Nested fields are addressable by using a dot (.) as a
+// delimiter e.g. `core.location`
+func (c *Config) Get(key string) any {
+	return c.vp.Get(key)
+}
+
+// Set writes a config value from user input back to the file and re-decodes it,
+// so the file and this Config agree once it returns. Nested fields are
+// addressable by using a dot (.) as a delimiter e.g. `core.location`
+func (c *Config) Set(key, value string) error {
+	c.vp.Set(key, value)
+	if err := c.vp.WriteConfig(); err != nil {
+		return fmt.Errorf("write config %s: %w", c.vp.ConfigFileUsed(), err)
+	}
+
+	if err := c.vp.Unmarshal(c); err != nil {
+		return fmt.Errorf("decode config after write: %w", err)
+	}
+
+	return nil
+}
+
+// FileUsed returns the path to the config file these values were loaded from
+func (c *Config) FileUsed() string {
+	return c.vp.ConfigFileUsed()
+}
+
+func (c *Config) setDefaults() {
+	c.vp.SetDefault("core.watch_interval", 10)
+}
+
+func (c *Config) read() error {
+	err := c.vp.ReadInConfig()
+	if err != nil {
+		return err
+	}
+
+	err = c.vp.Unmarshal(c)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// GetConfigDir returns the location of transit's config directory
+func GetConfigDir() (string, error) {
+	return getDefaultConfigDir()
 }
 
 func getDefaultConfigDir() (string, error) {
@@ -129,25 +139,6 @@ func getDefaultConfigDir() (string, error) {
 	}
 
 	return filepath.Join(homeDir, ".config", "transit"), nil
-}
-
-func readConfig() error {
-	err := vp.ReadInConfig()
-	if err != nil {
-		return err
-	}
-
-	err = vp.Unmarshal(&config)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func setDefaults() {
-	vp.SetDefault("core.watch_interval", 10)
-	vp.SetDefault("core.verbose", false)
 }
 
 func configFileExists(baseDir string) bool {

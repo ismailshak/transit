@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/pkg/api"
 )
 
@@ -23,8 +22,6 @@ func PrintArrivalScreen(client api.Api, destinationLookup *map[string][]api.Pred
 	for _, d := range sortedDestinations {
 		destination := (*destinationLookup)[d]
 		if client.IsGhostTrain(destination[0].Line, destination[0].Destination) {
-			logger.Debug(("A train not intended for passengers is hidden from the display"))
-			logger.Debug(fmt.Sprintf("%+v", destination[0]))
 			continue
 		}
 
@@ -38,7 +35,7 @@ func PrintArrivalScreen(client api.Api, destinationLookup *map[string][]api.Pred
 		),
 	)
 
-	logger.Print(out)
+	fmt.Println(out)
 }
 
 // Create and return a terminal layout that will contain the screen-like display

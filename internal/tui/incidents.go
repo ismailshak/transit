@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/utils"
 	"github.com/ismailshak/transit/pkg/api"
 	"golang.org/x/term"
@@ -19,7 +18,7 @@ const (
 
 func PrintIncidents(client api.Api, incidents []api.Incident) {
 	if len(incidents) == 0 {
-		logger.Print("No incidents reported")
+		fmt.Println("No incidents reported")
 		return
 	}
 
@@ -97,10 +96,10 @@ func render(client api.Api, incident api.Incident, width int) {
 	// TODO Clean up UI
 	if footer == "" {
 		out := list.Render(lipgloss.JoinVertical(lipgloss.Left, header, description))
-		logger.Print(out)
+		fmt.Println(out)
 	} else {
 		out := list.Render(lipgloss.JoinVertical(lipgloss.Left, header, description, footer))
-		logger.Print(out)
+		fmt.Println(out)
 	}
 }
 

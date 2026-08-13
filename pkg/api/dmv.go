@@ -24,8 +24,10 @@ const (
 
 // API to interact with WMATA
 type DmvApi struct {
-	apiKey  *string
+	apiKey  string
 	baseUrl string
+	log     *logger.Logger
+	store   *data.TransitDB
 }
 
 // WMATA's predictions API response
@@ -56,7 +58,7 @@ func (dmv *DmvApi) BuildRequest(method string, route ...string) (*http.Request, 
 		return nil, err
 	}
 
-	req.Header.Add("api_key", *dmv.apiKey)
+	req.Header.Add("api_key", dmv.apiKey)
 
 	return req, nil
 }
@@ -133,7 +135,11 @@ func (dmv *DmvApi) FetchPredictions(input []PredictionInput) ([]Prediction, erro
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	logger.Debug(string(body))
+
+	// Avoid the expensive conversion unless we have to
+	if dmv.log.Verbose() {
+		dmv.log.Debug(string(body))
+	}
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("failed to fetch: received code %d", resp.StatusCode)
@@ -157,7 +163,11 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	logger.Debug(string(body))
+
+	// Avoid the expensive conversion unless we have to
+	if dmv.log.Verbose() {
+		dmv.log.Debug(string(body))
+	}
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("failed to fetch: received code %d", resp.StatusCode)
@@ -187,12 +197,7 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 }
 
 func (dmv *DmvApi) GetPredictionInput(arg string) ([]PredictionInput, error) {
-	db, err := data.GetDB()
-	if err != nil {
-		return nil, err
-	}
-
-	stops, err := db.GetStopsByLocation(data.DMVSlug, true)
+	stops, err := dmv.store.GetStopsByLocation(data.DMVSlug, true)
 	if err != nil {
 		return nil, err
 	}
@@ -200,12 +205,12 @@ func (dmv *DmvApi) GetPredictionInput(arg string) ([]PredictionInput, error) {
 	matches := utils.FuzzyFindFrom(arg, data.SearchableStops(stops))
 
 	if matches.Len() == 0 {
-		logger.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
+		dmv.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
 		return nil, nil
 	}
 
 	if matches.Len() > 5 {
-		logger.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
+		dmv.log.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
 		return nil, nil
 	}
 
