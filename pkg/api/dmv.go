@@ -92,15 +92,19 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 	}
 
 	defer func() {
-		f.Close() //nolint:errcheck // removed on the next line, so a failed flush changes nothing
+		f.Close() //nolint:errcheck // only here for the copy below, we close it ourselves after that
 		if err := os.RemoveAll(zipPath); err != nil {
 			dmv.log.Warn(fmt.Sprintf("Leftover gtfs archive at '%s': %s", zipPath, err))
 		}
 	}()
 
-	_, err = io.Copy(f, resp.Body)
-	if err != nil {
-		return nil, err
+	if _, err := io.Copy(f, resp.Body); err != nil {
+		return nil, fmt.Errorf("download gtfs archive: %w", err)
+	}
+
+	// Close it before we read it back, a bad write only shows up here
+	if err := f.Close(); err != nil {
+		return nil, fmt.Errorf("write gtfs archive %s: %w", zipPath, err)
 	}
 
 	dirName := "gtfs_static_" + strconv.FormatInt(time.Now().Unix(), 10)
