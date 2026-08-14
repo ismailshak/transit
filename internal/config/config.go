@@ -52,7 +52,7 @@ func Load(override string) (*Config, error) {
 	if override != "" {
 		vp.SetConfigFile(override)
 		if err := c.read(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 		}
 
 		return c, nil
@@ -75,7 +75,7 @@ func Load(override string) (*Config, error) {
 	vp.AddConfigPath(configDir)
 
 	if err := c.read(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 
 	return c, nil

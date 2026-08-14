@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,7 +77,7 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("failed to fetch: received %d", resp.StatusCode)
+		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
 
 	configDir, err := config.GetConfigDir()
@@ -93,8 +92,10 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 	}
 
 	defer func() {
-		f.Close()
-		os.RemoveAll(zipPath)
+		f.Close() //nolint:errcheck // removed on the next line, so a failed flush changes nothing
+		if err := os.RemoveAll(zipPath); err != nil {
+			dmv.log.Warn(fmt.Sprintf("Leftover gtfs archive at '%s': %s", zipPath, err))
+		}
 	}()
 
 	_, err = io.Copy(f, resp.Body)
@@ -108,7 +109,11 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 		return nil, err
 	}
 
-	defer os.RemoveAll(feed)
+	defer func() {
+		if err := os.RemoveAll(feed); err != nil {
+			dmv.log.Warn(fmt.Sprintf("Leftover gtfs data at '%s': %s", feed, err))
+		}
+	}()
 
 	err = data.UnzipStaticGTFS(zipPath, feed)
 	if err != nil {
@@ -142,13 +147,21 @@ func (dmv *DmvApi) FetchPredictions(input []PredictionInput) ([]Prediction, erro
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("failed to fetch: received code %d", resp.StatusCode)
+		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
 
 	var predictions WMATA_PredictionsResponse
 	err = json.Unmarshal(body, &predictions)
 
-	return predictions.Trains, err
+	if err != nil {
+		return nil, fmt.Errorf("parse predictions response: %w", err)
+	}
+
+	if len(predictions.Trains) == 0 {
+		return nil, ErrNoDepartures
+	}
+
+	return predictions.Trains, nil
 }
 
 func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
@@ -170,14 +183,14 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("failed to fetch: received code %d", resp.StatusCode)
+		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
 
 	var incidentsRes WMATA_IncidentsResponse
 	err = json.Unmarshal(body, &incidentsRes)
 
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("failed to parse response: %s", err))
+		return nil, fmt.Errorf("parse incidents response: %w", err)
 	}
 
 	var incidents []Incident

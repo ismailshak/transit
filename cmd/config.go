@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
-	"github.com/ismailshak/transit/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -36,17 +36,17 @@ func (a *App) newConfigGetCmd() *cobra.Command {
 		Short:                 "Get a key from the config file",
 		Long:                  "Get a key from the configuration file\nFor all values, check the docs https://transitcli.com/docs/config-reference",
 		Example:               "  transit config get core.location",
-		Args:                  cobra.ExactArgs(1),
+		Args:                  usageArgs(cobra.ExactArgs(1)),
 		DisableFlagsInUseLine: true,
-		PreRun:                a.defaultPreRun,
-		Run: func(cmd *cobra.Command, args []string) {
+		PreRunE:               a.defaultPreRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			value := a.executeGet(args[0])
 			if value == "" {
-				a.Log.Warn("No config property found matching '", args[0], "'")
-				return
+				return fmt.Errorf("%w: no value set for %q", config.ErrInvalid, args[0])
 			}
 
-			_, _ = fmt.Fprintln(a.Out, value)
+			_, err := fmt.Fprintln(a.Out, value)
+			return err
 		},
 	}
 
@@ -60,16 +60,16 @@ func (a *App) newConfigSetCmd() *cobra.Command {
 		Long:                  "Set a key in the configuration file\nFor all values, check the docs https://transitcli.com/docs/config-reference",
 		Example:               "  transit config set core.location dmv\n  transit config set dmv.api_key abcdef",
 		DisableFlagsInUseLine: true,
-		Args:                  cobra.ExactArgs(2),
-		PreRun:                a.defaultPreRun,
-		Run: func(cmd *cobra.Command, args []string) {
+		Args:                  usageArgs(cobra.ExactArgs(2)),
+		PreRunE:               a.defaultPreRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			err := a.executeSet(args[0], args[1])
 			if err != nil {
-				a.Log.Error(err.Error())
-				utils.Exit(utils.EXIT_BAD_CONFIG)
+				return err
 			}
 
-			_, _ = fmt.Fprintf(a.Out, "'%s' has been set to '%s'\n", args[0], args[1])
+			_, err = fmt.Fprintf(a.Out, "'%s' has been set to '%s'\n", args[0], args[1])
+			return err
 		},
 	}
 
@@ -82,10 +82,10 @@ func (a *App) newConfigPathCmd() *cobra.Command {
 		Short:                 "Prints path to config file",
 		Long:                  "Prints path to configuration file used",
 		DisableFlagsInUseLine: true,
-		Args:                  cobra.NoArgs,
-		PreRun:                a.defaultPreRun,
-		Run: func(cmd *cobra.Command, args []string) {
-			a.executePath()
+		Args:                  usageArgs(cobra.NoArgs),
+		PreRunE:               a.defaultPreRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return a.executePath()
 		},
 	}
 
@@ -105,20 +105,21 @@ func (a *App) executeGet(key string) string {
 
 // executeSet backs `config set`. Validates the value before writing it.
 func (a *App) executeSet(key, value string) error {
-	valid := a.validateKey(key, value)
-	if !valid {
-		return fmt.Errorf("invalid value for key '%s'", key)
+	err := a.validateKey(key, value)
+	if err != nil {
+		return err
 	}
 
 	return a.Cfg.Set(key, value)
 }
 
 // executePath backs `config path`
-func (a *App) executePath() {
-	_, _ = fmt.Fprintln(a.Out, a.Cfg.FileUsed())
+func (a *App) executePath() error {
+	_, err := fmt.Fprintln(a.Out, a.Cfg.FileUsed())
+	return err
 }
 
-func (a *App) validateKey(key, value string) bool {
+func (a *App) validateKey(key, value string) error {
 	switch key {
 	case "core.location":
 		return a.validateLocation(value)
@@ -126,35 +127,31 @@ func (a *App) validateKey(key, value string) bool {
 		return a.validateWatchInterval(value)
 	}
 
-	return true
+	return nil
 }
 
-func (a *App) validateLocation(location string) bool {
+func (a *App) validateLocation(location string) error {
 	l, err := a.Store.GetLocation(data.LocationSlug(location))
 	if err != nil {
-		a.Log.Error(fmt.Sprintf("Failed to validate location: %s", location))
-		return false
+		return fmt.Errorf("get location data: %w", err)
 	}
 
 	if l == nil {
-		a.Log.Error(fmt.Sprintf("'%s' is not a valid location", location))
-		return false
+		return fmt.Errorf("%w: %q is not a valid location", config.ErrInvalid, location)
 	}
 
-	return true
+	return nil
 }
 
-func (a *App) validateWatchInterval(interval string) bool {
+func (a *App) validateWatchInterval(interval string) error {
 	i, err := strconv.ParseInt(interval, 10, 0)
 	if err != nil {
-		a.Log.Error("'watch_interval' value must be an integer")
-		return false
+		return fmt.Errorf("%w: watch_interval must be an integer", config.ErrInvalid)
 	}
 
 	if i <= 0 {
-		a.Log.Error("'watch_interval' value must be greater than 0")
-		return false
+		return fmt.Errorf("%w: watch_interval must be greater than 0", config.ErrInvalid)
 	}
 
-	return true
+	return nil
 }

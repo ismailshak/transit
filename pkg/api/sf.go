@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -100,6 +101,15 @@ type SF_ServiceAlertsResponse struct {
 	}
 }
 
+func newSFHTTPError(req *http.Request, statusCode int) *HTTPError {
+	u := *req.URL
+	q := u.Query()
+	q.Del("api_key")
+	u.RawQuery = q.Encode()
+	return &HTTPError{StatusCode: statusCode, URL: u.String()}
+
+}
+
 func (sf *SFApi) BuildRequest(method string, route ...string) (*http.Request, error) {
 	parts := make([]string, 0, len(route)+1)
 	parts = append(parts, sf.baseUrl)
@@ -133,10 +143,15 @@ func (sf *SFApi) fetchStopsForAgency(agency *data.Agency) ([]*data.Stop, error) 
 	}
 
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("received code %d", resp.StatusCode)
+		return nil, newSFHTTPError(req, resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		return nil, err
 	}
 
 	// Remove BOM from response
@@ -190,7 +205,7 @@ func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
 
 	bartStops, err := sf.fetchStopsForAgency(bart)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch BART stops: %s", err)
+		return nil, fmt.Errorf("fetch BART stops: %w", err)
 	}
 
 	cal := &data.Agency{
@@ -203,7 +218,7 @@ func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
 
 	calStops, err := sf.fetchStopsForAgency(cal)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch Caltrain stops: %s", err)
+		return nil, fmt.Errorf("fetch Caltrain stops: %w", err)
 	}
 
 	var stops []*data.Stop
@@ -259,13 +274,13 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		return nil, newSFHTTPError(req, resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
-	}
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("received code %d", resp.StatusCode)
 	}
 
 	// Remove BOM from response
@@ -285,7 +300,7 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 
 	monitoredStopVisits := len(stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit)
 	if monitoredStopVisits == 0 {
-		return nil, fmt.Errorf("no data returned")
+		return nil, ErrNoDepartures
 	}
 
 	predictions := make([]Prediction, 0, monitoredStopVisits)
@@ -327,11 +342,19 @@ func (sf *SFApi) FetchPredictions(input []PredictionInput) ([]Prediction, error)
 
 	for _, in := range input {
 		p, err := sf.fetchPrediction(in)
+		if errors.Is(err, ErrNoDepartures) {
+			continue
+		}
+
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch predictions for %s: %s", in.StopID, err)
+			return nil, fmt.Errorf("fetch predictions for %s: %w", in.StopID, err)
 		}
 
 		predictions = append(predictions, p...)
+	}
+
+	if len(predictions) == 0 {
+		return nil, ErrNoDepartures
 	}
 
 	return predictions, nil
@@ -368,13 +391,13 @@ func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 
 		defer resp.Body.Close()
 
+		if resp.StatusCode != 200 {
+			return nil, newSFHTTPError(req, resp.StatusCode)
+		}
+
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
-		}
-
-		if resp.StatusCode != 200 {
-			return nil, fmt.Errorf("received code %d", resp.StatusCode)
 		}
 
 		// Remove BOM from response

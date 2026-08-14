@@ -49,14 +49,14 @@ func ResolveGTFSAlertEffect(effect int) string {
 func UnzipStaticGTFS(path string, dest string) error {
 	reader, err := zip.OpenReader(path)
 	if err != nil {
-		return fmt.Errorf("failed to open zip reader: %s", err)
+		return fmt.Errorf("open gtfs archive: %w", err)
 	}
 
 	defer reader.Close()
 
 	err = utils.Unzip(reader, dest)
 	if err != nil {
-		return fmt.Errorf("failed to unzip gtfs static: %s", err)
+		return fmt.Errorf("unzip gtfs archive: %w", err)
 	}
 
 	return nil
@@ -69,12 +69,12 @@ func ParseGTFS(path string, location LocationSlug, st StopType, agency string) (
 
 	agencies, err := parseGTFSAgency(agencyFile, location)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse agency.txt: %s", err)
+		return nil, fmt.Errorf("parse %s: %w", agencyFile, err)
 	}
 
 	stops, err := parseGTFSStops(stopsFile, location, st, agency)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse stops.txt: %s", err)
+		return nil, fmt.Errorf("parse %s: %w", stopsFile, err)
 	}
 
 	static := &StaticData{
@@ -143,7 +143,7 @@ func parseGTFSEntity(path string, fn ParseEntityFunc) error {
 		return err
 	}
 
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // read-only handle, nothing buffered to lose
 
 	r := csv.NewReader(f)
 	r.LazyQuotes = true // Fields are often quoted, without this it breaks

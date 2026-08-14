@@ -72,23 +72,31 @@ type Api interface {
 }
 
 // NewDMV builds a client for the DMV Metro Area, backed by WMATA
-func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) *DmvApi {
+func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*DmvApi, error) {
+	if apiKey == "" {
+		return nil, ErrMissingAPIKey
+	}
+
 	return &DmvApi{
 		apiKey:  apiKey,
 		baseUrl: DMV_BASE_URL,
 		log:     log,
 		store:   store,
-	}
+	}, nil
 }
 
 // NewSF builds a client for the San Francisco Bay Area, backed by 511.
 // The now function supplies the clock that arrival times are measured against.
-func NewSF(apiKey string, store *data.TransitDB, log *logger.Logger, now func() time.Time) *SFApi {
+func NewSF(apiKey string, store *data.TransitDB, log *logger.Logger, now func() time.Time) (*SFApi, error) {
+	if apiKey == "" {
+		return nil, ErrMissingAPIKey
+	}
+
 	return &SFApi{
 		apiKey:  apiKey,
 		baseUrl: SF_BASE_URL,
 		log:     log,
 		now:     now,
 		store:   store,
-	}
+	}, nil
 }

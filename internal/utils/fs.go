@@ -67,17 +67,17 @@ func Unzip(rc *zip.ReadCloser, dest string) error {
 	return nil
 }
 
-func unzipFile(f *zip.File, dest string) error {
+func unzipFile(f *zip.File, dest string) (err error) {
 	// Check if file paths are not vulnerable to Zip Slip
 	filePath := filepath.Join(dest, f.Name)
 	if !strings.HasPrefix(filePath, filepath.Clean(dest)+string(os.PathSeparator)) {
-		return fmt.Errorf("invalid file path: %s", filePath)
+		return fmt.Errorf("invalid file path %q", filePath)
 	}
 
 	// Create directories if needed
 	if f.FileInfo().IsDir() {
 		if err := CreateDir(filePath); err != nil {
-			return fmt.Errorf("failed to create subdirectory: %s", err)
+			return fmt.Errorf("create directory: %w", err)
 		}
 
 		return nil
@@ -86,21 +86,26 @@ func unzipFile(f *zip.File, dest string) error {
 	// Create a destination file for unzipped content
 	destFile, err := os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %s", err)
+		return fmt.Errorf("create file: %w", err)
 	}
 
-	defer destFile.Close()
+	// A write is only durable once Close succeeds
+	defer func() {
+		if cerr := destFile.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close file %q: %w", filePath, cerr)
+		}
+	}()
 
 	// Unzip the content of a file and copy it to the destination file
 	zippedFile, err := f.Open()
 	if err != nil {
-		return fmt.Errorf("failed to open zipped file: %s", err)
+		return fmt.Errorf("open file %q: %w", f.Name, err)
 	}
 
 	defer zippedFile.Close()
 
 	if _, err := io.Copy(destFile, zippedFile); err != nil {
-		return fmt.Errorf("failed to copy zipped file content: %s", err)
+		return fmt.Errorf("copy file %q to %q: %w", f.Name, destFile.Name(), err)
 	}
 
 	return nil
