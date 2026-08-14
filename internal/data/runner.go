@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/ismailshak/transit/internal/logger"
@@ -11,7 +12,7 @@ import (
 func CreateMigrationTable(db *sql.DB) error {
 	_, err := db.ExecContext(context.Background(), CREATE_MIGRATIONS_TABLE)
 	if err != nil {
-		return fmt.Errorf("failed to create migrations table: %s", err)
+		return fmt.Errorf("create migrations table: %w", err)
 	}
 
 	return nil
@@ -50,7 +51,7 @@ func RunMigrations(db *sql.DB, log *logger.Logger, rowCount int) error {
 		}
 
 		if changeset.Name != migrationRows[i].Name {
-			return fmt.Errorf("corrupt migrations (out of sync)")
+			return errors.New("corrupt migrations (out of sync)")
 		}
 	}
 
@@ -64,7 +65,7 @@ func GetCurrentMigrations(db *sql.DB, rowCount int) ([]Migration, error) {
 
 	rows, err := db.Query(SELECT_MIGRATIONS)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch database migrations. %s", err)
+		return nil, fmt.Errorf("query migrations: %w", err)
 	}
 
 	defer rows.Close()
@@ -75,7 +76,7 @@ func GetCurrentMigrations(db *sql.DB, rowCount int) ([]Migration, error) {
 		var row Migration
 		err = rows.Scan(&row.ID, &row.Name, &row.MigratedAt)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan migration row. %s", err)
+			return nil, fmt.Errorf("scan migration row: %w", err)
 		}
 
 		migrationRows = append(migrationRows, row)
@@ -87,7 +88,7 @@ func GetCurrentMigrations(db *sql.DB, rowCount int) ([]Migration, error) {
 func run(db *sql.DB, log *logger.Logger, changeset *MigrationChangeset) error {
 	trx, err := db.Begin()
 	if err != nil {
-		return fmt.Errorf("failed to begin database transaction. %s", err)
+		return fmt.Errorf("begin transaction: %w", err)
 	}
 
 	// Defer a rollback in case anything fails.

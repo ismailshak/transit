@@ -4,6 +4,7 @@ linters:
   default: none
   enable:
     - errcheck    # unchecked error return values
+    - errorlint   # %s/%v on errors, type assertions that skip the wrap chain
     - govet       # go vet's suite
     - ineffassign # assignments never read
     - staticcheck # bugs, deprecated API use, simplifications
@@ -13,6 +14,14 @@ linters:
     - noctx       # HTTP requests built without a context.Context
     - unconvert   # redundant type conversions
     - misspell    # typos in comments and strings
+  settings:
+    errcheck:
+      # Read-side closers only since nothing is buffered on a reader, so the error
+      # carries no information and there's no action to take.
+      exclude-functions:
+        - (io.ReadCloser).Close
+        - (*database/sql.Rows).Close
+        - (*archive/zip.ReadCloser).Close
 
 formatters:
   enable:

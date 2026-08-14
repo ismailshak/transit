@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/tui"
-	"github.com/ismailshak/transit/internal/utils"
 	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
@@ -28,21 +28,19 @@ Arguments are considered valid if it can be used to narrow
 the official station names to just 1. If something's too generic,
 try being more specific by adding more characters.
 	`,
-		Args:   cobra.MinimumNArgs(1),
-		PreRun: a.defaultPreRun,
-		Run: func(cmd *cobra.Command, args []string) {
+		Args:    usageArgs(cobra.MinimumNArgs(1)),
+		PreRunE: a.defaultPreRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := a.client()
 			if err != nil {
-				a.Log.Error(err.Error())
-				utils.Exit(utils.EXIT_BAD_CONFIG)
+				return err
 			}
 
 			if watchFlag {
-				a.watchAt(client, args)
-				return
+				return a.watchAt(client, args)
 			}
 
-			a.executeAt(client, args)
+			return a.executeAt(client, args)
 		},
 	}
 
@@ -51,34 +49,47 @@ try being more specific by adding more characters.
 	return atCmd
 }
 
-func (a *App) executeAt(client api.Api, args []string) {
+func (a *App) executeAt(client api.Api, args []string) error {
+	var rendered, resolved int
+
 	// TODO: pull client.GetIDFromArg() out of this so that `Watch` is more performant
 	for _, arg := range args {
 		codes, err := client.GetPredictionInput(arg)
 		if err != nil {
-			// TODO: handle error
-			return
+			return fmt.Errorf("resolve %q: %w", arg, err)
 		}
 		if codes == nil {
 			continue
 		}
 
+		resolved++
+
 		predictions, err := client.FetchPredictions(codes)
-		if err != nil {
-			a.Log.Error(err.Error())
-			utils.Exit(utils.EXIT_BAD_CONFIG)
+		if errors.Is(err, api.ErrNoDepartures) {
+			continue
 		}
 
-		if predictions == nil {
-			continue
+		if err != nil {
+			return fmt.Errorf("fetch predictions for %q: %w", arg, err)
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(predictions)
 		tui.PrintArrivalScreen(client, &destinationLookup, sortedDestinations)
+		rendered++
 	}
+
+	if resolved == 0 {
+		return fmt.Errorf("%w: no station matched %v", errUsage, args)
+	}
+
+	if rendered == 0 {
+		return api.ErrNoDepartures
+	}
+
+	return nil
 }
 
-func (a *App) watchAt(client api.Api, args []string) {
+func (a *App) watchAt(client api.Api, args []string) error {
 	buffer := tui.NewBuffer()
 	interval := time.Second * time.Duration(a.Cfg.Core.WatchInterval)
 	message := tui.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
@@ -93,7 +104,11 @@ func (a *App) watchAt(client api.Api, args []string) {
 		for {
 			buffer.RefreshScreen()
 			_, _ = fmt.Fprintln(a.Out, message)
-			a.executeAt(client, args)
+			// Watch mode reports errors on screen rather than ending the loop
+			if err := a.executeAt(client, args); err != nil && !errors.Is(err, api.ErrNoDepartures) {
+				a.Log.Error(err.Error())
+			}
+
 			time.Sleep(interval)
 		}
 	}()
@@ -102,6 +117,7 @@ func (a *App) watchAt(client api.Api, args []string) {
 	<-cancelChan
 
 	buffer.StopAlternateBuffer()
+	return nil
 }
 
 // Groups predictions by destination (assumes already sorted by minutes).

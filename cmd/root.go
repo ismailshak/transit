@@ -1,12 +1,16 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"time"
 
+	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/logger"
-	"github.com/ismailshak/transit/internal/utils"
+	"github.com/ismailshak/transit/internal/ui"
 	"github.com/ismailshak/transit/internal/version"
+	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -15,22 +19,35 @@ func (a *App) newRootCmd() *cobra.Command {
 	var verboseFlag bool // TODO; turn this into a --level flag or keep as verbose?
 
 	rootCmd := &cobra.Command{
-		Use:   "transit",
-		Short: "Tool for interacting with local transit information",
+		Use:           "transit",
+		Short:         "Tool for interacting with local transit information",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+		// Root takes no positional args, so anything here is an unrecognised
+		// command. Cobra would say the same thing implicitly via legacyArgs;
+		// stating it lets the failure carry errUsage.
+		Args: usageArgs(cobra.NoArgs),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			a.Log = logger.New(verboseFlag)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if versionFlag {
 				version.Execute()
-				utils.Exit(utils.EXIT_SUCCESS)
+				return nil
 			}
 
 			if err := cmd.Help(); err != nil {
-				a.Log.Error(err.Error())
+				return err
 			}
+
+			return nil
 		},
 	}
+
+	// Inherited by every subcommand, so a bad flag is tagged wherever it's parsed.
+	rootCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
+		return fmt.Errorf("%w: %w", errUsage, err)
+	})
 
 	// Global, persistent flags
 	rootCmd.PersistentFlags().StringVarP(&a.configOverride, "config", "c", "", "config file (defaults to $HOME/.config/transit/config.yml)")
@@ -50,13 +67,38 @@ func (a *App) newRootCmd() *cobra.Command {
 	return rootCmd
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	app := &App{Out: os.Stdout, Now: time.Now}
+// Run builds the app, runs the command tree, and returns a process exit code.
+func Run() int {
+	app := &App{Out: os.Stdout, Now: time.Now, Log: logger.New(false)}
 
 	err := app.newRootCmd().Execute()
-	if err != nil {
-		os.Exit(1) // TODO: exit code
+	if err != nil && !errors.Is(err, ui.ErrCancelled) {
+		app.Log.Error(err.Error())
+	}
+
+	return exitCode(err)
+}
+
+// exitCode maps a caught error to one of the documented exit codes.
+func exitCode(err error) int {
+	var httpErr *api.HTTPError
+
+	switch {
+	case err == nil:
+		return 0
+	case errors.Is(err, ui.ErrCancelled):
+		return 0 // Acceptable errors that aren't real errors
+	case errors.Is(err, errUsage),
+		errors.Is(err, api.ErrMissingAPIKey),
+		errors.Is(err, ui.ErrNoSelection),
+		errors.Is(err, ui.ErrNoInput),
+		errors.Is(err, config.ErrInvalid):
+		return 2 // Usage or configuration error
+	case errors.As(err, &httpErr):
+		return 3 // Network or upstream error
+	case errors.Is(err, api.ErrNoDepartures):
+		return 4 // Request was successful but there's nothing to show
+	default:
+		return 1 // Catch-all, internal error
 	}
 }

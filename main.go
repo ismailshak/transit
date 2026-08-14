@@ -1,7 +1,12 @@
 package main
 
-import "github.com/ismailshak/transit/cmd"
+import (
+	"os"
+
+	"github.com/ismailshak/transit/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	exit := cmd.Run()
+	os.Exit(exit)
 }

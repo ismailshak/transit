@@ -1,8 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/ismailshak/transit/internal/tui"
-	"github.com/ismailshak/transit/internal/utils"
 	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
@@ -12,27 +13,27 @@ func (a *App) newIncidentsCmd() *cobra.Command {
 		Use:     "incidents",
 		Aliases: []string{"inc"},
 		Short:   "Display reported disruptions or delays",
-		Args:    cobra.NoArgs,
-		PreRun:  a.defaultPreRun,
-		Run: func(cmd *cobra.Command, args []string) {
+		Args:    usageArgs(cobra.NoArgs),
+		PreRunE: a.defaultPreRun,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client, err := a.client()
 			if err != nil {
-				a.Log.Error(err.Error())
-				utils.Exit(utils.EXIT_BAD_CONFIG)
+				return err
 			}
 
-			a.executeIncidents(client)
+			return a.executeIncidents(client)
 		},
 	}
 
 	return incidentsCmd
 }
 
-func (a *App) executeIncidents(client api.Api) {
+func (a *App) executeIncidents(client api.Api) error {
 	incidents, err := client.FetchIncidents()
 	if err != nil {
-		a.Log.Error(err.Error())
+		return fmt.Errorf("fetch incidents: %w", err)
 	}
 
 	tui.PrintIncidents(client, incidents)
+	return nil
 }
