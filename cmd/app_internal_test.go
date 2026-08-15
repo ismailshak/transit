@@ -15,16 +15,23 @@ type testApp struct {
 	home string
 }
 
-func newTestApp(t *testing.T, home string) *testApp {
+func newTestApp(t *testing.T) *testApp {
 	t.Helper()
 
 	out := &bytes.Buffer{}
-
-	return &testApp{
+	app := &testApp{
 		App:  &App{Out: out, Now: time.Now, Log: logger.New(false)},
 		out:  out,
-		home: home,
+		home: testHome(t),
 	}
+
+	t.Cleanup(func() {
+		if err := app.close(); err != nil {
+			t.Logf("failed to close store: %s", err)
+		}
+	})
+
+	return app
 }
 
 func (a *testApp) run(args ...string) int {
@@ -47,7 +54,7 @@ func testHome(t *testing.T) string {
 
 func TestAppRun(t *testing.T) {
 	t.Run("only the config hook runs for a config-only command", func(t *testing.T) {
-		app := newTestApp(t, testHome(t))
+		app := newTestApp(t)
 
 		code := app.run("config", "path")
 		if code != 0 {
@@ -69,7 +76,7 @@ func TestAppRun(t *testing.T) {
 	})
 
 	t.Run("both hooks run when the command needs the store", func(t *testing.T) {
-		app := newTestApp(t, testHome(t))
+		app := newTestApp(t)
 
 		code := app.run("config", "set", "core.location", "dmv", "--verbose")
 		if code != 0 {
@@ -93,7 +100,7 @@ func TestAppRun(t *testing.T) {
 
 func TestAppClose(t *testing.T) {
 	t.Run("releases an open store", func(t *testing.T) {
-		app := newTestApp(t, testHome(t))
+		app := newTestApp(t)
 
 		if code := app.run("config", "set", "core.location", "dmv"); code != 0 {
 			t.Fatalf("expected exit code 0 but got %d (output %q)", code, app.out)
@@ -113,7 +120,7 @@ func TestAppClose(t *testing.T) {
 	})
 
 	t.Run("tolerates a store that was never opened", func(t *testing.T) {
-		app := newTestApp(t, testHome(t))
+		app := newTestApp(t)
 
 		if code := app.run("config", "path"); code != 0 {
 			t.Fatalf("expected exit code 0 but got %d (output %q)", code, app.out)
