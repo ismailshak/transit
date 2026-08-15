@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"errors"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -11,8 +12,8 @@ import (
 
 // Select renders a full-screen list picker built from choices and blocks
 // until the user picks one or backs out. On success it returns the matching
-// Choice.Key. On cancel (Esc, Ctrl+C) it returns ErrCancelled. On confirming
-// with nothing matched returns ErrNoSelection.
+// Choice.Key. On cancel (Esc, Ctrl+C, or a cancelled ctx) it returns
+// ErrCancelled. On confirming with nothing matched returns ErrNoSelection.
 func Select(ctx context.Context, title string, choices []Choice) (string, error) {
 	listItems := convertListItems(choices)
 	keys := &delegateKeyMap{
@@ -31,6 +32,10 @@ func Select(ctx context.Context, title string, choices []Choice) (string, error)
 		tea.WithContext(ctx),
 		tea.WithAltScreen(),
 	).Run()
+
+	if errors.Is(err, context.Canceled) {
+		return "", ErrCancelled
+	}
 
 	if err != nil {
 		return "", err

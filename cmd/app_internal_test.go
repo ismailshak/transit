@@ -11,6 +11,7 @@ import (
 
 type testApp struct {
 	*App
+	t    *testing.T
 	out  *bytes.Buffer
 	home string
 }
@@ -21,6 +22,7 @@ func newTestApp(t *testing.T) *testApp {
 	out := &bytes.Buffer{}
 	app := &testApp{
 		App:  &App{Out: out, Now: time.Now, Log: logger.New(false)},
+		t:    t,
 		out:  out,
 		home: testHome(t),
 	}
@@ -35,7 +37,8 @@ func newTestApp(t *testing.T) *testApp {
 }
 
 func (a *testApp) run(args ...string) int {
-	return a.App.run(args)
+	// Context from t so a command that hangs fails the run instead of stalling
+	return a.App.run(a.t.Context(), args)
 }
 
 // testHome returns a home directory the test owns. Nothing here calls t.Parallel

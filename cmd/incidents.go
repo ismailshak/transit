@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ismailshak/transit/internal/tui"
@@ -21,15 +22,15 @@ func (a *App) newIncidentsCmd() *cobra.Command {
 				return err
 			}
 
-			return a.executeIncidents(client)
+			return a.executeIncidents(cmd.Context(), client)
 		},
 	}
 
 	return incidentsCmd
 }
 
-func (a *App) executeIncidents(client api.Api) error {
-	incidents, err := client.FetchIncidents()
+func (a *App) executeIncidents(ctx context.Context, client api.Api) error {
+	incidents, err := client.FetchIncidents(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch incidents: %w", err)
 	}

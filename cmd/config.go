@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -63,7 +64,7 @@ func (a *App) newConfigSetCmd() *cobra.Command {
 		Args:                  usageArgs(cobra.ExactArgs(2)),
 		PreRunE:               a.defaultPreRun,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := a.executeSet(args[0], args[1])
+			err := a.executeSet(cmd.Context(), args[0], args[1])
 			if err != nil {
 				return err
 			}
@@ -104,8 +105,8 @@ func (a *App) executeGet(key string) string {
 }
 
 // executeSet backs `config set`. Validates the value before writing it.
-func (a *App) executeSet(key, value string) error {
-	err := a.validateKey(key, value)
+func (a *App) executeSet(ctx context.Context, key, value string) error {
+	err := a.validateKey(ctx, key, value)
 	if err != nil {
 		return err
 	}
@@ -119,10 +120,10 @@ func (a *App) executePath() error {
 	return err
 }
 
-func (a *App) validateKey(key, value string) error {
+func (a *App) validateKey(ctx context.Context, key, value string) error {
 	switch key {
 	case "core.location":
-		return a.validateLocation(value)
+		return a.validateLocation(ctx, value)
 	case "core.watch_interval":
 		return a.validateWatchInterval(value)
 	}
@@ -130,8 +131,8 @@ func (a *App) validateKey(key, value string) error {
 	return nil
 }
 
-func (a *App) validateLocation(location string) error {
-	l, err := a.Store.GetLocation(data.LocationSlug(location))
+func (a *App) validateLocation(ctx context.Context, location string) error {
+	l, err := a.Store.GetLocation(ctx, data.LocationSlug(location))
 	if err != nil {
 		return fmt.Errorf("get location data: %w", err)
 	}

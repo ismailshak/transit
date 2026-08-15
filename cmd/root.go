@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
@@ -78,7 +81,15 @@ func Run() int {
 		}
 	}()
 
-	return app.run(os.Args[1:])
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	return app.run(ctx, os.Args[1:])
+}
+
+// cancelled reports whether err is the user backing out from a prompt or from a signal.
+func cancelled(err error) bool {
+	return errors.Is(err, ui.ErrCancelled) || errors.Is(err, context.Canceled)
 }
 
 // exitCode maps a caught error to one of the documented exit codes.
@@ -88,7 +99,7 @@ func exitCode(err error) int {
 	switch {
 	case err == nil:
 		return 0
-	case errors.Is(err, ui.ErrCancelled):
+	case cancelled(err):
 		return 0 // Acceptable errors that aren't real errors
 	case errors.Is(err, errUsage),
 		errors.Is(err, api.ErrMissingAPIKey),

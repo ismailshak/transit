@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -38,7 +39,7 @@ var ALL_STOPS = []*data.Stop{
 	{StopID: "G", Name: "G Stop", Location: TEST_LOCATION, Latitude: "34.12307", Longitude: "-11.12307", ParentID: "C", Type: data.TrainStation},
 }
 
-func (t *TestApi) FetchStaticData() (*data.StaticData, error) {
+func (t *TestApi) FetchStaticData(_ context.Context) (*data.StaticData, error) {
 	d := &data.StaticData{
 		Stops: ALL_STOPS,
 	}
@@ -46,7 +47,7 @@ func (t *TestApi) FetchStaticData() (*data.StaticData, error) {
 	return d, nil
 }
 
-func (t *TestApi) FetchPredictions(input []api.PredictionInput) ([]api.Prediction, error) {
+func (t *TestApi) FetchPredictions(_ context.Context, input []api.PredictionInput) ([]api.Prediction, error) {
 	p := []api.Prediction{
 		{Min: "1", LocationName: "Stn 1", Destination: "Dest A", DestinationName: "Destination A", Line: "Central"},
 		{Min: "3", LocationName: "Stn 1", Destination: "NO PASSENGERS", DestinationName: "Destination A", Line: "Central"},
@@ -59,7 +60,7 @@ func (t *TestApi) FetchPredictions(input []api.PredictionInput) ([]api.Predictio
 	return p, nil
 }
 
-func (t *TestApi) FetchIncidents() ([]api.Incident, error) {
+func (t *TestApi) FetchIncidents(_ context.Context) ([]api.Incident, error) {
 	i := []api.Incident{
 		{Description: "Trains delayed by 3 hours", DateUpdated: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), Affected: []string{"Outer"}, Type: "Delay"},
 		{Description: "All trains are broken", DateUpdated: time.Date(2009, time.December, 11, 23, 0, 0, 0, time.UTC), Affected: []string{"Central"}, Type: "Alert"},
@@ -68,7 +69,7 @@ func (t *TestApi) FetchIncidents() ([]api.Incident, error) {
 	return i, nil
 }
 
-func (t *TestApi) GetPredictionInput(arg string) ([]api.PredictionInput, error) {
+func (t *TestApi) GetPredictionInput(_ context.Context, arg string) ([]api.PredictionInput, error) {
 	matches := utils.FuzzyFindFrom(arg, data.SearchableStops(ALL_STOPS))
 
 	ids := make([]api.PredictionInput, 0, matches.Len())

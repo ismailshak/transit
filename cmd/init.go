@@ -21,7 +21,8 @@ Adds missing config properties and downloads static data for the chosen location
 		Args:    usageArgs(cobra.NoArgs),
 		PreRunE: a.defaultPreRun,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := a.executeInitConfig(cmd.Context()); err != nil {
+			ctx := cmd.Context()
+			if err := a.executeInitConfig(ctx); err != nil {
 				return fmt.Errorf("collect information: %w", err)
 			}
 
@@ -30,7 +31,7 @@ Adds missing config properties and downloads static data for the chosen location
 				return err
 			}
 
-			if err := a.executeInitData(cmd.Context(), client, data.LocationSlug(a.Cfg.Core.Location)); err != nil {
+			if err := a.executeInitData(ctx, client, data.LocationSlug(a.Cfg.Core.Location)); err != nil {
 				return fmt.Errorf("initialize data: %w", err)
 			}
 
@@ -56,7 +57,7 @@ func (a *App) getConfiguredLocation(ctx context.Context) (string, error) {
 		return location, nil
 	}
 
-	locations, err := a.Store.GetAllLocations()
+	locations, err := a.Store.GetAllLocations(ctx)
 	if err != nil {
 		return "", fmt.Errorf("fetch locations: %w", err)
 	}
@@ -79,7 +80,7 @@ func (a *App) getConfiguredLocation(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	err = a.executeSet("core.location", selection)
+	err = a.executeSet(ctx, "core.location", selection)
 	if err != nil {
 		return "", fmt.Errorf("set location: %w", err)
 	}
@@ -110,7 +111,7 @@ func (a *App) confirmConfiguredKey(ctx context.Context, location string) error {
 		return err
 	}
 
-	err = a.executeSet(keyPath, key)
+	err = a.executeSet(ctx, keyPath, key)
 	if err != nil {
 		return fmt.Errorf("set api key: %w", err)
 	}
@@ -136,7 +137,7 @@ func (a *App) executeInitConfig(ctx context.Context) error {
 }
 
 func (a *App) executeInitData(ctx context.Context, client api.Api, location data.LocationSlug) error {
-	count, err := a.Store.CountStopsByLocation(location)
+	count, err := a.Store.CountStopsByLocation(ctx, location)
 	if err != nil {
 		return fmt.Errorf("count stops: %w", err)
 	}
@@ -151,9 +152,9 @@ func (a *App) executeInitData(ctx context.Context, client api.Api, location data
 		SpinMessage:    "Fetching data...",
 		ErrorMessage:   "Failed to fetch data",
 		SuccessMessage: "Data fetched",
-		CallbackFn: func() error {
+		CallbackFn: func(ctx context.Context) error {
 			var fetchErr error
-			d, fetchErr = client.FetchStaticData()
+			d, fetchErr = client.FetchStaticData(ctx)
 			return fetchErr
 		},
 	})
@@ -171,12 +172,12 @@ func (a *App) executeInitData(ctx context.Context, client api.Api, location data
 		SpinMessage:    "Saving data...",
 		ErrorMessage:   "Failed to save data",
 		SuccessMessage: "Data saved",
-		CallbackFn: func() error {
-			if insertErr := a.Store.InsertAgencies(d.Agencies); insertErr != nil {
+		CallbackFn: func(ctx context.Context) error {
+			if insertErr := a.Store.InsertAgencies(ctx, d.Agencies); insertErr != nil {
 				return insertErr
 			}
 
-			if insertErr := a.Store.InsertStops(d.Stops); insertErr != nil {
+			if insertErr := a.Store.InsertStops(ctx, d.Stops); insertErr != nil {
 				return insertErr
 			}
 
