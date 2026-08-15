@@ -27,7 +27,7 @@ func newTestApp(t *testing.T) *testApp {
 
 	t.Cleanup(func() {
 		if err := app.close(); err != nil {
-			t.Logf("failed to close store: %s", err)
+			t.Errorf("expected no error but got %v, the store is still open", err)
 		}
 	})
 

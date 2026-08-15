@@ -70,7 +70,13 @@ func (a *App) newRootCmd() *cobra.Command {
 // Run builds the app, runs the command tree, and returns a process exit code.
 func Run() int {
 	app := &App{Out: os.Stdout, Now: time.Now, Log: logger.New(false)}
-	defer app.close() //nolint:errcheck // nothing useful to do with it on the way out
+	// Too late to change the exit code, but logging to make debugging this scenario
+	// easier
+	defer func() {
+		if err := app.close(); err != nil {
+			app.Log.Warn(fmt.Sprintf("Failed to close the database: %s", err))
+		}
+	}()
 
 	return app.run(os.Args[1:])
 }
