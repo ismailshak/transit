@@ -31,6 +31,11 @@ func NewDB(path string, log *logger.Logger) (*TransitDB, error) {
 	return db, nil
 }
 
+// Close closes the database connection, once active queries have finished.
+func (t *TransitDB) Close() error {
+	return t.DB.Close()
+}
+
 // Keep migrations up-to-date, and handle first time migration run
 func (t *TransitDB) SyncMigrations() error {
 	err := CreateMigrationTable(t.DB)

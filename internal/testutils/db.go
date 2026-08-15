@@ -26,7 +26,10 @@ func BlankDB(t *testing.T) *data.TransitDB {
 	}
 
 	t.Cleanup(func() {
-		db.DB.Close()
+		err := db.Close()
+		if err != nil {
+			t.Errorf("expected no error but got %v, the temp database is still open", err)
+		}
 	})
 
 	return db
@@ -48,7 +51,10 @@ func MigratedDB(t *testing.T) *data.TransitDB {
 	}
 
 	t.Cleanup(func() {
-		db.DB.Close()
+		err := db.Close()
+		if err != nil {
+			t.Errorf("expected no error but got %v, the temp database is still open", err)
+		}
 	})
 
 	return db
