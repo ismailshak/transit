@@ -46,7 +46,7 @@ func MigratedDB(t *testing.T) *data.TransitDB {
 		t.Fatal("Failed to connect to test database", err)
 	}
 
-	if err = db.SyncMigrations(); err != nil {
+	if err = db.SyncMigrations(t.Context()); err != nil {
 		t.Fatal("Failed to migrate test database", err)
 	}
 

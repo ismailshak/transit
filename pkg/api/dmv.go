@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,6 +26,7 @@ const (
 type DmvApi struct {
 	apiKey  string
 	baseUrl string
+	http    *http.Client
 	log     *logger.Logger
 	store   *data.TransitDB
 }
@@ -46,13 +48,13 @@ type WMATA_IncidentsResponse struct {
 	Incidents []WMATA_Incident
 }
 
-func (dmv *DmvApi) BuildRequest(method string, route ...string) (*http.Request, error) {
+func (dmv *DmvApi) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
 	parts := make([]string, 0, len(route)+1)
 	parts = append(parts, dmv.baseUrl)
 	parts = append(parts, route...)
 	url := strings.Join(parts, "/")
 
-	req, err := http.NewRequest(method, url, nil)
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -62,14 +64,13 @@ func (dmv *DmvApi) BuildRequest(method string, route ...string) (*http.Request, 
 	return req, nil
 }
 
-func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
-	req, err := dmv.BuildRequest(http.MethodGet, "gtfs/rail-gtfs-static.zip")
+func (dmv *DmvApi) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
+	req, err := dmv.BuildRequest(ctx, http.MethodGet, "gtfs/rail-gtfs-static.zip")
 	if err != nil {
 		return nil, err
 	}
 
-	client := http.Client{}
-	resp, err := client.Do(req)
+	resp, err := dmv.http.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -127,15 +128,18 @@ func (dmv *DmvApi) FetchStaticData() (*data.StaticData, error) {
 	return data.ParseGTFS(feed, data.DMVSlug, data.TrainStation, "MET")
 }
 
-func (dmv *DmvApi) FetchPredictions(input []PredictionInput) ([]Prediction, error) {
+func (dmv *DmvApi) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
 	codes := make([]string, 0, len(input))
 	for _, i := range input {
 		codes = append(codes, i.StopID)
 	}
 
-	client := http.Client{}
-	req, _ := dmv.BuildRequest(http.MethodGet, "StationPrediction.svc/json/GetPrediction", strings.Join(codes, ","))
-	resp, err := client.Do(req)
+	req, err := dmv.BuildRequest(ctx, http.MethodGet, "StationPrediction.svc/json/GetPrediction", strings.Join(codes, ","))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := dmv.http.Do(req)
 
 	if err != nil {
 		return nil, err
@@ -168,10 +172,13 @@ func (dmv *DmvApi) FetchPredictions(input []PredictionInput) ([]Prediction, erro
 	return predictions.Trains, nil
 }
 
-func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
-	client := http.Client{}
-	req, _ := dmv.BuildRequest(http.MethodGet, "Incidents.svc/json/Incidents")
-	resp, err := client.Do(req)
+func (dmv *DmvApi) FetchIncidents(ctx context.Context) ([]Incident, error) {
+	req, err := dmv.BuildRequest(ctx, http.MethodGet, "Incidents.svc/json/Incidents")
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := dmv.http.Do(req)
 
 	if err != nil {
 		return nil, err
@@ -213,8 +220,8 @@ func (dmv *DmvApi) FetchIncidents() ([]Incident, error) {
 	return incidents, nil
 }
 
-func (dmv *DmvApi) GetPredictionInput(arg string) ([]PredictionInput, error) {
-	stops, err := dmv.store.GetStopsByLocation(data.DMVSlug, true)
+func (dmv *DmvApi) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
+	stops, err := dmv.store.GetStopsByLocation(ctx, data.DMVSlug, true)
 	if err != nil {
 		return nil, err
 	}

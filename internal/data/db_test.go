@@ -1,6 +1,8 @@
 package data_test
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/ismailshak/transit/internal/data"
@@ -21,7 +23,7 @@ var stopsFixture = []*data.Stop{
 
 func TestMigrationCompletes(t *testing.T) {
 	db := testutils.BlankDB(t)
-	err := db.SyncMigrations()
+	err := db.SyncMigrations(t.Context())
 
 	if err != nil {
 		t.Errorf("Failed to sync migrations. %s", err)
@@ -44,7 +46,7 @@ func TestGetValidLocation(t *testing.T) {
 		t.Fatalf("Failed to insert location fixture data: %s", err)
 	}
 
-	locationRow, err := db.GetLocation(locationFixture.Slug)
+	locationRow, err := db.GetLocation(t.Context(), locationFixture.Slug)
 
 	if err != nil {
 		t.Fatalf("Failed to get location from db: %s", err)
@@ -75,13 +77,91 @@ func TestGetInvalidLocation(t *testing.T) {
 		t.Fatalf("Failed to insert location fixture data: %s", err)
 	}
 
-	locationRow, err := db.GetLocation("invalid")
+	locationRow, err := db.GetLocation(t.Context(), "invalid")
 
 	if err != nil {
 		t.Fatalf("Failed to get location from db: %s", err)
 	}
 
 	assert.Nil(t, locationRow)
+}
+
+func TestGetLocationSeparatesMissingFromFailed(t *testing.T) {
+	t.Parallel()
+
+	t.Run("a slug with no row", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutils.MigratedDB(t)
+
+		location, err := db.GetLocation(t.Context(), "nowhere")
+		if err != nil {
+			t.Fatalf("expected no error but got %v", err)
+		}
+
+		if location != nil {
+			t.Errorf("expected no location but got %+v", location)
+		}
+	})
+
+	t.Run("a query that fails", func(t *testing.T) {
+		t.Parallel()
+
+		db := testutils.MigratedDB(t)
+		if err := db.Close(); err != nil {
+			t.Fatalf("expected no error but got %v", err)
+		}
+
+		location, err := db.GetLocation(t.Context(), locationFixture.Slug)
+		if err == nil {
+			t.Fatal("expected an error but got nil, a closed database reads as an empty one")
+		}
+
+		if location != nil {
+			t.Errorf("expected no location but got %+v", location)
+		}
+	})
+}
+
+func TestCancelledContextReachesTheDriver(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		call func(ctx context.Context, db *data.TransitDB) error
+	}{
+		"many rows": {
+			call: func(ctx context.Context, db *data.TransitDB) error {
+				_, err := db.GetAllLocations(ctx)
+				return err
+			},
+		},
+		"one row": {
+			call: func(ctx context.Context, db *data.TransitDB) error {
+				_, err := db.GetLocation(ctx, locationFixture.Slug)
+				return err
+			},
+		},
+		"transaction": {
+			call: func(ctx context.Context, db *data.TransitDB) error {
+				return db.InsertStops(ctx, stopsFixture)
+			},
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			db := testutils.MigratedDB(t)
+
+			ctx, cancel := context.WithCancel(t.Context())
+			cancel()
+
+			if err := tc.call(ctx, db); !errors.Is(err, context.Canceled) {
+				t.Errorf("expected context.Canceled but got %v, the ctx never reached the driver", err)
+			}
+		})
+	}
 }
 
 func TestGetStopsByLocationExcludesParent(t *testing.T) {
@@ -107,7 +187,7 @@ func TestGetStopsByLocationExcludesParent(t *testing.T) {
 		}
 	}
 
-	stops, err := db.GetStopsByLocation(testLocation, true)
+	stops, err := db.GetStopsByLocation(t.Context(), testLocation, true)
 	if err != nil {
 		t.Fatalf("GetStopsByLocation() returned an error: %s", err)
 	}
@@ -153,7 +233,7 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 		}
 	}
 
-	stops, err := db.GetStopsByLocation(testLocation, false)
+	stops, err := db.GetStopsByLocation(t.Context(), testLocation, false)
 	if err != nil {
 		t.Fatalf("GetStopsByLocation() returned an error: %s", err)
 	}
@@ -183,7 +263,7 @@ func TestInsertManyStops(t *testing.T) {
 	t.Parallel()
 
 	db := testutils.MigratedDB(t)
-	if err := db.InsertStops(stopsFixture); err != nil {
+	if err := db.InsertStops(t.Context(), stopsFixture); err != nil {
 		t.Fatalf("InsertStops() returned an error: %s", err)
 	}
 

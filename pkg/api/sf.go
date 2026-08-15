@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +21,7 @@ import (
 type SFApi struct {
 	apiKey  string
 	baseUrl string
+	http    *http.Client
 	log     *logger.Logger
 	now     func() time.Time
 	store   *data.TransitDB
@@ -110,13 +112,13 @@ func newSFHTTPError(req *http.Request, statusCode int) *HTTPError {
 
 }
 
-func (sf *SFApi) BuildRequest(method string, route ...string) (*http.Request, error) {
+func (sf *SFApi) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
 	parts := make([]string, 0, len(route)+1)
 	parts = append(parts, sf.baseUrl)
 	parts = append(parts, route...)
 	url := strings.Join(parts, "/")
 
-	req, err := http.NewRequest(method, url, nil)
+	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +126,8 @@ func (sf *SFApi) BuildRequest(method string, route ...string) (*http.Request, er
 	return req, nil
 }
 
-func (sf *SFApi) fetchStopsForAgency(agency *data.Agency) ([]*data.Stop, error) {
-	req, err := sf.BuildRequest(http.MethodGet, "transit", "stopplaces")
+func (sf *SFApi) fetchStopsForAgency(ctx context.Context, agency *data.Agency) ([]*data.Stop, error) {
+	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "stopplaces")
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +138,7 @@ func (sf *SFApi) fetchStopsForAgency(agency *data.Agency) ([]*data.Stop, error) 
 	q.Add("format", "json")
 	req.URL.RawQuery = q.Encode()
 
-	client := http.Client{}
-	resp, err := client.Do(req)
+	resp, err := sf.http.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +195,7 @@ func (sf *SFApi) fetchStopsForAgency(agency *data.Agency) ([]*data.Stop, error) 
 	return stops, nil
 }
 
-func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
+func (sf *SFApi) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
 	bart := &data.Agency{
 		AgencyID: "BA",
 		Language: "en",
@@ -203,7 +204,7 @@ func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
 		Timezone: "America/Los_Angeles",
 	}
 
-	bartStops, err := sf.fetchStopsForAgency(bart)
+	bartStops, err := sf.fetchStopsForAgency(ctx, bart)
 	if err != nil {
 		return nil, fmt.Errorf("fetch BART stops: %w", err)
 	}
@@ -216,7 +217,7 @@ func (sf *SFApi) FetchStaticData() (*data.StaticData, error) {
 		Timezone: "America/Los_Angeles",
 	}
 
-	calStops, err := sf.fetchStopsForAgency(cal)
+	calStops, err := sf.fetchStopsForAgency(ctx, cal)
 	if err != nil {
 		return nil, fmt.Errorf("fetch Caltrain stops: %w", err)
 	}
@@ -253,8 +254,8 @@ func (sf *SFApi) formatLine(line string) string {
 	}
 }
 
-func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
-	req, err := sf.BuildRequest(http.MethodGet, "transit", "StopMonitoring")
+func (sf *SFApi) fetchPrediction(ctx context.Context, in PredictionInput) ([]Prediction, error) {
+	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "StopMonitoring")
 	if err != nil {
 		return nil, err
 	}
@@ -266,8 +267,7 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 	q.Add("format", "json")
 	req.URL.RawQuery = q.Encode()
 
-	client := http.Client{}
-	resp, err := client.Do(req)
+	resp, err := sf.http.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -337,11 +337,11 @@ func (sf *SFApi) fetchPrediction(in PredictionInput) ([]Prediction, error) {
 	return predictions, nil
 }
 
-func (sf *SFApi) FetchPredictions(input []PredictionInput) ([]Prediction, error) {
+func (sf *SFApi) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
 	predictions := make([]Prediction, 0)
 
 	for _, in := range input {
-		p, err := sf.fetchPrediction(in)
+		p, err := sf.fetchPrediction(ctx, in)
 		if errors.Is(err, ErrNoDepartures) {
 			continue
 		}
@@ -360,8 +360,8 @@ func (sf *SFApi) FetchPredictions(input []PredictionInput) ([]Prediction, error)
 	return predictions, nil
 }
 
-func (sf *SFApi) FetchIncidents() ([]Incident, error) {
-	agencies, err := sf.store.GetLocationAgencies(data.SFSlug)
+func (sf *SFApi) FetchIncidents(ctx context.Context) ([]Incident, error) {
+	agencies, err := sf.store.GetLocationAgencies(ctx, data.SFSlug)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +372,7 @@ func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 
 	// TODO surely there's a way to fetch multiple agencies at once
 	for _, agency := range agencies {
-		req, err := sf.BuildRequest(http.MethodGet, "transit", "servicealerts")
+		req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "servicealerts")
 		if err != nil {
 			return nil, err
 		}
@@ -383,8 +383,7 @@ func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 		q.Add("format", "json")
 		req.URL.RawQuery = q.Encode()
 
-		client := http.Client{}
-		resp, err := client.Do(req)
+		resp, err := sf.http.Do(req)
 		if err != nil {
 			return nil, err
 		}
@@ -446,8 +445,8 @@ func (sf *SFApi) FetchIncidents() ([]Incident, error) {
 	return incidents, nil
 }
 
-func (sf *SFApi) GetPredictionInput(arg string) ([]PredictionInput, error) {
-	stops, err := sf.store.GetStopsByLocation(data.SFSlug, true)
+func (sf *SFApi) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
+	stops, err := sf.store.GetStopsByLocation(ctx, data.SFSlug, true)
 	if err != nil {
 		return nil, err
 	}

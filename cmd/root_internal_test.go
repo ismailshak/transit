@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/ismailshak/transit/internal/config"
@@ -25,6 +27,15 @@ func TestExitCode(t *testing.T) {
 		"cancelled prompt": {
 			// cmd/init.go wraps whatever executeInitConfig returns
 			err:  fmt.Errorf("collect information: %w", ui.ErrCancelled),
+			want: 0,
+		},
+		"cancelled request": {
+			err: fmt.Errorf("resolve %q: %w", "courth",
+				&url.Error{Op: "Get", URL: "https://api.wmata.com", Err: context.Canceled}),
+			want: 0,
+		},
+		"cancelled watch": {
+			err:  context.Canceled,
 			want: 0,
 		},
 		"unknown flag": {

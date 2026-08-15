@@ -1,12 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"os"
-	"os/signal"
 	"sort"
-	"syscall"
 	"time"
 
 	"github.com/ismailshak/transit/internal/tui"
@@ -36,11 +34,13 @@ try being more specific by adding more characters.
 				return err
 			}
 
+			ctx := cmd.Context()
+
 			if watchFlag {
-				return a.watchAt(client, args)
+				return a.watchAt(ctx, client, args)
 			}
 
-			return a.executeAt(client, args)
+			return a.executeAt(ctx, client, args)
 		},
 	}
 
@@ -49,12 +49,12 @@ try being more specific by adding more characters.
 	return atCmd
 }
 
-func (a *App) executeAt(client api.Api, args []string) error {
+func (a *App) executeAt(ctx context.Context, client api.Api, args []string) error {
 	var rendered, resolved int
 
-	// TODO: pull client.GetIDFromArg() out of this so that `Watch` is more performant
+	// TODO: pull client.GetPredictionInput() out of this so that `Watch` is more performant
 	for _, arg := range args {
-		codes, err := client.GetPredictionInput(arg)
+		codes, err := client.GetPredictionInput(ctx, arg)
 		if err != nil {
 			return fmt.Errorf("resolve %q: %w", arg, err)
 		}
@@ -64,7 +64,7 @@ func (a *App) executeAt(client api.Api, args []string) error {
 
 		resolved++
 
-		predictions, err := client.FetchPredictions(codes)
+		predictions, err := client.FetchPredictions(ctx, codes)
 		if errors.Is(err, api.ErrNoDepartures) {
 			continue
 		}
@@ -89,14 +89,10 @@ func (a *App) executeAt(client api.Api, args []string) error {
 	return nil
 }
 
-func (a *App) watchAt(client api.Api, args []string) error {
+func (a *App) watchAt(ctx context.Context, client api.Api, args []string) error {
 	buffer := tui.NewBuffer()
 	interval := time.Second * time.Duration(a.Cfg.Core.WatchInterval)
 	message := tui.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
-	cancelChan := make(chan os.Signal, 1)
-
-	// catch SIGTERM or SIGINT
-	signal.Notify(cancelChan, syscall.SIGTERM, syscall.SIGINT)
 
 	buffer.StartAlternateBuffer()
 
@@ -105,7 +101,7 @@ func (a *App) watchAt(client api.Api, args []string) error {
 			buffer.RefreshScreen()
 			_, _ = fmt.Fprintln(a.Out, message)
 			// Watch mode reports errors on screen rather than ending the loop
-			if err := a.executeAt(client, args); err != nil && !errors.Is(err, api.ErrNoDepartures) {
+			if err := a.executeAt(ctx, client, args); err != nil && !errors.Is(err, api.ErrNoDepartures) && !cancelled(err) {
 				a.Log.Error(err.Error())
 			}
 
@@ -114,10 +110,12 @@ func (a *App) watchAt(client api.Api, args []string) error {
 	}()
 
 	// blocking expression
-	<-cancelChan
+	<-ctx.Done()
 
 	buffer.StopAlternateBuffer()
-	return nil
+
+	// Return cancelled context so that the correct exit code is returned
+	return ctx.Err()
 }
 
 // Groups predictions by destination (assumes already sorted by minutes).

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -10,8 +11,8 @@ import (
 )
 
 // Password renders a single-line masked input and blocks until the user
-// submits or backs out. On cancel (Esc, Ctrl+C) returns ErrCancelled. On
-// submitting with nothing typed returns ErrNoInput.
+// submits or backs out. On cancel (Esc, Ctrl+C, or a cancelled ctx) returns
+// ErrCancelled. On submitting with nothing typed returns ErrNoInput.
 func Password(ctx context.Context, title string) (string, error) {
 	ti := textinput.New()
 	ti.Placeholder = ""
@@ -29,6 +30,11 @@ func Password(ctx context.Context, title string) (string, error) {
 
 	program := tea.NewProgram(prompt, tea.WithContext(ctx))
 	m, err := program.Run()
+
+	if errors.Is(err, context.Canceled) {
+		return "", ErrCancelled
+	}
+
 	if err != nil {
 		return "", err
 	}

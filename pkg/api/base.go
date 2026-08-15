@@ -5,6 +5,8 @@
 package api
 
 import (
+	"context"
+	"net/http"
 	"time"
 
 	"github.com/ismailshak/transit/internal/data"
@@ -12,8 +14,9 @@ import (
 )
 
 const (
-	DMV_BASE_URL = "https://api.wmata.com"
-	SF_BASE_URL  = "http://api.511.org"
+	dmvBaseURL  = "https://api.wmata.com"
+	sfBaseURL   = "http://api.511.org"
+	httpTimeout = 15 * time.Second
 )
 
 // Data required to make a prediction request
@@ -57,13 +60,13 @@ type Incident struct {
 // Base interface that defines what each location client api must implement
 type Api interface {
 	// Fetches all required static data. Used to hydrate database
-	FetchStaticData() (*data.StaticData, error)
+	FetchStaticData(ctx context.Context) (*data.StaticData, error)
 	// Fetches arrival information for list of location unique identifiers
-	FetchPredictions(input []PredictionInput) ([]Prediction, error)
+	FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error)
 	// Fetch all incidents reported by the agency for a location
-	FetchIncidents() ([]Incident, error)
+	FetchIncidents(ctx context.Context) ([]Incident, error)
 	// Given user input for a location, returns the formatted input required to make a prediction request
-	GetPredictionInput(arg string) ([]PredictionInput, error)
+	GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error)
 	// Given a line name or abbreviation, return colors that represents it.
 	// (bg, fg) tuple returned
 	GetLineColor(stop string) (string, string)
@@ -79,7 +82,8 @@ func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*DmvApi, 
 
 	return &DmvApi{
 		apiKey:  apiKey,
-		baseUrl: DMV_BASE_URL,
+		baseUrl: dmvBaseURL,
+		http:    &http.Client{Timeout: httpTimeout},
 		log:     log,
 		store:   store,
 	}, nil
@@ -94,7 +98,8 @@ func NewSF(apiKey string, store *data.TransitDB, log *logger.Logger, now func() 
 
 	return &SFApi{
 		apiKey:  apiKey,
-		baseUrl: SF_BASE_URL,
+		baseUrl: sfBaseURL,
+		http:    &http.Client{Timeout: httpTimeout},
 		log:     log,
 		now:     now,
 		store:   store,

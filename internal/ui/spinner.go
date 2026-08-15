@@ -2,7 +2,7 @@ package ui
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,14 +17,14 @@ type SpinnerOptions struct {
 	// ErrorMessage replaces the spinner once CallbackFn returns an error
 	ErrorMessage string
 	// CallbackFn is the work to run while the spinner animates
-	CallbackFn func() error
+	CallbackFn func(ctx context.Context) error
 }
 
 // WithSpinner animates a spinner while opts.CallbackFn runs, then swaps it
 // for a success or error message depending on the result. Blocks until
 // CallbackFn returns and the spinner has cleaned up after itself. Cancelling
-// (Esc, Ctrl+C) returns ErrCancelled, same as Password — it only stops the
-// animation, opts.CallbackFn keeps running to completion regardless.
+// (Esc, Ctrl+C, or a cancelled ctx) cancels the context handed to
+// opts.CallbackFn and returns ErrCancelled once it stops.
 func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	sp := spinnerModel{
 		spinner: spinner.New(
@@ -39,29 +39,40 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 		tea.WithContext(ctx),
 	)
 
+	// Ctrl+C reaches the spinner as a keystroke, so we have to send a cancel
+	// ourselves through the ctx tree
+	cbCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	// Run the spinner on its own goroutine so it can animate while
 	// CallbackFn runs on this one. Buffered so the goroutine's send
 	// never blocks on us reading it below.
-	modelCh := make(chan tea.Model, 1)
+	resultCh := make(chan spinnerResult, 1)
 	go func() {
 		m, err := program.Run()
-		if err != nil {
-			// TODO: Handle this better? Maybe send via channel and errors.Join
-			fmt.Println(err)
+		final, ok := m.(spinnerModel)
+
+		// Run also returns from our Quit below and other terminal-related errors
+		// so only a user backing out should stop the work.
+		if ok && final.cancelled {
+			cancel()
 		}
-		modelCh <- m
+
+		resultCh <- spinnerResult{model: final, err: err}
 	}()
 
-	err := opts.CallbackFn()
+	cbErr := opts.CallbackFn(cbCtx)
 
-	// Quit signals the program to stop.
-	// Wait blocks until it actually stops so the
-	// terminal's restored before we print anything below
+	// Quit signals the program to stop, since our callback completed.
 	program.Quit()
-	program.Wait()
 
-	sp = (<-modelCh).(spinnerModel)
-	if sp.cancelled {
+	// Run restores the terminal before it returns so receiving without calling program.Wait()
+	result := <-resultCh
+
+	err := errors.Join(result.err, cbErr)
+
+	// A signal tears the program down without a keypress
+	if result.model.cancelled || errors.Is(err, context.Canceled) {
 		return ErrCancelled
 	}
 
@@ -74,6 +85,11 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	tui.OperationSuccessful(opts.SuccessMessage)
 
 	return nil
+}
+
+type spinnerResult struct {
+	model spinnerModel
+	err   error
 }
 
 // -- Internal model for the spinner component --

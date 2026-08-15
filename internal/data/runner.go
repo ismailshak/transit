@@ -9,8 +9,8 @@ import (
 	"github.com/ismailshak/transit/internal/logger"
 )
 
-func CreateMigrationTable(db *sql.DB) error {
-	_, err := db.ExecContext(context.Background(), CREATE_MIGRATIONS_TABLE)
+func CreateMigrationTable(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, CREATE_MIGRATIONS_TABLE)
 	if err != nil {
 		return fmt.Errorf("create migrations table: %w", err)
 	}
@@ -18,31 +18,31 @@ func CreateMigrationTable(db *sql.DB) error {
 	return nil
 }
 
-func GetMigrationCount(db *sql.DB) (int, error) {
-	row := db.QueryRow(COUNT_MIGRATIONS)
+func GetMigrationCount(ctx context.Context, db *sql.DB) (int, error) {
+	row := db.QueryRowContext(ctx, COUNT_MIGRATIONS)
 
 	var count int
 	err := row.Scan(&count)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return 0, nil
 	}
 
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("scan migration count: %w", err)
 	}
 
 	return count, nil
 }
 
-func RunMigrations(db *sql.DB, log *logger.Logger, rowCount int) error {
-	migrationRows, err := GetCurrentMigrations(db, rowCount)
+func RunMigrations(ctx context.Context, db *sql.DB, log *logger.Logger, rowCount int) error {
+	migrationRows, err := GetCurrentMigrations(ctx, db, rowCount)
 	if err != nil {
 		return err
 	}
 
 	for i, changeset := range migrationChangesets {
 		if i+1 > len(migrationRows) {
-			err = run(db, log, &changeset)
+			err = run(ctx, db, log, &changeset)
 			if err != nil {
 				return err
 			}
@@ -58,12 +58,12 @@ func RunMigrations(db *sql.DB, log *logger.Logger, rowCount int) error {
 	return nil
 }
 
-func GetCurrentMigrations(db *sql.DB, rowCount int) ([]Migration, error) {
+func GetCurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]Migration, error) {
 	if rowCount == 0 {
 		return []Migration{}, nil
 	}
 
-	rows, err := db.Query(SELECT_MIGRATIONS)
+	rows, err := db.QueryContext(ctx, SELECT_MIGRATIONS)
 	if err != nil {
 		return nil, fmt.Errorf("query migrations: %w", err)
 	}
@@ -82,28 +82,25 @@ func GetCurrentMigrations(db *sql.DB, rowCount int) ([]Migration, error) {
 		migrationRows = append(migrationRows, row)
 	}
 
-	return migrationRows, nil
+	return migrationRows, rows.Err()
 }
 
-func run(db *sql.DB, log *logger.Logger, changeset *MigrationChangeset) error {
-	trx, err := db.Begin()
+func run(ctx context.Context, db *sql.DB, log *logger.Logger, changeset *MigrationChangeset) error {
+	trx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 
-	// Defer a rollback in case anything fails.
-	// Will no-op if Commit succeeds
-	defer trx.Rollback()
+	defer rollback(trx, log)
 
 	log.Debug(fmt.Sprintf("Running new database migration: %s", changeset.Name))
 
-	err = changeset.Up(context.Background(), trx)
-
+	err = changeset.Up(ctx, trx)
 	if err != nil {
 		return err
 	}
 
-	_, err = trx.ExecContext(context.Background(), INSERT_MIGRATION, changeset.Name)
+	_, err = trx.ExecContext(ctx, INSERT_MIGRATION, changeset.Name)
 	if err != nil {
 		return err
 	}

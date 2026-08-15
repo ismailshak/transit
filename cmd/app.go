@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -10,7 +10,6 @@ import (
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
-	"github.com/ismailshak/transit/internal/ui"
 	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
@@ -31,12 +30,12 @@ type App struct {
 
 // run executes the command tree against args and returns a process exit code.
 // Args are passed in rather than read from os.Args to make testing easier.
-func (a *App) run(args []string) int {
+func (a *App) run(ctx context.Context, args []string) int {
 	cmd := a.newRootCmd()
 	cmd.SetArgs(args)
 
-	err := cmd.Execute()
-	if err != nil && !errors.Is(err, ui.ErrCancelled) {
+	err := cmd.ExecuteContext(ctx)
+	if err != nil && !cancelled(err) {
 		a.Log.Error(err.Error())
 	}
 
@@ -64,7 +63,7 @@ func (a *App) configSetupPreRun(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func (a *App) dbSetupPreRun() error {
+func (a *App) dbSetupPreRun(ctx context.Context) error {
 	path, err := config.GetConfigDir()
 	if err != nil {
 		return fmt.Errorf("locate config: %w", err)
@@ -77,7 +76,7 @@ func (a *App) dbSetupPreRun() error {
 
 	a.Store = db
 
-	err = a.Store.SyncMigrations()
+	err = a.Store.SyncMigrations(ctx)
 	if err != nil {
 		return fmt.Errorf("synchronize migrations: %w", err)
 	}
@@ -92,7 +91,7 @@ func (a *App) defaultPreRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return a.dbSetupPreRun()
+	return a.dbSetupPreRun(cmd.Context())
 }
 
 // client returns the API client for the configured location.
