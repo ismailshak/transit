@@ -38,7 +38,7 @@ func (a *App) newConfigGetCmd() *cobra.Command {
 		Example:               "  transit config get core.location",
 		Args:                  usageArgs(cobra.ExactArgs(1)),
 		DisableFlagsInUseLine: true,
-		PreRunE:               a.defaultPreRun,
+		PreRunE:               a.configSetupPreRun,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			value := a.executeGet(args[0])
 			if value == "" {
@@ -83,7 +83,7 @@ func (a *App) newConfigPathCmd() *cobra.Command {
 		Long:                  "Prints path to configuration file used",
 		DisableFlagsInUseLine: true,
 		Args:                  usageArgs(cobra.NoArgs),
-		PreRunE:               a.defaultPreRun,
+		PreRunE:               a.configSetupPreRun,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return a.executePath()
 		},

@@ -70,13 +70,9 @@ func (a *App) newRootCmd() *cobra.Command {
 // Run builds the app, runs the command tree, and returns a process exit code.
 func Run() int {
 	app := &App{Out: os.Stdout, Now: time.Now, Log: logger.New(false)}
+	defer app.close() //nolint:errcheck // nothing useful to do with it on the way out
 
-	err := app.newRootCmd().Execute()
-	if err != nil && !errors.Is(err, ui.ErrCancelled) {
-		app.Log.Error(err.Error())
-	}
-
-	return exitCode(err)
+	return app.run(os.Args[1:])
 }
 
 // exitCode maps a caught error to one of the documented exit codes.

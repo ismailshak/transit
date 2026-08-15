@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/ui"
 	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
@@ -27,7 +29,32 @@ type App struct {
 	configOverride string
 }
 
-func (a *App) configSetupPreRun() error {
+// run executes the command tree against args and returns a process exit code.
+// Args are passed in rather than read from os.Args to make testing easier.
+func (a *App) run(args []string) int {
+	cmd := a.newRootCmd()
+	cmd.SetArgs(args)
+
+	err := cmd.Execute()
+	if err != nil && !errors.Is(err, ui.ErrCancelled) {
+		a.Log.Error(err.Error())
+	}
+
+	return exitCode(err)
+}
+
+// close releases anything a hook opened. Commands that never initialize
+// the store leave it nil, so it has to handle that.
+func (a *App) close() error {
+	if a.Store == nil {
+		return nil
+	}
+
+	return a.Store.Close()
+}
+
+// configSetupPreRun is the hook for commands that only read the config file.
+func (a *App) configSetupPreRun(_ *cobra.Command, _ []string) error {
 	cfg, err := config.Load(a.configOverride)
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
@@ -58,8 +85,9 @@ func (a *App) dbSetupPreRun() error {
 	return nil
 }
 
+// defaultPreRun is the hook for commands that read the config and the store.
 func (a *App) defaultPreRun(cmd *cobra.Command, args []string) error {
-	err := a.configSetupPreRun()
+	err := a.configSetupPreRun(cmd, args)
 	if err != nil {
 		return err
 	}
