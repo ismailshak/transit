@@ -15,10 +15,10 @@ import (
 const BLACK = "#000000"
 
 var (
-	DEBUG_PREFIX = lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color("#67CBFF")).Foreground(lipgloss.Color(BLACK)).Render("Debug")
-	ERR_PREFIX   = lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color("#FF2A00")).Foreground(lipgloss.Color(BLACK)).Render("Error")
-	INFO_PREFIX  = lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color("#B3E5FF")).Foreground(lipgloss.Color(BLACK)).Render("Info")
-	WARN_PREFIX  = lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color("#FFC34D")).Foreground(lipgloss.Color(BLACK)).Render("Warn")
+	debugPrefix = lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color("#67CBFF")).Foreground(lipgloss.Color(BLACK)).Render("Debug")
+	errorPrefix = lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color("#FF2A00")).Foreground(lipgloss.Color(BLACK)).Render("Error")
+	infoPrefix  = lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color("#B3E5FF")).Foreground(lipgloss.Color(BLACK)).Render("Info")
+	warnPrefix  = lipgloss.NewStyle().Padding(0, 1).Background(lipgloss.Color("#FFC34D")).Foreground(lipgloss.Color(BLACK)).Render("Warn")
 )
 
 // Logger writes diagnostics for one run of the program. Debug messages are
@@ -35,20 +35,20 @@ func New(verbose bool) *Logger {
 // Debug writes a message, but only when verbose logging is on
 func (l *Logger) Debug(message ...any) {
 	if l.verbose {
-		fmt.Println(DEBUG_PREFIX, fmt.Sprint(message...))
+		fmt.Println(debugPrefix, fmt.Sprint(message...))
 	}
 }
 
 func (l *Logger) Error(message ...any) {
-	fmt.Println(ERR_PREFIX, fmt.Sprint(message...))
+	fmt.Println(errorPrefix, fmt.Sprint(message...))
 }
 
 func (l *Logger) Info(message ...any) {
-	fmt.Println(INFO_PREFIX, fmt.Sprint(message...))
+	fmt.Println(infoPrefix, fmt.Sprint(message...))
 }
 
 func (l *Logger) Warn(message ...any) {
-	fmt.Println(WARN_PREFIX, fmt.Sprint(message...))
+	fmt.Println(warnPrefix, fmt.Sprint(message...))
 }
 
 // Verbose reports whether Debug will write anything. Call it to skip building a

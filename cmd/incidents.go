@@ -29,7 +29,7 @@ func (a *App) newIncidentsCmd() *cobra.Command {
 	return incidentsCmd
 }
 
-func (a *App) executeIncidents(ctx context.Context, client api.Api) error {
+func (a *App) executeIncidents(ctx context.Context, client api.API) error {
 	incidents, err := client.FetchIncidents(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch incidents: %w", err)

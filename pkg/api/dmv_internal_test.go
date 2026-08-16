@@ -60,7 +60,7 @@ func TestFormatDmvStopId(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := formatDmvStopId(tc.id)
+			got := formatDmvStopID(tc.id)
 			if !slices.Equal(got, tc.want) {
 				t.Errorf("expected %v but got %v", tc.want, got)
 			}

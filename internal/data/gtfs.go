@@ -7,11 +7,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-
-	"github.com/ismailshak/transit/internal/utils"
+	"strings"
 )
 
-// Resolves the GTFS Service Alert "Effect" field to a human-readable string.
+// ResolveGTFSAlertEffect resolves the GTFS Service Alert "Effect" field to a human-readable string.
 // An invalid effect will return an empty string
 func ResolveGTFSAlertEffect(effect int) string {
 	switch effect {
@@ -40,7 +39,7 @@ func ResolveGTFSAlertEffect(effect int) string {
 	}
 }
 
-// Unzips file (which holds the content of a GTFS Static feed)
+// UnzipStaticGTFS unzips file (which holds the content of a GTFS Static feed)
 // located at `path` into a destination provided by `dest`.
 // Destination is assumed to already exist. Zip file will not be deleted
 // after it's unzipped.
@@ -54,7 +53,7 @@ func UnzipStaticGTFS(path string, dest string) error {
 
 	defer reader.Close()
 
-	err = utils.Unzip(reader, dest)
+	err = unzip(reader, dest)
 	if err != nil {
 		return fmt.Errorf("unzip gtfs archive: %w", err)
 	}
@@ -62,7 +61,7 @@ func UnzipStaticGTFS(path string, dest string) error {
 	return nil
 }
 
-// Parses an unzipped directory that contains the GTFS Static feed
+// ParseGTFS parses an unzipped directory that contains the GTFS Static feed
 func ParseGTFS(path string, location LocationSlug, st StopType, agency string) (*StaticData, error) {
 	agencyFile := filepath.Join(path, "agency.txt")
 	stopsFile := filepath.Join(path, "stops.txt")
@@ -133,7 +132,7 @@ func parseGTFSStops(path string, location LocationSlug, st StopType, agency stri
 	return stops, nil
 }
 
-// Callback func that takes the current parsed row and the header-to-index map as arguments
+// ParseEntityFunc is a callback that takes the current parsed row and the header-to-index map as arguments
 type ParseEntityFunc func(record []string, headerMap map[string]int)
 
 // Generic GTFS file parser that takes a callback that can handle it's own data via a closure
@@ -187,4 +186,59 @@ func valueOrFallback[T any](value, fallback T, exists bool) T {
 	}
 
 	return fallback
+}
+
+func unzip(rc *zip.ReadCloser, dest string) error {
+	for _, f := range rc.File {
+		err := unzipFile(f, dest)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func unzipFile(f *zip.File, dest string) (err error) {
+	// Check if file paths are not vulnerable to Zip Slip
+	filePath := filepath.Join(dest, f.Name)
+	if !strings.HasPrefix(filePath, filepath.Clean(dest)+string(os.PathSeparator)) {
+		return fmt.Errorf("invalid file path %q", filePath)
+	}
+
+	// Create directories if needed
+	if f.FileInfo().IsDir() {
+		if err := os.MkdirAll(filePath, 0o755); err != nil {
+			return fmt.Errorf("create directory: %w", err)
+		}
+
+		return nil
+	}
+
+	// Create a destination file for unzipped content
+	destFile, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("create file: %w", err)
+	}
+
+	// A write is only durable once Close succeeds
+	defer func() {
+		if cerr := destFile.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close file %q: %w", filePath, cerr)
+		}
+	}()
+
+	// Unzip the content of a file and copy it to the destination file
+	zippedFile, err := f.Open()
+	if err != nil {
+		return fmt.Errorf("open file %q: %w", f.Name, err)
+	}
+
+	defer zippedFile.Close()
+
+	if _, err := io.Copy(destFile, zippedFile); err != nil {
+		return fmt.Errorf("copy file %q to %q: %w", f.Name, destFile.Name(), err)
+	}
+
+	return nil
 }

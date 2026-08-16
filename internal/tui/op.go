@@ -5,13 +5,13 @@ import (
 )
 
 func OperationSuccessful(msg string) {
-	fmt.Println(OP_SUCCESS_STYLE(SUCCESS_ICON), msg)
+	fmt.Println(OpSuccessStyle(SuccessIcon), msg)
 }
 
 func OperationFailed(msg string) {
-	fmt.Println(OP_FAILED_STYLE(ERROR_ICON), msg)
+	fmt.Println(OpFailedStyle(ErrorIcon), msg)
 }
 
 func OperationSkipped(msg string) {
-	fmt.Println(OP_SKIPPED_STYLE(SKIP_ICON), msg)
+	fmt.Println(OpSkippedStyle(SkipIcon), msg)
 }

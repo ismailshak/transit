@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-// A function that will apply a change to the database schema
+// Changeset applies a change to the database schema
 type Changeset func(ctx context.Context, trx *sql.Tx) error
 
 type MigrationChangeset struct {
@@ -43,22 +43,22 @@ func failedMigration(message string, err error) error {
 }
 
 func createInitialTables(ctx context.Context, trx *sql.Tx) error {
-	_, err := trx.ExecContext(ctx, CREATE_LOCATIONS_TABLE)
+	_, err := trx.ExecContext(ctx, CreateLocationsTableSQL)
 	if err != nil {
 		return failedMigration("failed to create 'locations' table: ", err)
 	}
 
-	_, err = trx.ExecContext(ctx, CREATE_AGENCIES_TABLE)
+	_, err = trx.ExecContext(ctx, CreateAgenciesTableSQL)
 	if err != nil {
 		return failedMigration("failed to create 'agencies' table: ", err)
 	}
 
-	_, err = trx.ExecContext(ctx, CREATE_STOPS_TABLE)
+	_, err = trx.ExecContext(ctx, CreateStopsTableSQL)
 	if err != nil {
 		return failedMigration("failed to create 'stops' table: ", err)
 	}
 
-	_, err = trx.ExecContext(ctx, CREATE_STOP_LOCATION_INDEX)
+	_, err = trx.ExecContext(ctx, CreateStopLocationIndexSQL)
 	if err != nil {
 		return failedMigration("failed to create 'stop.location' index: ", err)
 	}
@@ -73,7 +73,7 @@ func dropInitialTables(ctx context.Context, trx *sql.Tx) error {
 func addDMVToLocations(ctx context.Context, trx *sql.Tx) error {
 	_, err := trx.ExecContext(
 		ctx,
-		INSERT_LOCATION,
+		InsertLocationSQL,
 		DMVSlug,
 		"District Of Columbia, Maryland and Virginia (US)",
 		true,
@@ -93,7 +93,7 @@ func deleteDMVFromLocations(ctx context.Context, trx *sql.Tx) error {
 func addSFToLocations(ctx context.Context, trx *sql.Tx) error {
 	_, err := trx.ExecContext(
 		ctx,
-		INSERT_LOCATION,
+		InsertLocationSQL,
 		SFSlug,
 		"San Francisco Bay Area (US)",
 		true,

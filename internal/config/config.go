@@ -10,21 +10,20 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ismailshak/transit/internal/utils"
 	"github.com/spf13/viper"
 )
 
-// Options for the `dmv` section of a user config file
+// DmvConfig holds options for the `dmv` section of a user config file
 type DmvConfig struct {
-	ApiKey string `mapstructure:"api_key"`
+	APIKey string `mapstructure:"api_key"`
 }
 
-// Options for the `sf` section of a user config file
+// SFConfig holds options for the `sf` section of a user config file
 type SFConfig struct {
-	ApiKey string `mapstructure:"api_key"`
+	APIKey string `mapstructure:"api_key"`
 }
 
-// Options for the `core` section of a user config file
+// CoreConfig holds options for the `core` section of a user config file
 type CoreConfig struct {
 	Location      string `mapstructure:"location"`
 	WatchInterval int    `mapstructure:"watch_interval"`
@@ -65,7 +64,7 @@ func Load(override string) (*Config, error) {
 
 	// TODO: We should also create the override if it doesn't exist
 	if !configFileExists(configDir) {
-		err = utils.CreatePathIfNotFound(filepath.Join(configDir, "config.yml"))
+		err = createPathIfNotFound(filepath.Join(configDir, "config.yml"))
 		if err != nil {
 			return nil, err
 		}
@@ -146,10 +145,30 @@ func configFileExists(baseDir string) bool {
 	allowedFileTypes := []string{".yml", ".yaml", ".json", ".toml", ".ini"}
 
 	for _, ft := range allowedFileTypes {
-		if utils.FileExists(filepath.Join(baseDir, "config"+ft)) {
+		if fileExists(filepath.Join(baseDir, "config"+ft)) {
 			return true
 		}
 	}
 
 	return false
+}
+
+func fileExists(filePath string) bool {
+	_, err := os.Stat(filePath)
+	return err == nil
+}
+
+func createPathIfNotFound(configPath string) error {
+	if fileExists(configPath) {
+		return nil
+	}
+
+	dirPath := filepath.Dir(configPath)
+
+	err := os.MkdirAll(dirPath, 0o755)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(configPath, []byte{}, 0o644)
 }

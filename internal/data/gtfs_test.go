@@ -93,7 +93,7 @@ func TestParseGTFS(t *testing.T) {
 	}
 
 	expectedStops := []struct {
-		StopId    string
+		StopID    string
 		Name      string
 		Location  data.LocationSlug
 		Latitude  string
@@ -114,7 +114,7 @@ func TestParseGTFS(t *testing.T) {
 
 	for i, stop := range gtfs.Stops {
 		expected := expectedStops[i]
-		assert.Equal(t, expected.StopId, stop.StopID)
+		assert.Equal(t, expected.StopID, stop.StopID)
 		assert.Equal(t, expected.Name, stop.Name)
 		assert.Equal(t, expected.Location, stop.Location)
 		assert.Equal(t, expected.Latitude, stop.Latitude)

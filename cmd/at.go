@@ -49,7 +49,7 @@ try being more specific by adding more characters.
 	return atCmd
 }
 
-func (a *App) executeAt(ctx context.Context, client api.Api, args []string) error {
+func (a *App) executeAt(ctx context.Context, client api.API, args []string) error {
 	var rendered, resolved int
 
 	// TODO: pull client.GetPredictionInput() out of this so that `Watch` is more performant
@@ -89,7 +89,7 @@ func (a *App) executeAt(ctx context.Context, client api.Api, args []string) erro
 	return nil
 }
 
-func (a *App) watchAt(ctx context.Context, client api.Api, args []string) error {
+func (a *App) watchAt(ctx context.Context, client api.API, args []string) error {
 	buffer := tui.NewBuffer()
 	interval := time.Second * time.Duration(a.Cfg.Core.WatchInterval)
 	message := tui.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))

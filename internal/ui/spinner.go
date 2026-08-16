@@ -29,7 +29,7 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	sp := spinnerModel{
 		spinner: spinner.New(
 			spinner.WithSpinner(spinner.Dot),
-			spinner.WithStyle(tui.SPINNER_STYLE),
+			spinner.WithStyle(tui.SpinnerStyle),
 		),
 		msg: &opts.SpinMessage,
 	}

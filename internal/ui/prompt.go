@@ -89,9 +89,9 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m promptModel) View() string {
 	builder := strings.Builder{}
 
-	builder.WriteString(tui.PROMPT_SYMBOL_STYLE(tui.PROMPT_SYMBOL))
+	builder.WriteString(tui.PromptSymbolStyle(tui.PromptSymbol))
 	builder.WriteString(" ")
-	builder.WriteString(tui.PROMPT_TITLE_STYLE(m.title))
+	builder.WriteString(tui.PromptTitleStyle(m.title))
 	builder.WriteString(" ")
 	builder.WriteString(m.textInput.View())
 

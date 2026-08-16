@@ -39,7 +39,7 @@ func (t *TransitDB) Close() error {
 	return t.DB.Close()
 }
 
-// Keep migrations up-to-date, and handle first time migration run
+// SyncMigrations keeps migrations up-to-date, and handles first time migration run
 func (t *TransitDB) SyncMigrations(ctx context.Context) error {
 	err := CreateMigrationTable(ctx, t.DB)
 	if err != nil {
@@ -71,7 +71,7 @@ func (t *TransitDB) InsertAgencies(ctx context.Context, agencies []*Agency) erro
 
 	defer rollback(trx, t.log)
 
-	stmt, err := trx.PrepareContext(ctx, INSERT_AGENCY)
+	stmt, err := trx.PrepareContext(ctx, InsertAgencySQL)
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (t *TransitDB) InsertAgencies(ctx context.Context, agencies []*Agency) erro
 }
 
 func (t *TransitDB) GetLocation(ctx context.Context, location LocationSlug) (*Location, error) {
-	row := t.DB.QueryRowContext(ctx, SELECT_LOCATION, location)
+	row := t.DB.QueryRowContext(ctx, SelectLocationSQL, location)
 
 	var l Location
 
@@ -110,7 +110,7 @@ func (t *TransitDB) GetLocation(ctx context.Context, location LocationSlug) (*Lo
 }
 
 func (t *TransitDB) GetAllLocations(ctx context.Context) ([]Location, error) {
-	rows, err := t.DB.QueryContext(ctx, SELECT_ALL_LOCATIONS)
+	rows, err := t.DB.QueryContext(ctx, SelectAllLocationsSQL)
 	if err != nil {
 		return nil, fmt.Errorf("query locations: %w", err)
 	}
@@ -135,9 +135,9 @@ func (t *TransitDB) GetAllLocations(ctx context.Context) ([]Location, error) {
 func (t *TransitDB) GetStopsByLocation(ctx context.Context, location LocationSlug, parentsOnly bool) ([]*Stop, error) {
 	var statement string
 	if parentsOnly {
-		statement = SELECT_PARENT_STOPS_BY_LOCATION
+		statement = SelectParentStopsByLocationSQL
 	} else {
-		statement = SELECT_STOPS_BY_LOCATION
+		statement = SelectStopsByLocationSQL
 	}
 
 	rows, err := t.DB.QueryContext(ctx, statement, location)
@@ -181,7 +181,7 @@ func (t *TransitDB) InsertStops(ctx context.Context, stops []*Stop) error {
 
 	defer rollback(trx, t.log)
 
-	stmt, err := trx.PrepareContext(ctx, INSERT_STOP)
+	stmt, err := trx.PrepareContext(ctx, InsertStopSQL)
 	if err != nil {
 		return err
 	}
@@ -202,7 +202,7 @@ func (t *TransitDB) InsertStops(ctx context.Context, stops []*Stop) error {
 }
 
 func (t *TransitDB) CountStopsByLocation(ctx context.Context, location LocationSlug) (int, error) {
-	row := t.DB.QueryRowContext(ctx, COUNT_STOPS_BY_LOCATION, location)
+	row := t.DB.QueryRowContext(ctx, CountStopsByLocationSQL, location)
 
 	var count int
 	if err := row.Scan(&count); err != nil {
@@ -213,7 +213,7 @@ func (t *TransitDB) CountStopsByLocation(ctx context.Context, location LocationS
 }
 
 func (t *TransitDB) GetLocationAgencies(ctx context.Context, location LocationSlug) ([]Agency, error) {
-	rows, err := t.DB.QueryContext(ctx, SELECT_AGENCIES_BY_LOCATION, location)
+	rows, err := t.DB.QueryContext(ctx, SelectAgenciesByLocationSQL, location)
 	if err != nil {
 		return nil, fmt.Errorf("query agencies: %w", err)
 	}

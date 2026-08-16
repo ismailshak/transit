@@ -12,7 +12,7 @@ import (
 	"github.com/ismailshak/transit/internal/logger"
 )
 
-// Creates a temporary database that has no tables
+// BlankDB creates a temporary database that has no tables
 func BlankDB(t *testing.T) *data.TransitDB {
 	t.Helper()
 	testDir := t.TempDir()
@@ -35,7 +35,7 @@ func BlankDB(t *testing.T) *data.TransitDB {
 	return db
 }
 
-// Creates a temporary test database that's fully migrated
+// MigratedDB creates a temporary test database that's fully migrated
 func MigratedDB(t *testing.T) *data.TransitDB {
 	t.Helper()
 	testDir := t.TempDir()
@@ -63,22 +63,24 @@ func MigratedDB(t *testing.T) *data.TransitDB {
 func InitMigrationsTable(t *testing.T, db *sql.DB) {
 	t.Helper()
 
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(t.Context(), nil)
 	if err != nil {
 		t.Fatalf("Failed to begin transaction: %s", err)
 	}
 
 	defer tx.Rollback()
 
-	_, err = tx.Exec(data.CREATE_MIGRATIONS_TABLE)
+	_, err = tx.ExecContext(t.Context(), data.CreateMigrationsTableSQL)
 	if err != nil {
 		t.Fatalf("Failed to create migration: %s", err)
 	}
 
-	_, err = tx.Exec(data.INSERT_MIGRATION, "1_FakeMigration")
-
-	tx.Commit()
+	_, err = tx.ExecContext(t.Context(), data.InsertMigrationSQL, "1_FakeMigration")
 	if err != nil {
+		t.Fatalf("Failed to insert migration: %s", err)
+	}
+
+	if err := tx.Commit(); err != nil {
 		t.Fatalf("Failed to commit transaction: %s", err)
 	}
 }

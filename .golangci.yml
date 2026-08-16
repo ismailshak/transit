@@ -22,6 +22,17 @@ linters:
         - (io.ReadCloser).Close
         - (*database/sql.Rows).Close
         - (*archive/zip.ReadCloser).Close
+    gocritic:
+      enabled-checks:
+        - deferInLoop
+    staticcheck:
+      checks:
+        - all
+        - -ST1000 # Package comments (TODO: renable once refactoring settles)
+
+issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0
 
 formatters:
   enable:

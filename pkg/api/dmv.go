@@ -15,28 +15,27 @@ import (
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
-	"github.com/ismailshak/transit/internal/utils"
 )
 
 const (
-	DATETIME_LAYOUT = "2006-01-02T15:04:05"
+	wmataDateTimeLayout = "2006-01-02T15:04:05"
 )
 
-// API to interact with WMATA
-type DmvApi struct {
+// DmvAPI is the API to interact with WMATA
+type DmvAPI struct {
 	apiKey  string
-	baseUrl string
+	baseURL string
 	http    *http.Client
 	log     *logger.Logger
 	store   *data.TransitDB
 }
 
 // WMATA's predictions API response
-type WMATA_PredictionsResponse struct {
+type wmataPredictionsResponse struct {
 	Trains []Prediction
 }
 
-type WMATA_Incident struct {
+type wmataIncident struct {
 	Description   string
 	IncidentType  string
 	LinesAffected string
@@ -44,13 +43,13 @@ type WMATA_Incident struct {
 }
 
 // WMATA's incidents API response
-type WMATA_IncidentsResponse struct {
-	Incidents []WMATA_Incident
+type wmataIncidentsResponse struct {
+	Incidents []wmataIncident
 }
 
-func (dmv *DmvApi) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
+func (dmv *DmvAPI) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
 	parts := make([]string, 0, len(route)+1)
-	parts = append(parts, dmv.baseUrl)
+	parts = append(parts, dmv.baseURL)
 	parts = append(parts, route...)
 	url := strings.Join(parts, "/")
 
@@ -64,7 +63,7 @@ func (dmv *DmvApi) BuildRequest(ctx context.Context, method string, route ...str
 	return req, nil
 }
 
-func (dmv *DmvApi) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
+func (dmv *DmvAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
 	req, err := dmv.BuildRequest(ctx, http.MethodGet, "gtfs/rail-gtfs-static.zip")
 	if err != nil {
 		return nil, err
@@ -110,7 +109,7 @@ func (dmv *DmvApi) FetchStaticData(ctx context.Context) (*data.StaticData, error
 
 	dirName := "gtfs_static_" + strconv.FormatInt(time.Now().Unix(), 10)
 	feed := filepath.Join(configDir, dirName)
-	if err = utils.CreateDir(feed); err != nil {
+	if err = os.MkdirAll(feed, 0o755); err != nil {
 		return nil, err
 	}
 
@@ -128,7 +127,7 @@ func (dmv *DmvApi) FetchStaticData(ctx context.Context) (*data.StaticData, error
 	return data.ParseGTFS(feed, data.DMVSlug, data.TrainStation, "MET")
 }
 
-func (dmv *DmvApi) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
+func (dmv *DmvAPI) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
 	codes := make([]string, 0, len(input))
 	for _, i := range input {
 		codes = append(codes, i.StopID)
@@ -158,7 +157,7 @@ func (dmv *DmvApi) FetchPredictions(ctx context.Context, input []PredictionInput
 		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
 
-	var predictions WMATA_PredictionsResponse
+	var predictions wmataPredictionsResponse
 	err = json.Unmarshal(body, &predictions)
 
 	if err != nil {
@@ -172,7 +171,7 @@ func (dmv *DmvApi) FetchPredictions(ctx context.Context, input []PredictionInput
 	return predictions.Trains, nil
 }
 
-func (dmv *DmvApi) FetchIncidents(ctx context.Context) ([]Incident, error) {
+func (dmv *DmvAPI) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	req, err := dmv.BuildRequest(ctx, http.MethodGet, "Incidents.svc/json/Incidents")
 	if err != nil {
 		return nil, err
@@ -197,7 +196,7 @@ func (dmv *DmvApi) FetchIncidents(ctx context.Context) ([]Incident, error) {
 		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
 
-	var incidentsRes WMATA_IncidentsResponse
+	var incidentsRes wmataIncidentsResponse
 	err = json.Unmarshal(body, &incidentsRes)
 
 	if err != nil {
@@ -206,7 +205,7 @@ func (dmv *DmvApi) FetchIncidents(ctx context.Context) ([]Incident, error) {
 
 	var incidents []Incident
 	for _, res := range incidentsRes.Incidents {
-		date, _ := time.Parse(DATETIME_LAYOUT, res.DateUpdated)
+		date, _ := time.Parse(wmataDateTimeLayout, res.DateUpdated)
 		inc := Incident{
 			Description: res.Description,
 			DateUpdated: date,
@@ -220,13 +219,13 @@ func (dmv *DmvApi) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	return incidents, nil
 }
 
-func (dmv *DmvApi) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
+func (dmv *DmvAPI) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
 	stops, err := dmv.store.GetStopsByLocation(ctx, data.DMVSlug, true)
 	if err != nil {
 		return nil, err
 	}
 
-	matches := utils.FuzzyFindFrom(arg, data.SearchableStops(stops))
+	matches := data.FuzzyFindFrom(arg, data.SearchableStops(stops))
 
 	if matches.Len() == 0 {
 		dmv.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
@@ -242,8 +241,8 @@ func (dmv *DmvApi) GetPredictionInput(ctx context.Context, arg string) ([]Predic
 
 	for _, m := range matches {
 		id := stops[m.Index].StopID
-		formattedId := formatDmvStopId(id)
-		for _, id := range formattedId {
+		formattedID := formatDmvStopID(id)
+		for _, id := range formattedID {
 			input = append(input, PredictionInput{id, stops[m.Index].AgencyID})
 		}
 	}
@@ -251,7 +250,7 @@ func (dmv *DmvApi) GetPredictionInput(ctx context.Context, arg string) ([]Predic
 	return input, nil
 }
 
-func (dmv *DmvApi) GetLineColor(stop string) (string, string) {
+func (dmv *DmvAPI) GetLineColor(stop string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	switch stop {
 	case "SV", "Silver":
@@ -271,7 +270,7 @@ func (dmv *DmvApi) GetLineColor(stop string) (string, string) {
 	}
 }
 
-func (dmv *DmvApi) IsGhostTrain(line, destination string) bool {
+func (dmv *DmvAPI) IsGhostTrain(line, destination string) bool {
 	return line == "--" || destination == "No Passenger" || line == "No"
 }
 
@@ -291,6 +290,6 @@ func parseLinesAffected(lines string) []string {
 
 // All DMV train IDs have the format `STN_X_X` where each X is a unique ID
 // (train stations can have multiple)
-func formatDmvStopId(id string) []string {
+func formatDmvStopID(id string) []string {
 	return strings.Split(id, "_")[1:]
 }

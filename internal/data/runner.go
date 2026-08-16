@@ -10,7 +10,7 @@ import (
 )
 
 func CreateMigrationTable(ctx context.Context, db *sql.DB) error {
-	_, err := db.ExecContext(ctx, CREATE_MIGRATIONS_TABLE)
+	_, err := db.ExecContext(ctx, CreateMigrationsTableSQL)
 	if err != nil {
 		return fmt.Errorf("create migrations table: %w", err)
 	}
@@ -19,7 +19,7 @@ func CreateMigrationTable(ctx context.Context, db *sql.DB) error {
 }
 
 func GetMigrationCount(ctx context.Context, db *sql.DB) (int, error) {
-	row := db.QueryRowContext(ctx, COUNT_MIGRATIONS)
+	row := db.QueryRowContext(ctx, CountMigrationsSQL)
 
 	var count int
 	err := row.Scan(&count)
@@ -63,7 +63,7 @@ func GetCurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]Migr
 		return []Migration{}, nil
 	}
 
-	rows, err := db.QueryContext(ctx, SELECT_MIGRATIONS)
+	rows, err := db.QueryContext(ctx, SelectMigrationsSQL)
 	if err != nil {
 		return nil, fmt.Errorf("query migrations: %w", err)
 	}
@@ -100,7 +100,7 @@ func run(ctx context.Context, db *sql.DB, log *logger.Logger, changeset *Migrati
 		return err
 	}
 
-	_, err = trx.ExecContext(ctx, INSERT_MIGRATION, changeset.Name)
+	_, err = trx.ExecContext(ctx, InsertMigrationSQL, changeset.Name)
 	if err != nil {
 		return err
 	}
