@@ -11,6 +11,7 @@ import (
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/spf13/cobra"
 )
 
@@ -96,14 +97,14 @@ func (a *App) defaultPreRun(cmd *cobra.Command, args []string) error {
 
 // client returns the API client for the configured location.
 func (a *App) client() (provider.API, error) {
-	switch data.LocationSlug(a.Cfg.Core.Location) {
-	case data.DMVSlug:
+	switch transit.LocationSlug(a.Cfg.Core.Location) {
+	case transit.DMVSlug:
 		client, err := provider.NewDMV(a.Cfg.DMV.APIKey, a.Store, a.Log)
 		if err != nil {
 			return nil, fmt.Errorf("dmv client: %w", err)
 		}
 		return client, nil
-	case data.SFSlug:
+	case transit.SFSlug:
 		client, err := provider.NewSF(a.Cfg.SF.APIKey, a.Store, a.Log, a.Now)
 		if err != nil {
 			return nil, fmt.Errorf("sf client: %w", err)

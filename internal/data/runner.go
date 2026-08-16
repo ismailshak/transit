@@ -9,6 +9,13 @@ import (
 	"github.com/ismailshak/transit/internal/logger"
 )
 
+// migration is a record of a database migration that was executed
+type migration struct {
+	ID         int
+	Name       string
+	MigratedAt string
+}
+
 func CreateMigrationTable(ctx context.Context, db *sql.DB) error {
 	_, err := db.ExecContext(ctx, CreateMigrationsTableSQL)
 	if err != nil {
@@ -58,9 +65,9 @@ func RunMigrations(ctx context.Context, db *sql.DB, log *logger.Logger, rowCount
 	return nil
 }
 
-func GetCurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]Migration, error) {
+func GetCurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]migration, error) {
 	if rowCount == 0 {
-		return []Migration{}, nil
+		return []migration{}, nil
 	}
 
 	rows, err := db.QueryContext(ctx, SelectMigrationsSQL)
@@ -70,10 +77,10 @@ func GetCurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]Migr
 
 	defer rows.Close()
 
-	migrationRows := make([]Migration, 0, rowCount)
+	migrationRows := make([]migration, 0, rowCount)
 
 	for rows.Next() {
-		var row Migration
+		var row migration
 		err = rows.Scan(&row.ID, &row.Name, &row.MigratedAt)
 		if err != nil {
 			return nil, fmt.Errorf("scan migration row: %w", err)

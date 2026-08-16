@@ -1,4 +1,4 @@
-package data
+package transit
 
 // LocationSlug is the unique identifier for a location
 type LocationSlug string
@@ -15,13 +15,6 @@ const (
 	TrainStation StopType = "train" // Type used to represent a train station
 	BusStop      StopType = "bus"   // Type used to represent a bus stop
 )
-
-// Migration is a record of a database migration that was executed
-type Migration struct {
-	ID         int
-	Name       string
-	MigratedAt string
-}
 
 // Entity is the base struct holding common fields for database entities
 type Entity struct {
@@ -82,8 +75,8 @@ type Stop struct {
 	ParentID string
 }
 
-// SearchableStops is a wrapper type that implements the fuzzy matching interface to enable search
-type SearchableStops []*Stop
-
-func (s SearchableStops) Len() int            { return len(s) }
-func (s SearchableStops) String(i int) string { return s[i].Name }
+// StaticData is data, that doesn't change often, that we store in the database
+type StaticData struct {
+	Agencies []*Agency
+	Stops    []*Stop
+}

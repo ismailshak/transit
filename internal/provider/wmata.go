@@ -15,6 +15,7 @@ import (
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/transit"
 )
 
 const (
@@ -63,7 +64,7 @@ func (w *WMATClient) BuildRequest(ctx context.Context, method string, route ...s
 	return req, nil
 }
 
-func (w *WMATClient) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
+func (w *WMATClient) FetchStaticData(ctx context.Context) (*transit.StaticData, error) {
 	req, err := w.BuildRequest(ctx, http.MethodGet, "gtfs/rail-gtfs-static.zip")
 	if err != nil {
 		return nil, err
@@ -124,7 +125,7 @@ func (w *WMATClient) FetchStaticData(ctx context.Context) (*data.StaticData, err
 		return nil, err
 	}
 
-	return data.ParseGTFS(feed, data.DMVSlug, data.TrainStation, "MET")
+	return data.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, "MET")
 }
 
 func (w *WMATClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
@@ -220,7 +221,7 @@ func (w *WMATClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 }
 
 func (w *WMATClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := w.store.GetStopsByLocation(ctx, data.DMVSlug, true)
+	stops, err := w.store.GetStopsByLocation(ctx, transit.DMVSlug, true)
 	if err != nil {
 		return nil, err
 	}

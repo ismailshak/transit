@@ -7,9 +7,10 @@ import (
 
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 )
 
-const testLocation data.LocationSlug = "test-location"
+const testLocation transit.LocationSlug = "test-location"
 
 type TestAPI struct {
 	apiKey  *string
@@ -28,18 +29,18 @@ func NewTestAPI(t *testing.T) provider.API {
 	}
 }
 
-var allStops = []*data.Stop{
-	{StopID: "A", Name: "A Stop", Location: testLocation, Latitude: "34.12301", Longitude: "-11.12301", ParentID: "", Type: data.TrainStation},
-	{StopID: "B", Name: "B Stop", Location: testLocation, Latitude: "34.12302", Longitude: "-11.12302", ParentID: "", Type: data.TrainStation},
-	{StopID: "C", Name: "C Stop", Location: testLocation, Latitude: "34.12303", Longitude: "-11.12303", ParentID: "", Type: data.TrainStation},
-	{StopID: "D", Name: "D Stop", Location: testLocation, Latitude: "34.12304", Longitude: "-11.12304", ParentID: "", Type: data.TrainStation},
-	{StopID: "E", Name: "E Stop", Location: testLocation, Latitude: "34.12305", Longitude: "-11.12305", ParentID: "A", Type: data.TrainStation},
-	{StopID: "F", Name: "F Stop", Location: testLocation, Latitude: "34.12306", Longitude: "-11.12306", ParentID: "B", Type: data.TrainStation},
-	{StopID: "G", Name: "G Stop", Location: testLocation, Latitude: "34.12307", Longitude: "-11.12307", ParentID: "C", Type: data.TrainStation},
+var allStops = []*transit.Stop{
+	{StopID: "A", Name: "A Stop", Location: testLocation, Latitude: "34.12301", Longitude: "-11.12301", ParentID: "", Type: transit.TrainStation},
+	{StopID: "B", Name: "B Stop", Location: testLocation, Latitude: "34.12302", Longitude: "-11.12302", ParentID: "", Type: transit.TrainStation},
+	{StopID: "C", Name: "C Stop", Location: testLocation, Latitude: "34.12303", Longitude: "-11.12303", ParentID: "", Type: transit.TrainStation},
+	{StopID: "D", Name: "D Stop", Location: testLocation, Latitude: "34.12304", Longitude: "-11.12304", ParentID: "", Type: transit.TrainStation},
+	{StopID: "E", Name: "E Stop", Location: testLocation, Latitude: "34.12305", Longitude: "-11.12305", ParentID: "A", Type: transit.TrainStation},
+	{StopID: "F", Name: "F Stop", Location: testLocation, Latitude: "34.12306", Longitude: "-11.12306", ParentID: "B", Type: transit.TrainStation},
+	{StopID: "G", Name: "G Stop", Location: testLocation, Latitude: "34.12307", Longitude: "-11.12307", ParentID: "C", Type: transit.TrainStation},
 }
 
-func (t *TestAPI) FetchStaticData(_ context.Context) (*data.StaticData, error) {
-	d := &data.StaticData{
+func (t *TestAPI) FetchStaticData(_ context.Context) (*transit.StaticData, error) {
+	d := &transit.StaticData{
 		Stops: allStops,
 	}
 

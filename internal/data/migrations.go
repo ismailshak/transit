@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/ismailshak/transit/internal/transit"
 )
 
 // Changeset applies a change to the database schema
@@ -74,7 +76,7 @@ func addDMVToLocations(ctx context.Context, trx *sql.Tx) error {
 	_, err := trx.ExecContext(
 		ctx,
 		InsertLocationSQL,
-		DMVSlug,
+		transit.DMVSlug,
 		"District Of Columbia, Maryland and Virginia (US)",
 		true,
 	)
@@ -94,7 +96,7 @@ func addSFToLocations(ctx context.Context, trx *sql.Tx) error {
 	_, err := trx.ExecContext(
 		ctx,
 		InsertLocationSQL,
-		SFSlug,
+		transit.SFSlug,
 		"San Francisco Bay Area (US)",
 		true,
 	)

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ismailshak/transit/internal/transit"
 )
 
 // ResolveGTFSAlertEffect resolves the GTFS Service Alert "Effect" field to a human-readable string.
@@ -62,7 +64,7 @@ func UnzipStaticGTFS(path string, dest string) error {
 }
 
 // ParseGTFS parses an unzipped directory that contains the GTFS Static feed
-func ParseGTFS(path string, location LocationSlug, st StopType, agency string) (*StaticData, error) {
+func ParseGTFS(path string, location transit.LocationSlug, st transit.StopType, agency string) (*transit.StaticData, error) {
 	agencyFile := filepath.Join(path, "agency.txt")
 	stopsFile := filepath.Join(path, "stops.txt")
 
@@ -76,7 +78,7 @@ func ParseGTFS(path string, location LocationSlug, st StopType, agency string) (
 		return nil, fmt.Errorf("parse %s: %w", stopsFile, err)
 	}
 
-	static := &StaticData{
+	static := &transit.StaticData{
 		Agencies: agencies,
 		Stops:    stops,
 	}
@@ -84,11 +86,11 @@ func ParseGTFS(path string, location LocationSlug, st StopType, agency string) (
 	return static, nil
 }
 
-func parseGTFSAgency(path string, location LocationSlug) ([]*Agency, error) {
-	agencies := make([]*Agency, 0)
+func parseGTFSAgency(path string, location transit.LocationSlug) ([]*transit.Agency, error) {
+	agencies := make([]*transit.Agency, 0)
 	err := parseGTFSEntity(path, func(record []string, headerMap map[string]int) {
 		lang, hasLang := headerMap["agency_lang"]
-		agency := &Agency{
+		agency := &transit.Agency{
 			Location: location,
 			AgencyID: record[headerMap["agency_id"]],
 			Name:     record[headerMap["agency_name"]],
@@ -106,12 +108,12 @@ func parseGTFSAgency(path string, location LocationSlug) ([]*Agency, error) {
 	return agencies, nil
 }
 
-func parseGTFSStops(path string, location LocationSlug, st StopType, agency string) ([]*Stop, error) {
-	stops := make([]*Stop, 0, 64) // Random safe-bet high number to avoid excessive reallocations
+func parseGTFSStops(path string, location transit.LocationSlug, st transit.StopType, agency string) ([]*transit.Stop, error) {
+	stops := make([]*transit.Stop, 0, 64) // Random safe-bet high number to avoid excessive reallocations
 	err := parseGTFSEntity(path, func(record []string, headerMap map[string]int) {
 		lat, hasLat := headerMap["stop_lat"]
 		lon, hasLon := headerMap["stop_lon"]
-		stop := &Stop{
+		stop := &transit.Stop{
 			Location:  location,
 			Type:      st,
 			AgencyID:  agency,

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -76,7 +77,7 @@ func TestParseGTFS(t *testing.T) {
 	expectedAgencies := []struct {
 		AgencyID string
 		Name     string
-		Location data.LocationSlug
+		Location transit.LocationSlug
 		Timezone string
 		Language string
 	}{
@@ -95,10 +96,10 @@ func TestParseGTFS(t *testing.T) {
 	expectedStops := []struct {
 		StopID    string
 		Name      string
-		Location  data.LocationSlug
+		Location  transit.LocationSlug
 		Latitude  string
 		Longitude string
-		Type      data.StopType
+		Type      transit.StopType
 		ParentID  string
 	}{
 		{"FUR_CREEK_RES", "Furnace Creek Resort (Demo)", "someplace", "36.425288", "-117.133162", "train", ""},

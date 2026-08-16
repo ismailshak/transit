@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/transit"
 	_ "modernc.org/sqlite"
 )
 
@@ -63,7 +64,7 @@ func (t *TransitDB) SyncMigrations(ctx context.Context) error {
 	return nil
 }
 
-func (t *TransitDB) InsertAgencies(ctx context.Context, agencies []*Agency) error {
+func (t *TransitDB) InsertAgencies(ctx context.Context, agencies []*transit.Agency) error {
 	trx, err := t.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -91,10 +92,10 @@ func (t *TransitDB) InsertAgencies(ctx context.Context, agencies []*Agency) erro
 	return nil
 }
 
-func (t *TransitDB) GetLocation(ctx context.Context, location LocationSlug) (*Location, error) {
+func (t *TransitDB) GetLocation(ctx context.Context, location transit.LocationSlug) (*transit.Location, error) {
 	row := t.DB.QueryRowContext(ctx, SelectLocationSQL, location)
 
-	var l Location
+	var l transit.Location
 
 	err := row.Scan(&l.ID, &l.Slug, &l.Name, &l.SupportsGTFS, &l.CreatedAt, &l.UpdatedAt)
 
@@ -109,7 +110,7 @@ func (t *TransitDB) GetLocation(ctx context.Context, location LocationSlug) (*Lo
 	return &l, nil
 }
 
-func (t *TransitDB) GetAllLocations(ctx context.Context) ([]Location, error) {
+func (t *TransitDB) GetAllLocations(ctx context.Context) ([]transit.Location, error) {
 	rows, err := t.DB.QueryContext(ctx, SelectAllLocationsSQL)
 	if err != nil {
 		return nil, fmt.Errorf("query locations: %w", err)
@@ -117,10 +118,10 @@ func (t *TransitDB) GetAllLocations(ctx context.Context) ([]Location, error) {
 
 	defer rows.Close()
 
-	locations := make([]Location, 0, 4)
+	locations := make([]transit.Location, 0, 4)
 
 	for rows.Next() {
-		var row Location
+		var row transit.Location
 		if err := rows.Scan(&row.ID, &row.Slug, &row.Name, &row.SupportsGTFS, &row.CreatedAt, &row.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan location: %w", err)
 		}
@@ -132,7 +133,7 @@ func (t *TransitDB) GetAllLocations(ctx context.Context) ([]Location, error) {
 	return locations, rows.Err()
 }
 
-func (t *TransitDB) GetStopsByLocation(ctx context.Context, location LocationSlug, parentsOnly bool) ([]*Stop, error) {
+func (t *TransitDB) GetStopsByLocation(ctx context.Context, location transit.LocationSlug, parentsOnly bool) ([]*transit.Stop, error) {
 	var statement string
 	if parentsOnly {
 		statement = SelectParentStopsByLocationSQL
@@ -147,10 +148,10 @@ func (t *TransitDB) GetStopsByLocation(ctx context.Context, location LocationSlu
 
 	defer rows.Close()
 
-	stops := make([]*Stop, 0, 64) // arbitrary capacity to avoid excessive reallocations
+	stops := make([]*transit.Stop, 0, 64) // arbitrary capacity to avoid excessive reallocations
 
 	for rows.Next() {
-		var row Stop
+		var row transit.Stop
 		if err := rows.Scan(
 			&row.ID,
 			&row.StopID,
@@ -173,7 +174,7 @@ func (t *TransitDB) GetStopsByLocation(ctx context.Context, location LocationSlu
 	return stops, rows.Err()
 }
 
-func (t *TransitDB) InsertStops(ctx context.Context, stops []*Stop) error {
+func (t *TransitDB) InsertStops(ctx context.Context, stops []*transit.Stop) error {
 	trx, err := t.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -201,7 +202,7 @@ func (t *TransitDB) InsertStops(ctx context.Context, stops []*Stop) error {
 	return nil
 }
 
-func (t *TransitDB) CountStopsByLocation(ctx context.Context, location LocationSlug) (int, error) {
+func (t *TransitDB) CountStopsByLocation(ctx context.Context, location transit.LocationSlug) (int, error) {
 	row := t.DB.QueryRowContext(ctx, CountStopsByLocationSQL, location)
 
 	var count int
@@ -212,7 +213,7 @@ func (t *TransitDB) CountStopsByLocation(ctx context.Context, location LocationS
 	return count, nil
 }
 
-func (t *TransitDB) GetLocationAgencies(ctx context.Context, location LocationSlug) ([]Agency, error) {
+func (t *TransitDB) GetLocationAgencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error) {
 	rows, err := t.DB.QueryContext(ctx, SelectAgenciesByLocationSQL, location)
 	if err != nil {
 		return nil, fmt.Errorf("query agencies: %w", err)
@@ -220,10 +221,10 @@ func (t *TransitDB) GetLocationAgencies(ctx context.Context, location LocationSl
 
 	defer rows.Close()
 
-	agencies := make([]Agency, 0, 4) // arbitrary capacity to avoid excessive reallocations
+	agencies := make([]transit.Agency, 0, 4) // arbitrary capacity to avoid excessive reallocations
 
 	for rows.Next() {
-		var row Agency
+		var row transit.Agency
 		if err := rows.Scan(
 			&row.ID,
 			&row.AgencyID,

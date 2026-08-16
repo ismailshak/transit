@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/tui"
 	"github.com/ismailshak/transit/internal/ui"
 	"github.com/spf13/cobra"
@@ -31,7 +31,7 @@ Adds missing config properties and downloads static data for the chosen location
 				return err
 			}
 
-			if err := a.executeInitData(ctx, client, data.LocationSlug(a.Cfg.Core.Location)); err != nil {
+			if err := a.executeInitData(ctx, client, transit.LocationSlug(a.Cfg.Core.Location)); err != nil {
 				return fmt.Errorf("initialize data: %w", err)
 			}
 
@@ -42,7 +42,7 @@ Adds missing config properties and downloads static data for the chosen location
 	return initCmd
 }
 
-func toChoices(locations []data.Location) []ui.Choice {
+func toChoices(locations []transit.Location) []ui.Choice {
 	choices := make([]ui.Choice, len(locations))
 	for i, l := range locations {
 		choices[i] = ui.Choice{Key: string(l.Slug), Title: string(l.Slug), Description: l.Name, FilterValue: l.Name}
@@ -136,7 +136,7 @@ func (a *App) executeInitConfig(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) executeInitData(ctx context.Context, client provider.API, location data.LocationSlug) error {
+func (a *App) executeInitData(ctx context.Context, client provider.API, location transit.LocationSlug) error {
 	count, err := a.Store.CountStopsByLocation(ctx, location)
 	if err != nil {
 		return fmt.Errorf("count stops: %w", err)
@@ -147,7 +147,7 @@ func (a *App) executeInitData(ctx context.Context, client provider.API, location
 		return nil
 	}
 
-	var d *data.StaticData
+	var d *transit.StaticData
 	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
 		SpinMessage:    "Fetching data...",
 		ErrorMessage:   "Failed to fetch data",

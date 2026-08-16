@@ -14,6 +14,7 @@ import (
 
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/transit"
 )
 
 // SFClient is the API to interact with San Francisco's 511 API
@@ -125,7 +126,7 @@ func (sf *SFClient) BuildRequest(ctx context.Context, method string, route ...st
 	return req, nil
 }
 
-func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *data.Agency) ([]*data.Stop, error) {
+func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *transit.Agency) ([]*transit.Stop, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "stopplaces")
 	if err != nil {
 		return nil, err
@@ -164,26 +165,26 @@ func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *data.Agency
 		return nil, err
 	}
 
-	var stops []*data.Stop
+	var stops []*transit.Stop
 
 	for _, sp := range stopPlaces.Siri.ServiceDelivery.DataObjectDelivery.DataObjects.SiteFrame.StopPlaces.StopPlace {
-		var stopType data.StopType
+		var stopType transit.StopType
 
 		switch sp.TransportMode {
 		case "bus":
-			stopType = data.BusStop
+			stopType = transit.BusStop
 		case "rail": // CT train type
-			stopType = data.TrainStation
+			stopType = transit.TrainStation
 		case "intercityRail": // BART train type
-			stopType = data.TrainStation
+			stopType = transit.TrainStation
 		default:
 			continue
 		}
 
-		stop := data.Stop{
+		stop := transit.Stop{
 			AgencyID:  agency.AgencyID,
 			Latitude:  sp.Centroid.Location.Latitude,
-			Location:  data.SFSlug,
+			Location:  transit.SFSlug,
 			Longitude: sp.Centroid.Location.Longitude,
 			Name:      sp.Name,
 			StopID:    sp.ID,
@@ -196,11 +197,11 @@ func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *data.Agency
 	return stops, nil
 }
 
-func (sf *SFClient) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
-	bart := &data.Agency{
+func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.StaticData, error) {
+	bart := &transit.Agency{
 		AgencyID: "BA",
 		Language: "en",
-		Location: data.SFSlug,
+		Location: transit.SFSlug,
 		Name:     "Bay Area Rapid Transit",
 		Timezone: "America/Los_Angeles",
 	}
@@ -210,10 +211,10 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*data.StaticData, erro
 		return nil, fmt.Errorf("fetch BART stops: %w", err)
 	}
 
-	cal := &data.Agency{
+	cal := &transit.Agency{
 		AgencyID: "CT",
 		Language: "en",
-		Location: data.SFSlug,
+		Location: transit.SFSlug,
 		Name:     "Caltrain",
 		Timezone: "America/Los_Angeles",
 	}
@@ -223,12 +224,12 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*data.StaticData, erro
 		return nil, fmt.Errorf("fetch Caltrain stops: %w", err)
 	}
 
-	var stops []*data.Stop
+	var stops []*transit.Stop
 
 	stops = append(bartStops, calStops...)
 
-	staticData := data.StaticData{
-		Agencies: []*data.Agency{bart, cal},
+	staticData := transit.StaticData{
+		Agencies: []*transit.Agency{bart, cal},
 		Stops:    stops,
 	}
 
@@ -362,7 +363,7 @@ func (sf *SFClient) FetchPredictions(ctx context.Context, input []PredictionInpu
 }
 
 func (sf *SFClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
-	agencies, err := sf.store.GetLocationAgencies(ctx, data.SFSlug)
+	agencies, err := sf.store.GetLocationAgencies(ctx, transit.SFSlug)
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +390,7 @@ func (sf *SFClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	return incidents, nil
 }
 
-func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency data.Agency, agencyName string) ([]Incident, error) {
+func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Agency, agencyName string) ([]Incident, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "servicealerts")
 	if err != nil {
 		return nil, err
@@ -466,7 +467,7 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency data.Agency
 }
 
 func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := sf.store.GetStopsByLocation(ctx, data.SFSlug, true)
+	stops, err := sf.store.GetStopsByLocation(ctx, transit.SFSlug, true)
 	if err != nil {
 		return nil, err
 	}

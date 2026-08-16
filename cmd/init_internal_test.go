@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/ui"
 )
 
@@ -12,11 +12,11 @@ func TestToChoices(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		input    []data.Location
+		input    []transit.Location
 		expected []ui.Choice
 	}{
 		"converts a location correctly": {
-			input: []data.Location{
+			input: []transit.Location{
 				{Slug: "slug", Name: "Long Slug Name"},
 			},
 			expected: []ui.Choice{
@@ -24,7 +24,7 @@ func TestToChoices(t *testing.T) {
 			},
 		},
 		"empty list": {
-			input:    []data.Location{},
+			input:    []transit.Location{},
 			expected: []ui.Choice{},
 		},
 	}

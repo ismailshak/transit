@@ -7,14 +7,15 @@ import (
 
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/testutils"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/stretchr/testify/assert"
 )
 
-var testLocation data.LocationSlug = "moon"
+var testLocation transit.LocationSlug = "moon"
 
-var locationFixture = &data.Location{Slug: "x", Name: "XYZ", SupportsGTFS: true}
+var locationFixture = &transit.Location{Slug: "x", Name: "XYZ", SupportsGTFS: true}
 
-var stopsFixture = []*data.Stop{
+var stopsFixture = []*transit.Stop{
 	{StopID: "A", Name: "AAA", Location: testLocation, AgencyID: "MET", Latitude: "12.1818181", Longitude: "-332.99933", Type: "train", ParentID: ""},
 	{StopID: "B", Name: "BBB", Location: testLocation, AgencyID: "MET", Latitude: "12.1813458", Longitude: "-332.99993", Type: "train", ParentID: "A"},
 	{StopID: "C", Name: "CCC", Location: testLocation, AgencyID: "MET", Latitude: "12.1814451", Longitude: "-332.99773", Type: "train", ParentID: "B"},
@@ -274,10 +275,10 @@ func TestInsertManyStops(t *testing.T) {
 
 	defer rows.Close()
 
-	stopRows := make([]*data.Stop, 0, 4)
+	stopRows := make([]*transit.Stop, 0, 4)
 
 	for rows.Next() {
-		var row data.Stop
+		var row transit.Stop
 		err = rows.Scan(
 			&row.ID,
 			&row.StopID,

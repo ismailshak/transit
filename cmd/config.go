@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/ismailshak/transit/internal/config"
-	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/spf13/cobra"
 )
 
@@ -132,7 +132,7 @@ func (a *App) validateKey(ctx context.Context, key, value string) error {
 }
 
 func (a *App) validateLocation(ctx context.Context, location string) error {
-	l, err := a.Store.GetLocation(ctx, data.LocationSlug(location))
+	l, err := a.Store.GetLocation(ctx, transit.LocationSlug(location))
 	if err != nil {
 		return fmt.Errorf("get location data: %w", err)
 	}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/transit"
 )
 
 const (
@@ -60,7 +61,7 @@ type Incident struct {
 // API is the base interface that defines what each location client api must implement
 type API interface {
 	// Fetches all required static data. Used to hydrate database
-	FetchStaticData(ctx context.Context) (*data.StaticData, error)
+	FetchStaticData(ctx context.Context) (*transit.StaticData, error)
 	// Fetches arrival information for list of location unique identifiers
 	FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error)
 	// Fetch all incidents reported by the agency for a location
