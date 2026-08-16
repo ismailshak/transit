@@ -261,6 +261,24 @@ func (s *Store) LocationAgencies(ctx context.Context, location transit.LocationS
 	return agencies, rows.Err()
 }
 
+// MatchStops fuzzy matches query against the names of the stations seeded for a
+// location. Matches come back best first. No match is an empty slice.
+func (s *Store) MatchStops(ctx context.Context, location transit.LocationSlug, query string) ([]*transit.Stop, error) {
+	stops, err := s.StopsByLocation(ctx, location, true)
+	if err != nil {
+		return nil, err
+	}
+
+	matches := FuzzyFindFrom(query, SearchableStops(stops))
+
+	matched := make([]*transit.Stop, 0, matches.Len())
+	for _, m := range matches {
+		matched = append(matched, stops[m.Index])
+	}
+
+	return matched, nil
+}
+
 // rollback undoes trx unless it already committed which reports sql.ErrTxDone.
 // Any other error means the rollback itself failed.
 func rollback(trx *sql.Tx, log *logger.Logger) {

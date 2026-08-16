@@ -222,30 +222,26 @@ func (w *WMATClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 }
 
 func (w *WMATClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := w.store.StopsByLocation(ctx, transit.DMVSlug, true)
+	stops, err := w.store.MatchStops(ctx, transit.DMVSlug, arg)
 	if err != nil {
 		return nil, err
 	}
 
-	matches := store.FuzzyFindFrom(arg, store.SearchableStops(stops))
-
-	if matches.Len() == 0 {
+	if len(stops) == 0 {
 		w.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
 		return nil, nil
 	}
 
-	if matches.Len() > 5 {
+	if len(stops) > 5 {
 		w.log.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
 		return nil, nil
 	}
 
-	input := make([]PredictionInput, 0, matches.Len())
+	input := make([]PredictionInput, 0, len(stops))
 
-	for _, m := range matches {
-		id := stops[m.Index].StopID
-		formattedID := formatWMATAStopID(id)
-		for _, id := range formattedID {
-			input = append(input, PredictionInput{id, stops[m.Index].AgencyID})
+	for _, s := range stops {
+		for _, id := range formatWMATAStopID(s.StopID) {
+			input = append(input, PredictionInput{StopID: id, AgencyID: s.AgencyID})
 		}
 	}
 

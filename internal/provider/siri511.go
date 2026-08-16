@@ -468,29 +468,25 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 }
 
 func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := sf.store.StopsByLocation(ctx, transit.SFSlug, true)
+	stops, err := sf.store.MatchStops(ctx, transit.SFSlug, arg)
 	if err != nil {
 		return nil, err
 	}
 
-	matches := store.FuzzyFindFrom(arg, store.SearchableStops(stops))
-
-	if matches.Len() == 0 {
+	if len(stops) == 0 {
 		sf.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
 		return nil, nil
 	}
 
-	if matches.Len() > 5 {
+	if len(stops) > 5 {
 		sf.log.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
 		return nil, nil
 	}
 
-	input := make([]PredictionInput, 0, matches.Len())
+	input := make([]PredictionInput, 0, len(stops))
 
-	for _, m := range matches {
-		id := stops[m.Index].StopID
-		agency := stops[m.Index].AgencyID
-		input = append(input, PredictionInput{id, agency})
+	for _, s := range stops {
+		input = append(input, PredictionInput{StopID: s.StopID, AgencyID: s.AgencyID})
 	}
 
 	return input, nil

@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/ismailshak/transit/internal/store"
@@ -20,6 +21,15 @@ var stopsFixture = []*transit.Stop{
 	{StopID: "B", Name: "BBB", Location: testLocation, AgencyID: "MET", Latitude: "12.1813458", Longitude: "-332.99993", Type: "train", ParentID: "A"},
 	{StopID: "C", Name: "CCC", Location: testLocation, AgencyID: "MET", Latitude: "12.1814451", Longitude: "-332.99773", Type: "train", ParentID: "B"},
 	{StopID: "D", Name: "DDD", Location: testLocation, AgencyID: "MET", Latitude: "12.1812341", Longitude: "-332.98833", Type: "train", ParentID: "C"},
+}
+
+var matchFixture = []*transit.Stop{
+	{StopID: "STN_A07", Name: "Van Ness-UDC", Location: testLocation, AgencyID: "MET", Type: "train", ParentID: ""},
+	{StopID: "STN_J02", Name: "Van Dorn Street", Location: testLocation, AgencyID: "MET", Type: "train", ParentID: ""},
+	{StopID: "STN_A01", Name: "Metro Center", Location: testLocation, AgencyID: "MET", Type: "train", ParentID: ""},
+	{StopID: "STN_C03", Name: "Farragut West", Location: testLocation, AgencyID: "MET", Type: "train", ParentID: ""},
+	{StopID: "PF_A01_1", Name: "Metro Center Upper Platform", Location: testLocation, AgencyID: "MET", Type: "train", ParentID: "STN_A01"},
+	{StopID: "STN_X01", Name: "Van Dorn Depot", Location: "mars", AgencyID: "MRS", Type: "train", ParentID: ""},
 }
 
 func TestMigrationCompletes(t *testing.T) {
@@ -257,6 +267,48 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 		assert.NotNil(t, stop.CreatedAt)
 		assert.NotEqual(t, stop.UpdatedAt, "")
 		assert.NotNil(t, stop.UpdatedAt)
+	}
+}
+
+func TestMatchStops(t *testing.T) {
+	t.Parallel()
+
+	db := testutils.MigratedDB(t)
+	if err := db.InsertStops(t.Context(), matchFixture); err != nil {
+		t.Fatalf("Failed to insert stop fixture data: %s", err)
+	}
+
+	tests := map[string]struct {
+		query    string
+		expected []string
+	}{
+		"a station and not the platform under it": {"Metro Center", []string{"Metro Center"}},
+		"a word from the middle of a name":        {"west", []string{"Farragut West"}},
+		"a query in another case":                 {"VAN DORN", []string{"Van Dorn Street"}},
+		"characters in order but not together":    {"frgt", []string{"Farragut West"}},
+		"the closest match first":                 {"van d", []string{"Van Dorn Street", "Van Ness-UDC"}},
+		"a match but in another location":         {"depot", nil},
+		"nothing close enough":                    {"asdfghjkl", nil},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			matched, err := db.MatchStops(t.Context(), testLocation, tc.query)
+			if err != nil {
+				t.Fatalf("expected no error but got %v", err)
+			}
+
+			names := make([]string, 0, len(matched))
+			for _, stop := range matched {
+				names = append(names, stop.Name)
+			}
+
+			if !slices.Equal(tc.expected, names) {
+				t.Errorf("expected %v but got %v", tc.expected, names)
+			}
+		})
 	}
 }
 
