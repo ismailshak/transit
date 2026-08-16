@@ -11,9 +11,9 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/ui"
 	"github.com/ismailshak/transit/internal/version"
-	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -94,7 +94,7 @@ func cancelled(err error) bool {
 
 // exitCode maps a caught error to one of the documented exit codes.
 func exitCode(err error) int {
-	var httpErr *api.HTTPError
+	var httpErr *provider.HTTPError
 
 	switch {
 	case err == nil:
@@ -102,14 +102,14 @@ func exitCode(err error) int {
 	case cancelled(err):
 		return 0 // Acceptable errors that aren't real errors
 	case errors.Is(err, errUsage),
-		errors.Is(err, api.ErrMissingAPIKey),
+		errors.Is(err, provider.ErrMissingAPIKey),
 		errors.Is(err, ui.ErrNoSelection),
 		errors.Is(err, ui.ErrNoInput),
 		errors.Is(err, config.ErrInvalid):
 		return 2 // Usage or configuration error
 	case errors.As(err, &httpErr):
 		return 3 // Network or upstream error
-	case errors.Is(err, api.ErrNoDepartures):
+	case errors.Is(err, provider.ErrNoDepartures):
 		return 4 // Request was successful but there's nothing to show
 	default:
 		return 1 // Catch-all, internal error

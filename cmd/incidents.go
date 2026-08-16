@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/tui"
-	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +29,7 @@ func (a *App) newIncidentsCmd() *cobra.Command {
 	return incidentsCmd
 }
 
-func (a *App) executeIncidents(ctx context.Context, client api.API) error {
+func (a *App) executeIncidents(ctx context.Context, client provider.API) error {
 	incidents, err := client.FetchIncidents(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch incidents: %w", err)

@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/ui"
-	"github.com/ismailshak/transit/pkg/api"
 )
 
 func TestExitCode(t *testing.T) {
@@ -49,7 +49,7 @@ func TestExitCode(t *testing.T) {
 			want: 2,
 		},
 		"missing api key": {
-			err:  fmt.Errorf("dmv: %w", api.ErrMissingAPIKey),
+			err:  fmt.Errorf("dmv: %w", provider.ErrMissingAPIKey),
 			want: 2,
 		},
 		"nothing selected": {
@@ -72,19 +72,19 @@ func TestExitCode(t *testing.T) {
 		"upstream rejected the key": {
 			err: fmt.Errorf("at: %w",
 				fmt.Errorf("fetch predictions for 902101: %w",
-					&api.HTTPError{StatusCode: http.StatusUnauthorized, URL: "http://api.511.org/transit/StopMonitoring"})),
+					&provider.HTTPError{StatusCode: http.StatusUnauthorized, URL: "http://api.511.org/transit/StopMonitoring"})),
 			want: 3,
 		},
 		"upstream unavailable": {
-			err:  fmt.Errorf("fetch incidents: %w", &api.HTTPError{StatusCode: http.StatusServiceUnavailable}),
+			err:  fmt.Errorf("fetch incidents: %w", &provider.HTTPError{StatusCode: http.StatusServiceUnavailable}),
 			want: 3,
 		},
 		"no departures anywhere": {
-			err:  fmt.Errorf("at: %w", api.ErrNoDepartures),
+			err:  fmt.Errorf("at: %w", provider.ErrNoDepartures),
 			want: 4,
 		},
 		"upstream failure outranks no departures": {
-			err:  errors.Join(api.ErrNoDepartures, &api.HTTPError{StatusCode: http.StatusServiceUnavailable}),
+			err:  errors.Join(provider.ErrNoDepartures, &provider.HTTPError{StatusCode: http.StatusServiceUnavailable}),
 			want: 3,
 		},
 		"unclassified": {
@@ -109,9 +109,9 @@ func TestExitCode(t *testing.T) {
 func TestExitCodeUnwrapsHTTPError(t *testing.T) {
 	t.Parallel()
 
-	wrapped := fmt.Errorf("at: %w", &api.HTTPError{StatusCode: http.StatusUnauthorized})
+	wrapped := fmt.Errorf("at: %w", &provider.HTTPError{StatusCode: http.StatusUnauthorized})
 
-	var httpErr *api.HTTPError
+	var httpErr *provider.HTTPError
 	if !errors.As(wrapped, &httpErr) {
 		t.Fatalf("errors.As(%v, **api.HTTPError) = false, want true", wrapped)
 	}

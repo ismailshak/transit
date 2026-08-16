@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
+	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/tui"
-	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +52,7 @@ try being more specific by adding more characters.
 	return atCmd
 }
 
-func (a *App) executeAt(ctx context.Context, client api.API, args []string) error {
+func (a *App) executeAt(ctx context.Context, client provider.API, args []string) error {
 	targets, err := a.resolveStops(ctx, client, args)
 	if err != nil {
 		return err
@@ -61,7 +61,7 @@ func (a *App) executeAt(ctx context.Context, client api.API, args []string) erro
 	return a.renderDepartures(ctx, client, targets)
 }
 
-func (a *App) watchAt(ctx context.Context, client api.API, args []string) error {
+func (a *App) watchAt(ctx context.Context, client provider.API, args []string) error {
 	interval, err := watchInterval(a.Cfg.Core.WatchInterval)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func (a *App) watchAt(ctx context.Context, client api.API, args []string) error 
 				return err
 			}
 
-			if !errors.Is(err, api.ErrNoDepartures) {
+			if !errors.Is(err, provider.ErrNoDepartures) {
 				a.Log.Error(err.Error())
 			}
 		}
@@ -106,10 +106,10 @@ func (a *App) watchAt(ctx context.Context, client api.API, args []string) error 
 // target is one argument resolved to the stop codes a provider wants
 type target struct {
 	arg   string
-	input []api.PredictionInput
+	input []provider.PredictionInput
 }
 
-func (a *App) resolveStops(ctx context.Context, client api.API, args []string) ([]target, error) {
+func (a *App) resolveStops(ctx context.Context, client provider.API, args []string) ([]target, error) {
 	var targets []target
 
 	for _, arg := range args {
@@ -131,11 +131,11 @@ func (a *App) resolveStops(ctx context.Context, client api.API, args []string) (
 	return targets, nil
 }
 
-func (a *App) renderDepartures(ctx context.Context, client api.API, targets []target) error {
+func (a *App) renderDepartures(ctx context.Context, client provider.API, targets []target) error {
 	var rendered int
 	for _, t := range targets {
 		departures, err := client.FetchPredictions(ctx, t.input)
-		if errors.Is(err, api.ErrNoDepartures) {
+		if errors.Is(err, provider.ErrNoDepartures) {
 			continue
 		}
 
@@ -149,7 +149,7 @@ func (a *App) renderDepartures(ctx context.Context, client api.API, targets []ta
 	}
 
 	if rendered == 0 {
-		return api.ErrNoDepartures
+		return provider.ErrNoDepartures
 	}
 
 	return nil
@@ -158,8 +158,8 @@ func (a *App) renderDepartures(ctx context.Context, client api.API, targets []ta
 // Groups predictions by destination (assumes already sorted by minutes).
 // Sometimes the same destination can have multiple lines, so we group by both.
 // Returns grouped map and returns a sorted list of destinations
-func groupByDestination(predictions []api.Prediction) (map[string][]api.Prediction, []string) {
-	destMap := make(map[string][]api.Prediction)
+func groupByDestination(predictions []provider.Prediction) (map[string][]provider.Prediction, []string) {
+	destMap := make(map[string][]provider.Prediction)
 	var destinations []string
 
 	for _, p := range predictions {
@@ -168,7 +168,7 @@ func groupByDestination(predictions []api.Prediction) (map[string][]api.Predicti
 		if exists {
 			destMap[key] = append(destMap[key], p)
 		} else {
-			destMap[key] = []api.Prediction{p}
+			destMap[key] = []provider.Prediction{p}
 			destinations = append(destinations, key)
 		}
 	}
@@ -195,7 +195,7 @@ func endsWatch(err error) bool {
 		return true
 	}
 
-	if httpErr, ok := errors.AsType[*api.HTTPError](err); ok {
+	if httpErr, ok := errors.AsType[*provider.HTTPError](err); ok {
 		// 5xx and 429 are the upstream's problem and it could recover.
 		return httpErr.StatusCode < 500 && httpErr.StatusCode != http.StatusTooManyRequests
 	}
@@ -215,7 +215,7 @@ func endsWatch(err error) bool {
 	}
 
 	// Loop could start before trains start operating.
-	if errors.Is(err, api.ErrNoDepartures) {
+	if errors.Is(err, provider.ErrNoDepartures) {
 		return false
 	}
 

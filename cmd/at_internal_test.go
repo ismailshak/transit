@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
-	"github.com/ismailshak/transit/pkg/api"
+	"github.com/ismailshak/transit/internal/provider"
 )
 
 func TestWatchInterval(t *testing.T) {
@@ -70,31 +70,31 @@ func TestEndsWatch(t *testing.T) {
 		expected bool
 	}{
 		"no departures keeps watching": {
-			err:      api.ErrNoDepartures,
+			err:      provider.ErrNoDepartures,
 			expected: false,
 		},
 		"429 keeps watching": {
-			err:      &api.HTTPError{StatusCode: http.StatusTooManyRequests},
+			err:      &provider.HTTPError{StatusCode: http.StatusTooManyRequests},
 			expected: false,
 		},
 		"500 keeps watching": {
-			err:      &api.HTTPError{StatusCode: http.StatusInternalServerError},
+			err:      &provider.HTTPError{StatusCode: http.StatusInternalServerError},
 			expected: false,
 		},
 		"503 keeps watching": {
-			err:      &api.HTTPError{StatusCode: http.StatusServiceUnavailable},
+			err:      &provider.HTTPError{StatusCode: http.StatusServiceUnavailable},
 			expected: false,
 		},
 		"wrapped 500 keeps watching": {
-			err:      fmt.Errorf("fetch predictions for %q: %w", "courth", &api.HTTPError{StatusCode: http.StatusInternalServerError}),
+			err:      fmt.Errorf("fetch predictions for %q: %w", "courth", &provider.HTTPError{StatusCode: http.StatusInternalServerError}),
 			expected: false,
 		},
 		"404 ends the watch": {
-			err:      &api.HTTPError{StatusCode: http.StatusNotFound},
+			err:      &provider.HTTPError{StatusCode: http.StatusNotFound},
 			expected: true,
 		},
 		"401 ends the watch": {
-			err:      &api.HTTPError{StatusCode: http.StatusUnauthorized},
+			err:      &provider.HTTPError{StatusCode: http.StatusUnauthorized},
 			expected: true,
 		},
 		"a dns failure during a dial keeps watching": {
@@ -143,7 +143,7 @@ func TestEndsWatch(t *testing.T) {
 			expected: true,
 		},
 		"a missing api key ends the watch": {
-			err:      api.ErrMissingAPIKey,
+			err:      provider.ErrMissingAPIKey,
 			expected: true,
 		},
 		"a config error ends the watch": {

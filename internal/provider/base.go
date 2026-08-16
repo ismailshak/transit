@@ -1,8 +1,8 @@
-// Package api contains functions that manage transit information exposed by transit agencies.
+// Package provider contains functions that manage transit information exposed by transit agencies.
 //
-// Each supported location implements the interface `Api` and encapsulates the details of fetching
+// Each supported location implements the interface `API` and encapsulates the details of fetching
 // and parsing data coming from a specific transit agency.
-package api
+package provider
 
 import (
 	"context"
@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	dmvBaseURL  = "https://api.wmata.com"
-	sfBaseURL   = "http://api.511.org"
-	httpTimeout = 15 * time.Second
+	wmataBaseURL = "https://api.wmata.com"
+	sfBaseURL    = "http://api.511.org"
+	httpTimeout  = 15 * time.Second
 )
 
 // PredictionInput is data required to make a prediction request
@@ -75,14 +75,14 @@ type API interface {
 }
 
 // NewDMV builds a client for the DMV Metro Area, backed by WMATA
-func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*DmvAPI, error) {
+func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*WMATClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
 
-	return &DmvAPI{
+	return &WMATClient{
 		apiKey:  apiKey,
-		baseURL: dmvBaseURL,
+		baseURL: wmataBaseURL,
 		http:    &http.Client{Timeout: httpTimeout},
 		log:     log,
 		store:   store,
@@ -91,12 +91,12 @@ func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*DmvAPI, 
 
 // NewSF builds a client for the San Francisco Bay Area, backed by 511.
 // The now function supplies the clock that arrival times are measured against.
-func NewSF(apiKey string, store *data.TransitDB, log *logger.Logger, now func() time.Time) (*SFAPI, error) {
+func NewSF(apiKey string, store *data.TransitDB, log *logger.Logger, now func() time.Time) (*SFClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
 
-	return &SFAPI{
+	return &SFClient{
 		apiKey:  apiKey,
 		baseURL: sfBaseURL,
 		http:    &http.Client{Timeout: httpTimeout},

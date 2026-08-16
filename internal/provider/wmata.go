@@ -1,4 +1,4 @@
-package api
+package provider
 
 import (
 	"context"
@@ -21,8 +21,8 @@ const (
 	wmataDateTimeLayout = "2006-01-02T15:04:05"
 )
 
-// DmvAPI is the API to interact with WMATA
-type DmvAPI struct {
+// WMATClient is the API to interact with WMATA
+type WMATClient struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
@@ -47,9 +47,9 @@ type wmataIncidentsResponse struct {
 	Incidents []wmataIncident
 }
 
-func (dmv *DmvAPI) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
+func (w *WMATClient) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
 	parts := make([]string, 0, len(route)+1)
-	parts = append(parts, dmv.baseURL)
+	parts = append(parts, w.baseURL)
 	parts = append(parts, route...)
 	url := strings.Join(parts, "/")
 
@@ -58,18 +58,18 @@ func (dmv *DmvAPI) BuildRequest(ctx context.Context, method string, route ...str
 		return nil, err
 	}
 
-	req.Header.Add("api_key", dmv.apiKey)
+	req.Header.Add("api_key", w.apiKey)
 
 	return req, nil
 }
 
-func (dmv *DmvAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
-	req, err := dmv.BuildRequest(ctx, http.MethodGet, "gtfs/rail-gtfs-static.zip")
+func (w *WMATClient) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
+	req, err := w.BuildRequest(ctx, http.MethodGet, "gtfs/rail-gtfs-static.zip")
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := dmv.http.Do(req)
+	resp, err := w.http.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (dmv *DmvAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error
 		return nil, err
 	}
 
-	zipPath := filepath.Join(configDir, "dmv_gtfs_static.zip")
+	zipPath := filepath.Join(configDir, "wmata_rail_gtfs_static.zip")
 	f, err := os.Create(zipPath)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (dmv *DmvAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error
 	defer func() {
 		f.Close() //nolint:errcheck // only here for the copy below, we close it ourselves after that
 		if err := os.RemoveAll(zipPath); err != nil {
-			dmv.log.Warn(fmt.Sprintf("Leftover gtfs archive at '%s': %s", zipPath, err))
+			w.log.Warn(fmt.Sprintf("Leftover gtfs archive at '%s': %s", zipPath, err))
 		}
 	}()
 
@@ -115,7 +115,7 @@ func (dmv *DmvAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error
 
 	defer func() {
 		if err := os.RemoveAll(feed); err != nil {
-			dmv.log.Warn(fmt.Sprintf("Leftover gtfs data at '%s': %s", feed, err))
+			w.log.Warn(fmt.Sprintf("Leftover gtfs data at '%s': %s", feed, err))
 		}
 	}()
 
@@ -127,18 +127,18 @@ func (dmv *DmvAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error
 	return data.ParseGTFS(feed, data.DMVSlug, data.TrainStation, "MET")
 }
 
-func (dmv *DmvAPI) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
+func (w *WMATClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
 	codes := make([]string, 0, len(input))
 	for _, i := range input {
 		codes = append(codes, i.StopID)
 	}
 
-	req, err := dmv.BuildRequest(ctx, http.MethodGet, "StationPrediction.svc/json/GetPrediction", strings.Join(codes, ","))
+	req, err := w.BuildRequest(ctx, http.MethodGet, "StationPrediction.svc/json/GetPrediction", strings.Join(codes, ","))
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := dmv.http.Do(req)
+	resp, err := w.http.Do(req)
 
 	if err != nil {
 		return nil, err
@@ -149,8 +149,8 @@ func (dmv *DmvAPI) FetchPredictions(ctx context.Context, input []PredictionInput
 	body, _ := io.ReadAll(resp.Body)
 
 	// Avoid the expensive conversion unless we have to
-	if dmv.log.Verbose() {
-		dmv.log.Debug(string(body))
+	if w.log.Verbose() {
+		w.log.Debug(string(body))
 	}
 
 	if resp.StatusCode != 200 {
@@ -171,13 +171,13 @@ func (dmv *DmvAPI) FetchPredictions(ctx context.Context, input []PredictionInput
 	return predictions.Trains, nil
 }
 
-func (dmv *DmvAPI) FetchIncidents(ctx context.Context) ([]Incident, error) {
-	req, err := dmv.BuildRequest(ctx, http.MethodGet, "Incidents.svc/json/Incidents")
+func (w *WMATClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
+	req, err := w.BuildRequest(ctx, http.MethodGet, "Incidents.svc/json/Incidents")
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := dmv.http.Do(req)
+	resp, err := w.http.Do(req)
 
 	if err != nil {
 		return nil, err
@@ -188,8 +188,8 @@ func (dmv *DmvAPI) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	body, _ := io.ReadAll(resp.Body)
 
 	// Avoid the expensive conversion unless we have to
-	if dmv.log.Verbose() {
-		dmv.log.Debug(string(body))
+	if w.log.Verbose() {
+		w.log.Debug(string(body))
 	}
 
 	if resp.StatusCode != 200 {
@@ -219,8 +219,8 @@ func (dmv *DmvAPI) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	return incidents, nil
 }
 
-func (dmv *DmvAPI) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := dmv.store.GetStopsByLocation(ctx, data.DMVSlug, true)
+func (w *WMATClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
+	stops, err := w.store.GetStopsByLocation(ctx, data.DMVSlug, true)
 	if err != nil {
 		return nil, err
 	}
@@ -228,12 +228,12 @@ func (dmv *DmvAPI) GetPredictionInput(ctx context.Context, arg string) ([]Predic
 	matches := data.FuzzyFindFrom(arg, data.SearchableStops(stops))
 
 	if matches.Len() == 0 {
-		dmv.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
+		w.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
 		return nil, nil
 	}
 
 	if matches.Len() > 5 {
-		dmv.log.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
+		w.log.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
 		return nil, nil
 	}
 
@@ -241,7 +241,7 @@ func (dmv *DmvAPI) GetPredictionInput(ctx context.Context, arg string) ([]Predic
 
 	for _, m := range matches {
 		id := stops[m.Index].StopID
-		formattedID := formatDmvStopID(id)
+		formattedID := formatWMATAStopID(id)
 		for _, id := range formattedID {
 			input = append(input, PredictionInput{id, stops[m.Index].AgencyID})
 		}
@@ -250,7 +250,7 @@ func (dmv *DmvAPI) GetPredictionInput(ctx context.Context, arg string) ([]Predic
 	return input, nil
 }
 
-func (dmv *DmvAPI) GetLineColor(stop string) (string, string) {
+func (w *WMATClient) GetLineColor(stop string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	switch stop {
 	case "SV", "Silver":
@@ -270,7 +270,7 @@ func (dmv *DmvAPI) GetLineColor(stop string) (string, string) {
 	}
 }
 
-func (dmv *DmvAPI) IsGhostTrain(line, destination string) bool {
+func (w *WMATClient) IsGhostTrain(line, destination string) bool {
 	return line == "--" || destination == "No Passenger" || line == "No"
 }
 
@@ -288,8 +288,8 @@ func parseLinesAffected(lines string) []string {
 	return filteredSlice
 }
 
-// All DMV train IDs have the format `STN_X_X` where each X is a unique ID
+// All WMATA train IDs have the format `STN_X_X` where each X is a unique ID
 // (train stations can have multiple)
-func formatDmvStopID(id string) []string {
+func formatWMATAStopID(id string) []string {
 	return strings.Split(id, "_")[1:]
 }

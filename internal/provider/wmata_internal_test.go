@@ -1,4 +1,4 @@
-package api
+package provider
 
 import (
 	"slices"
@@ -37,7 +37,7 @@ func TestParseLinesAffected(t *testing.T) {
 	}
 }
 
-func TestFormatDmvStopId(t *testing.T) {
+func TestFormatWMATAStopId(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
@@ -60,7 +60,7 @@ func TestFormatDmvStopId(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := formatDmvStopID(tc.id)
+			got := formatWMATAStopID(tc.id)
 			if !slices.Equal(got, tc.want) {
 				t.Errorf("expected %v but got %v", tc.want, got)
 			}

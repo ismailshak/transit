@@ -1,4 +1,4 @@
-package api
+package provider
 
 import (
 	"bytes"
@@ -16,8 +16,8 @@ import (
 	"github.com/ismailshak/transit/internal/logger"
 )
 
-// SFAPI is the API to interact with San Francisco's 511 API
-type SFAPI struct {
+// SFClient is the API to interact with San Francisco's 511 API
+type SFClient struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
@@ -111,7 +111,7 @@ func newSFHTTPError(req *http.Request, statusCode int) *HTTPError {
 
 }
 
-func (sf *SFAPI) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
+func (sf *SFClient) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
 	parts := make([]string, 0, len(route)+1)
 	parts = append(parts, sf.baseURL)
 	parts = append(parts, route...)
@@ -125,7 +125,7 @@ func (sf *SFAPI) BuildRequest(ctx context.Context, method string, route ...strin
 	return req, nil
 }
 
-func (sf *SFAPI) fetchStopsForAgency(ctx context.Context, agency *data.Agency) ([]*data.Stop, error) {
+func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *data.Agency) ([]*data.Stop, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "stopplaces")
 	if err != nil {
 		return nil, err
@@ -196,7 +196,7 @@ func (sf *SFAPI) fetchStopsForAgency(ctx context.Context, agency *data.Agency) (
 	return stops, nil
 }
 
-func (sf *SFAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
+func (sf *SFClient) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
 	bart := &data.Agency{
 		AgencyID: "BA",
 		Language: "en",
@@ -237,7 +237,7 @@ func (sf *SFAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error) 
 
 // Removes the `-X` suffix from the line name where X is a direction (e.g. -N, -S, -E, -W)
 // and abbreviates the line name
-func (sf *SFAPI) formatLine(line string) string {
+func (sf *SFClient) formatLine(line string) string {
 	trimmed, _, _ := strings.Cut(line, "-")
 	switch trimmed {
 	case "Yellow":
@@ -255,7 +255,7 @@ func (sf *SFAPI) formatLine(line string) string {
 	}
 }
 
-func (sf *SFAPI) fetchPrediction(ctx context.Context, in PredictionInput) ([]Prediction, error) {
+func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]Prediction, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "StopMonitoring")
 	if err != nil {
 		return nil, err
@@ -338,7 +338,7 @@ func (sf *SFAPI) fetchPrediction(ctx context.Context, in PredictionInput) ([]Pre
 	return predictions, nil
 }
 
-func (sf *SFAPI) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
+func (sf *SFClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
 	predictions := make([]Prediction, 0)
 
 	for _, in := range input {
@@ -361,7 +361,7 @@ func (sf *SFAPI) FetchPredictions(ctx context.Context, input []PredictionInput) 
 	return predictions, nil
 }
 
-func (sf *SFAPI) FetchIncidents(ctx context.Context) ([]Incident, error) {
+func (sf *SFClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	agencies, err := sf.store.GetLocationAgencies(ctx, data.SFSlug)
 	if err != nil {
 		return nil, err
@@ -389,7 +389,7 @@ func (sf *SFAPI) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	return incidents, nil
 }
 
-func (sf *SFAPI) fetchAgencyIncidents(ctx context.Context, agency data.Agency, agencyName string) ([]Incident, error) {
+func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency data.Agency, agencyName string) ([]Incident, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "servicealerts")
 	if err != nil {
 		return nil, err
@@ -465,7 +465,7 @@ func (sf *SFAPI) fetchAgencyIncidents(ctx context.Context, agency data.Agency, a
 
 }
 
-func (sf *SFAPI) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
+func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
 	stops, err := sf.store.GetStopsByLocation(ctx, data.SFSlug, true)
 	if err != nil {
 		return nil, err
@@ -494,7 +494,7 @@ func (sf *SFAPI) GetPredictionInput(ctx context.Context, arg string) ([]Predicti
 	return input, nil
 }
 
-func (sf *SFAPI) GetLineColor(stop string) (string, string) {
+func (sf *SFClient) GetLineColor(stop string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	trimmed := strings.Trim(stop, " ")
 	switch trimmed {
@@ -513,6 +513,6 @@ func (sf *SFAPI) GetLineColor(stop string) (string, string) {
 	}
 }
 
-func (sf *SFAPI) IsGhostTrain(line, destination string) bool {
+func (sf *SFClient) IsGhostTrain(line, destination string) bool {
 	return line == "--" || destination == "NO PASSENGERS"
 }

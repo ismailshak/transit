@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/data"
-	"github.com/ismailshak/transit/pkg/api"
+	"github.com/ismailshak/transit/internal/provider"
 )
 
 const testLocation data.LocationSlug = "test-location"
@@ -16,7 +16,7 @@ type TestAPI struct {
 	baseURL string
 }
 
-func NewTestAPI(t *testing.T) api.API {
+func NewTestAPI(t *testing.T) provider.API {
 	t.Helper()
 
 	testBaseURL := "http://localhost:3210"
@@ -46,8 +46,8 @@ func (t *TestAPI) FetchStaticData(_ context.Context) (*data.StaticData, error) {
 	return d, nil
 }
 
-func (t *TestAPI) FetchPredictions(_ context.Context, input []api.PredictionInput) ([]api.Prediction, error) {
-	p := []api.Prediction{
+func (t *TestAPI) FetchPredictions(_ context.Context, input []provider.PredictionInput) ([]provider.Prediction, error) {
+	p := []provider.Prediction{
 		{Min: "1", LocationName: "Stn 1", Destination: "Dest A", DestinationName: "Destination A", Line: "Central"},
 		{Min: "3", LocationName: "Stn 1", Destination: "NO PASSENGERS", DestinationName: "Destination A", Line: "Central"},
 		{Min: "ARR", LocationName: "Stn 1", Destination: "Dest B", DestinationName: "Destination B", Line: "Outer"},
@@ -59,8 +59,8 @@ func (t *TestAPI) FetchPredictions(_ context.Context, input []api.PredictionInpu
 	return p, nil
 }
 
-func (t *TestAPI) FetchIncidents(_ context.Context) ([]api.Incident, error) {
-	i := []api.Incident{
+func (t *TestAPI) FetchIncidents(_ context.Context) ([]provider.Incident, error) {
+	i := []provider.Incident{
 		{Description: "Trains delayed by 3 hours", DateUpdated: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), Affected: []string{"Outer"}, Type: "Delay"},
 		{Description: "All trains are broken", DateUpdated: time.Date(2009, time.December, 11, 23, 0, 0, 0, time.UTC), Affected: []string{"Central"}, Type: "Alert"},
 	}
@@ -68,15 +68,15 @@ func (t *TestAPI) FetchIncidents(_ context.Context) ([]api.Incident, error) {
 	return i, nil
 }
 
-func (t *TestAPI) GetPredictionInput(_ context.Context, arg string) ([]api.PredictionInput, error) {
+func (t *TestAPI) GetPredictionInput(_ context.Context, arg string) ([]provider.PredictionInput, error) {
 	matches := data.FuzzyFindFrom(arg, data.SearchableStops(allStops))
 
-	ids := make([]api.PredictionInput, 0, matches.Len())
+	ids := make([]provider.PredictionInput, 0, matches.Len())
 
 	for _, m := range matches {
 		id := allStops[m.Index].StopID
 		agency := allStops[m.Index].AgencyID
-		ids = append(ids, api.PredictionInput{StopID: id, AgencyID: agency})
+		ids = append(ids, provider.PredictionInput{StopID: id, AgencyID: agency})
 	}
 
 	return ids, nil
