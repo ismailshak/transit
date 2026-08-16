@@ -8,19 +8,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/store"
 )
 
 // BlankDB creates a temporary database that has no tables
-func BlankDB(t *testing.T) *data.TransitDB {
+func BlankDB(t *testing.T) *store.Store {
 	t.Helper()
 	testDir := t.TempDir()
 	dbPath := filepath.Join(testDir, "transit-test-blank.db")
 
 	t.Logf("Temp database at: %s", dbPath)
 
-	db, err := data.NewDB(dbPath, logger.New(false))
+	db, err := store.NewStore(dbPath, logger.New(false))
 	if err != nil {
 		t.Fatal("Failed to connect to test database", err)
 	}
@@ -36,12 +36,12 @@ func BlankDB(t *testing.T) *data.TransitDB {
 }
 
 // MigratedDB creates a temporary test database that's fully migrated
-func MigratedDB(t *testing.T) *data.TransitDB {
+func MigratedDB(t *testing.T) *store.Store {
 	t.Helper()
 	testDir := t.TempDir()
 	dbPath := filepath.Join(testDir, "transit-test-migrated.db")
 
-	db, err := data.NewDB(dbPath, logger.New(false))
+	db, err := store.NewStore(dbPath, logger.New(false))
 	if err != nil {
 		t.Fatal("Failed to connect to test database", err)
 	}
@@ -70,12 +70,12 @@ func InitMigrationsTable(t *testing.T, db *sql.DB) {
 
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(t.Context(), data.CreateMigrationsTableSQL)
+	_, err = tx.ExecContext(t.Context(), store.CreateMigrationsTableSQL)
 	if err != nil {
 		t.Fatalf("Failed to create migration: %s", err)
 	}
 
-	_, err = tx.ExecContext(t.Context(), data.InsertMigrationSQL, "1_FakeMigration")
+	_, err = tx.ExecContext(t.Context(), store.InsertMigrationSQL, "1_FakeMigration")
 	if err != nil {
 		t.Fatalf("Failed to insert migration: %s", err)
 	}

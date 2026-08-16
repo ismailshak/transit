@@ -1,9 +1,9 @@
-package data_test
+package store_test
 
 import (
 	"testing"
 
-	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/store"
 	"github.com/sahilm/fuzzy"
 	"github.com/stretchr/testify/assert"
 )
@@ -42,7 +42,7 @@ func TestFuzzyFind(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			matches := data.FuzzyFind(tc.input, tt)
+			matches := store.FuzzyFind(tc.input, tt)
 			assert.Len(t, matches, len(tc.expected))
 
 			result := convertMatchesToSlice(matches)

@@ -12,8 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/gtfs"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
@@ -24,7 +25,7 @@ type SFClient struct {
 	http    *http.Client
 	log     *logger.Logger
 	now     func() time.Time
-	store   *data.TransitDB
+	store   *store.Store
 }
 
 type sfStopPlace struct {
@@ -456,7 +457,7 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 			Agency:            agencyName,                                        // Derive from header?
 			Description:       entity.Alert.DescriptionText.Translations[0].Text, // TODO: assumes english is always first
 			DateUpdated:       time.Time{},                                       // TODO: figure out where this is
-			Type:              data.ResolveGTFSAlertEffect(entity.Alert.Effect),
+			Type:              gtfs.ResolveGTFSAlertEffect(entity.Alert.Effect),
 		}
 
 		incidents = append(incidents, inc)
@@ -472,7 +473,7 @@ func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]Predi
 		return nil, err
 	}
 
-	matches := data.FuzzyFindFrom(arg, data.SearchableStops(stops))
+	matches := store.FuzzyFindFrom(arg, store.SearchableStops(stops))
 
 	if matches.Len() == 0 {
 		sf.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))

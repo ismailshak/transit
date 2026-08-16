@@ -117,7 +117,7 @@ func TestAppClose(t *testing.T) {
 			t.Fatalf("expected no error but got %v", err)
 		}
 
-		if err := app.Store.DB.Ping(); err == nil {
+		if err := app.Store.Ping(t.Context()); err == nil {
 			t.Error("expected an error pinging a closed store but got nil, the handle is still open")
 		}
 	})

@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
@@ -76,7 +76,7 @@ type API interface {
 }
 
 // NewDMV builds a client for the DMV Metro Area, backed by WMATA
-func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*WMATClient, error) {
+func NewDMV(apiKey string, store *store.Store, log *logger.Logger) (*WMATClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
@@ -92,7 +92,7 @@ func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*WMATClie
 
 // NewSF builds a client for the San Francisco Bay Area, backed by 511.
 // The now function supplies the clock that arrival times are measured against.
-func NewSF(apiKey string, store *data.TransitDB, log *logger.Logger, now func() time.Time) (*SFClient, error) {
+func NewSF(apiKey string, store *store.Store, log *logger.Logger, now func() time.Time) (*SFClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}

@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
-	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +19,7 @@ import (
 // once in [Run] and never leaves this package.
 type App struct {
 	Cfg   *config.Config
-	Store *data.TransitDB
+	Store *store.Store
 	Log   *logger.Logger
 	Out   io.Writer
 	Now   func() time.Time
@@ -70,7 +70,7 @@ func (a *App) dbSetupPreRun(ctx context.Context) error {
 		return fmt.Errorf("locate config: %w", err)
 	}
 
-	db, err := data.NewDB(filepath.Join(path, "transit.db"), a.Log)
+	db, err := store.NewStore(filepath.Join(path, "transit.db"), a.Log)
 	if err != nil {
 		return fmt.Errorf("establish store: %w", err)
 	}

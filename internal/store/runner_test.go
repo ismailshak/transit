@@ -1,9 +1,9 @@
-package data_test
+package store_test
 
 import (
 	"testing"
 
-	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/testutils"
 )
 
@@ -12,7 +12,7 @@ func TestCreatingMigrationTable(t *testing.T) {
 
 	db := testutils.BlankDB(t)
 
-	err := data.CreateMigrationTable(t.Context(), db.DB)
+	err := store.CreateMigrationTable(t.Context(), db.DB)
 	if err != nil {
 		t.Errorf("Failed to create migrations table: %s", err)
 	}
@@ -24,12 +24,12 @@ func TestSkippingMigrationsTableIfExists(t *testing.T) {
 	db := testutils.BlankDB(t)
 	testutils.InitMigrationsTable(t, db.DB)
 
-	err := data.CreateMigrationTable(t.Context(), db.DB)
+	err := store.CreateMigrationTable(t.Context(), db.DB)
 	if err != nil {
 		t.Errorf("Failed skipping migrations table: %s", err)
 	}
 
-	count, err := data.GetMigrationCount(t.Context(), db.DB)
+	count, err := store.GetMigrationCount(t.Context(), db.DB)
 	if err != nil {
 		t.Errorf("Failed to get migration count: %s", err)
 	}
@@ -38,7 +38,7 @@ func TestSkippingMigrationsTableIfExists(t *testing.T) {
 		t.Errorf("Expected 1 migration. Got %d", count)
 	}
 
-	migrations, err := data.GetCurrentMigrations(t.Context(), db.DB, count)
+	migrations, err := store.GetCurrentMigrations(t.Context(), db.DB, count)
 	if err != nil {
 		t.Errorf("Failed to get migrations: %s", err)
 	}

@@ -13,8 +13,9 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
-	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/gtfs"
 	"github.com/ismailshak/transit/internal/logger"
+	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
@@ -28,7 +29,7 @@ type WMATClient struct {
 	baseURL string
 	http    *http.Client
 	log     *logger.Logger
-	store   *data.TransitDB
+	store   *store.Store
 }
 
 // WMATA's predictions API response
@@ -120,12 +121,12 @@ func (w *WMATClient) FetchStaticData(ctx context.Context) (*transit.StaticData, 
 		}
 	}()
 
-	err = data.UnzipStaticGTFS(zipPath, feed)
+	err = gtfs.UnzipStaticGTFS(zipPath, feed)
 	if err != nil {
 		return nil, err
 	}
 
-	return data.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, "MET")
+	return gtfs.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, "MET")
 }
 
 func (w *WMATClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
@@ -226,7 +227,7 @@ func (w *WMATClient) GetPredictionInput(ctx context.Context, arg string) ([]Pred
 		return nil, err
 	}
 
-	matches := data.FuzzyFindFrom(arg, data.SearchableStops(stops))
+	matches := store.FuzzyFindFrom(arg, store.SearchableStops(stops))
 
 	if matches.Len() == 0 {
 		w.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))

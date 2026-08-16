@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
@@ -70,7 +70,7 @@ func (t *TestAPI) FetchIncidents(_ context.Context) ([]provider.Incident, error)
 }
 
 func (t *TestAPI) GetPredictionInput(_ context.Context, arg string) ([]provider.PredictionInput, error) {
-	matches := data.FuzzyFindFrom(arg, data.SearchableStops(allStops))
+	matches := store.FuzzyFindFrom(arg, store.SearchableStops(allStops))
 
 	ids := make([]provider.PredictionInput, 0, matches.Len())
 

@@ -1,4 +1,4 @@
-package data_test
+package gtfs_test
 
 import (
 	"bytes"
@@ -7,7 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/fixtures"
+	"github.com/ismailshak/transit/internal/gtfs"
 	"github.com/ismailshak/transit/internal/transit"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,18 +16,17 @@ import (
 func TestUnzipGTFS(t *testing.T) {
 	t.Parallel()
 
-	cwd, _ := os.Getwd() // Resolves to this file's directory
-	pathToZip := filepath.Join(cwd, "testdata", "sample-feed.zip")
+	pathToZip := fixtures.Path("sample-feed.zip")
 	dest := t.TempDir()
 
-	err := data.UnzipStaticGTFS(pathToZip, dest)
+	err := gtfs.UnzipStaticGTFS(pathToZip, dest)
 	if err != nil {
 		t.Fatalf("UnzipStaticGTFS() returned an error: %s", err)
 	}
 
-	filepath.WalkDir(dest, func(path string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(dest, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			t.Errorf("Error reading file in unzipped destination: %s", err)
+			t.Errorf("error reading file in unzipped destination: %s", err)
 			return err
 		}
 
@@ -35,12 +35,7 @@ func TestUnzipGTFS(t *testing.T) {
 		}
 
 		fileName := d.Name()
-		fixturePath := filepath.Join(cwd, "testdata", "sample-feed", fileName)
-		fixtureContent, err := os.ReadFile(fixturePath)
-		if err != nil {
-			t.Errorf("Error reading fixture file content: %s", err)
-			return nil
-		}
+		fixtureContent := fixtures.Read(t, "sample-feed", fileName)
 
 		unzippedContent, err := os.ReadFile(filepath.Join(dest, fileName))
 		if err != nil {
@@ -49,29 +44,31 @@ func TestUnzipGTFS(t *testing.T) {
 		}
 
 		if !bytes.Equal(removeCarriageReturn(fixtureContent), removeCarriageReturn(unzippedContent)) {
-			t.Errorf("Fixture and unzipped don't have the same content")
-			t.Logf("Fixture content: %s\n", string(fixtureContent))
-			t.Logf("Unzipped content: %s\n", string(unzippedContent))
+			t.Errorf("fixture and unzipped don't have the same content")
+			t.Logf("fixture content: %s\n", string(fixtureContent))
+			t.Logf("unzipped content: %s\n", string(unzippedContent))
 		}
 
 		return nil
 	})
 
+	if err != nil {
+		t.Errorf("failed to walk dir: %s", err)
+	}
 }
 
 func TestParseGTFS(t *testing.T) {
 	t.Parallel()
 
-	cwd, _ := os.Getwd() // Resolves to this file's directory
-	pathToFeed := filepath.Join(cwd, "testdata", "sample-feed")
+	pathToFeed := fixtures.Path("sample-feed")
 
-	gtfs, err := data.ParseGTFS(pathToFeed, "someplace", "train", "DTA")
+	gtfs, err := gtfs.ParseGTFS(pathToFeed, "someplace", "train", "DTA")
 	if err != nil {
 		t.Fatalf("ParseGTFS() returned an error: %s", err)
 	}
 
 	if len(gtfs.Stops) != 9 {
-		t.Errorf("Expected 9 stops. Got %d", len(gtfs.Stops))
+		t.Errorf("expected 9 stops. Got %d", len(gtfs.Stops))
 	}
 
 	expectedAgencies := []struct {

@@ -1,4 +1,6 @@
-package data
+// Package store owns the SQLite database on a user's machine. Data
+// enters from a provider or from a parsed GTFS feed.
+package store
 
 import (
 	"context"
@@ -11,23 +13,24 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type TransitDB struct {
+type Store struct {
 	// Exposing the direct database connection if needed
 	// but queries and mutations should be made through methods on this struct
+	// TODO: Make private
 	DB *sql.DB
 
 	log *logger.Logger
 }
 
-// NewDB opens the SQLite database at path. The file is created if it doesn't
+// NewStore opens the SQLite database at path. The file is created if it doesn't
 // exist, and no connection is made until the first query.
-func NewDB(path string, log *logger.Logger) (*TransitDB, error) {
+func NewStore(path string, log *logger.Logger) (*Store, error) {
 	conn, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
 	}
 
-	db := &TransitDB{
+	db := &Store{
 		DB:  conn,
 		log: log,
 	}
@@ -35,19 +38,23 @@ func NewDB(path string, log *logger.Logger) (*TransitDB, error) {
 	return db, nil
 }
 
+func (s *Store) Ping(ctx context.Context) error {
+	return s.DB.PingContext(ctx)
+}
+
 // Close closes the database connection, once active queries have finished.
-func (t *TransitDB) Close() error {
-	return t.DB.Close()
+func (s *Store) Close() error {
+	return s.DB.Close()
 }
 
 // SyncMigrations keeps migrations up-to-date, and handles first time migration run
-func (t *TransitDB) SyncMigrations(ctx context.Context) error {
-	err := CreateMigrationTable(ctx, t.DB)
+func (s *Store) SyncMigrations(ctx context.Context) error {
+	err := CreateMigrationTable(ctx, s.DB)
 	if err != nil {
 		return err
 	}
 
-	count, err := GetMigrationCount(ctx, t.DB)
+	count, err := GetMigrationCount(ctx, s.DB)
 	if err != nil {
 		return err
 	}
@@ -56,7 +63,7 @@ func (t *TransitDB) SyncMigrations(ctx context.Context) error {
 		return nil
 	}
 
-	err = RunMigrations(ctx, t.DB, t.log, count)
+	err = RunMigrations(ctx, s.DB, s.log, count)
 	if err != nil {
 		return err
 	}
@@ -64,13 +71,13 @@ func (t *TransitDB) SyncMigrations(ctx context.Context) error {
 	return nil
 }
 
-func (t *TransitDB) InsertAgencies(ctx context.Context, agencies []*transit.Agency) error {
-	trx, err := t.DB.BeginTx(ctx, nil)
+func (s *Store) InsertAgencies(ctx context.Context, agencies []*transit.Agency) error {
+	trx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	defer rollback(trx, t.log)
+	defer rollback(trx, s.log)
 
 	stmt, err := trx.PrepareContext(ctx, InsertAgencySQL)
 	if err != nil {
@@ -92,8 +99,8 @@ func (t *TransitDB) InsertAgencies(ctx context.Context, agencies []*transit.Agen
 	return nil
 }
 
-func (t *TransitDB) GetLocation(ctx context.Context, location transit.LocationSlug) (*transit.Location, error) {
-	row := t.DB.QueryRowContext(ctx, SelectLocationSQL, location)
+func (s *Store) GetLocation(ctx context.Context, location transit.LocationSlug) (*transit.Location, error) {
+	row := s.DB.QueryRowContext(ctx, SelectLocationSQL, location)
 
 	var l transit.Location
 
@@ -110,8 +117,8 @@ func (t *TransitDB) GetLocation(ctx context.Context, location transit.LocationSl
 	return &l, nil
 }
 
-func (t *TransitDB) GetAllLocations(ctx context.Context) ([]transit.Location, error) {
-	rows, err := t.DB.QueryContext(ctx, SelectAllLocationsSQL)
+func (s *Store) GetAllLocations(ctx context.Context) ([]transit.Location, error) {
+	rows, err := s.DB.QueryContext(ctx, SelectAllLocationsSQL)
 	if err != nil {
 		return nil, fmt.Errorf("query locations: %w", err)
 	}
@@ -133,7 +140,7 @@ func (t *TransitDB) GetAllLocations(ctx context.Context) ([]transit.Location, er
 	return locations, rows.Err()
 }
 
-func (t *TransitDB) GetStopsByLocation(ctx context.Context, location transit.LocationSlug, parentsOnly bool) ([]*transit.Stop, error) {
+func (s *Store) GetStopsByLocation(ctx context.Context, location transit.LocationSlug, parentsOnly bool) ([]*transit.Stop, error) {
 	var statement string
 	if parentsOnly {
 		statement = SelectParentStopsByLocationSQL
@@ -141,7 +148,7 @@ func (t *TransitDB) GetStopsByLocation(ctx context.Context, location transit.Loc
 		statement = SelectStopsByLocationSQL
 	}
 
-	rows, err := t.DB.QueryContext(ctx, statement, location)
+	rows, err := s.DB.QueryContext(ctx, statement, location)
 	if err != nil {
 		return nil, fmt.Errorf("query stops: %w", err)
 	}
@@ -174,13 +181,13 @@ func (t *TransitDB) GetStopsByLocation(ctx context.Context, location transit.Loc
 	return stops, rows.Err()
 }
 
-func (t *TransitDB) InsertStops(ctx context.Context, stops []*transit.Stop) error {
-	trx, err := t.DB.BeginTx(ctx, nil)
+func (s *Store) InsertStops(ctx context.Context, stops []*transit.Stop) error {
+	trx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
-	defer rollback(trx, t.log)
+	defer rollback(trx, s.log)
 
 	stmt, err := trx.PrepareContext(ctx, InsertStopSQL)
 	if err != nil {
@@ -202,8 +209,8 @@ func (t *TransitDB) InsertStops(ctx context.Context, stops []*transit.Stop) erro
 	return nil
 }
 
-func (t *TransitDB) CountStopsByLocation(ctx context.Context, location transit.LocationSlug) (int, error) {
-	row := t.DB.QueryRowContext(ctx, CountStopsByLocationSQL, location)
+func (s *Store) CountStopsByLocation(ctx context.Context, location transit.LocationSlug) (int, error) {
+	row := s.DB.QueryRowContext(ctx, CountStopsByLocationSQL, location)
 
 	var count int
 	if err := row.Scan(&count); err != nil {
@@ -213,8 +220,8 @@ func (t *TransitDB) CountStopsByLocation(ctx context.Context, location transit.L
 	return count, nil
 }
 
-func (t *TransitDB) GetLocationAgencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error) {
-	rows, err := t.DB.QueryContext(ctx, SelectAgenciesByLocationSQL, location)
+func (s *Store) GetLocationAgencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error) {
+	rows, err := s.DB.QueryContext(ctx, SelectAgenciesByLocationSQL, location)
 	if err != nil {
 		return nil, fmt.Errorf("query agencies: %w", err)
 	}

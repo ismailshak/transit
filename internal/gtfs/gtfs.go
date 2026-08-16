@@ -1,4 +1,4 @@
-package data
+package gtfs
 
 import (
 	"archive/zip"

@@ -1,11 +1,11 @@
-package data_test
+package store_test
 
 import (
 	"context"
 	"errors"
 	"testing"
 
-	"github.com/ismailshak/transit/internal/data"
+	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/testutils"
 	"github.com/ismailshak/transit/internal/transit"
 	"github.com/stretchr/testify/assert"
@@ -128,22 +128,22 @@ func TestCancelledContextReachesTheDriver(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		call func(ctx context.Context, db *data.TransitDB) error
+		call func(ctx context.Context, db *store.Store) error
 	}{
 		"many rows": {
-			call: func(ctx context.Context, db *data.TransitDB) error {
+			call: func(ctx context.Context, db *store.Store) error {
 				_, err := db.GetAllLocations(ctx)
 				return err
 			},
 		},
 		"one row": {
-			call: func(ctx context.Context, db *data.TransitDB) error {
+			call: func(ctx context.Context, db *store.Store) error {
 				_, err := db.GetLocation(ctx, locationFixture.Slug)
 				return err
 			},
 		},
 		"transaction": {
-			call: func(ctx context.Context, db *data.TransitDB) error {
+			call: func(ctx context.Context, db *store.Store) error {
 				return db.InsertStops(ctx, stopsFixture)
 			},
 		},
