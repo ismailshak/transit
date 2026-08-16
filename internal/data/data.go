@@ -5,7 +5,7 @@
 // data downloaded from a server like GTFS
 package data
 
-// Static data, that doesn't change often, that we store in the database
+// StaticData is data, that doesn't change often, that we store in the database
 type StaticData struct {
 	Agencies []*Agency
 	Stops    []*Stop

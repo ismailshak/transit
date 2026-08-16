@@ -1,6 +1,6 @@
 package data
 
-// The unique identifier for a location
+// LocationSlug is the unique identifier for a location
 type LocationSlug string
 
 const (
@@ -8,7 +8,7 @@ const (
 	SFSlug  LocationSlug = "sf"
 )
 
-// Used in the database to differentiate between the different types
+// StopType is used in the database to differentiate between the different types
 type StopType string
 
 const (
@@ -16,14 +16,14 @@ const (
 	BusStop      StopType = "bus"   // Type used to represent a bus stop
 )
 
-// A record of a database migration that was executed
+// Migration is a record of a database migration that was executed
 type Migration struct {
 	ID         int
 	Name       string
 	MigratedAt string
 }
 
-// Base struct holding common fields for database entities
+// Entity is the base struct holding common fields for database entities
 type Entity struct {
 	// The table's row id
 	ID int
@@ -33,7 +33,7 @@ type Entity struct {
 	UpdatedAt string
 }
 
-// A public entity administrating and managing transit services
+// Agency is a public entity administrating and managing transit services
 type Agency struct {
 	Entity
 	// Identifies a transit brand which is often synonymous with a transit agency
@@ -50,7 +50,7 @@ type Agency struct {
 	Language string
 }
 
-// A geographical location in the world where a transit agency is operating
+// Location is a geographical location in the world where a transit agency is operating
 type Location struct {
 	Entity
 	// The shorthand used to refer to this location. This is the value set in a user's config file
@@ -61,7 +61,7 @@ type Location struct {
 	SupportsGTFS bool
 }
 
-// A place where vehicles pick up or drop off riders
+// Stop is a place where vehicles pick up or drop off riders
 type Stop struct {
 	Entity
 	// The official ID of this stop
@@ -82,7 +82,7 @@ type Stop struct {
 	ParentID string
 }
 
-// Wrapper type that implements the fuzzy matching interface to enable search
+// SearchableStops is a wrapper type that implements the fuzzy matching interface to enable search
 type SearchableStops []*Stop
 
 func (s SearchableStops) Len() int            { return len(s) }

@@ -6,48 +6,47 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/data"
-	"github.com/ismailshak/transit/internal/utils"
 	"github.com/ismailshak/transit/pkg/api"
 )
 
-const TEST_LOCATION data.LocationSlug = "test-location"
+const testLocation data.LocationSlug = "test-location"
 
-type TestApi struct {
+type TestAPI struct {
 	apiKey  *string
-	baseUrl string
+	baseURL string
 }
 
-func NewTestApi(t *testing.T) api.Api {
+func NewTestAPI(t *testing.T) api.API {
 	t.Helper()
 
-	testBaseUrl := "http://localhost:3210"
+	testBaseURL := "http://localhost:3210"
 	apiKey := "abcd"
 
-	return &TestApi{
+	return &TestAPI{
 		apiKey:  &apiKey,
-		baseUrl: testBaseUrl,
+		baseURL: testBaseURL,
 	}
 }
 
-var ALL_STOPS = []*data.Stop{
-	{StopID: "A", Name: "A Stop", Location: TEST_LOCATION, Latitude: "34.12301", Longitude: "-11.12301", ParentID: "", Type: data.TrainStation},
-	{StopID: "B", Name: "B Stop", Location: TEST_LOCATION, Latitude: "34.12302", Longitude: "-11.12302", ParentID: "", Type: data.TrainStation},
-	{StopID: "C", Name: "C Stop", Location: TEST_LOCATION, Latitude: "34.12303", Longitude: "-11.12303", ParentID: "", Type: data.TrainStation},
-	{StopID: "D", Name: "D Stop", Location: TEST_LOCATION, Latitude: "34.12304", Longitude: "-11.12304", ParentID: "", Type: data.TrainStation},
-	{StopID: "E", Name: "E Stop", Location: TEST_LOCATION, Latitude: "34.12305", Longitude: "-11.12305", ParentID: "A", Type: data.TrainStation},
-	{StopID: "F", Name: "F Stop", Location: TEST_LOCATION, Latitude: "34.12306", Longitude: "-11.12306", ParentID: "B", Type: data.TrainStation},
-	{StopID: "G", Name: "G Stop", Location: TEST_LOCATION, Latitude: "34.12307", Longitude: "-11.12307", ParentID: "C", Type: data.TrainStation},
+var allStops = []*data.Stop{
+	{StopID: "A", Name: "A Stop", Location: testLocation, Latitude: "34.12301", Longitude: "-11.12301", ParentID: "", Type: data.TrainStation},
+	{StopID: "B", Name: "B Stop", Location: testLocation, Latitude: "34.12302", Longitude: "-11.12302", ParentID: "", Type: data.TrainStation},
+	{StopID: "C", Name: "C Stop", Location: testLocation, Latitude: "34.12303", Longitude: "-11.12303", ParentID: "", Type: data.TrainStation},
+	{StopID: "D", Name: "D Stop", Location: testLocation, Latitude: "34.12304", Longitude: "-11.12304", ParentID: "", Type: data.TrainStation},
+	{StopID: "E", Name: "E Stop", Location: testLocation, Latitude: "34.12305", Longitude: "-11.12305", ParentID: "A", Type: data.TrainStation},
+	{StopID: "F", Name: "F Stop", Location: testLocation, Latitude: "34.12306", Longitude: "-11.12306", ParentID: "B", Type: data.TrainStation},
+	{StopID: "G", Name: "G Stop", Location: testLocation, Latitude: "34.12307", Longitude: "-11.12307", ParentID: "C", Type: data.TrainStation},
 }
 
-func (t *TestApi) FetchStaticData(_ context.Context) (*data.StaticData, error) {
+func (t *TestAPI) FetchStaticData(_ context.Context) (*data.StaticData, error) {
 	d := &data.StaticData{
-		Stops: ALL_STOPS,
+		Stops: allStops,
 	}
 
 	return d, nil
 }
 
-func (t *TestApi) FetchPredictions(_ context.Context, input []api.PredictionInput) ([]api.Prediction, error) {
+func (t *TestAPI) FetchPredictions(_ context.Context, input []api.PredictionInput) ([]api.Prediction, error) {
 	p := []api.Prediction{
 		{Min: "1", LocationName: "Stn 1", Destination: "Dest A", DestinationName: "Destination A", Line: "Central"},
 		{Min: "3", LocationName: "Stn 1", Destination: "NO PASSENGERS", DestinationName: "Destination A", Line: "Central"},
@@ -60,7 +59,7 @@ func (t *TestApi) FetchPredictions(_ context.Context, input []api.PredictionInpu
 	return p, nil
 }
 
-func (t *TestApi) FetchIncidents(_ context.Context) ([]api.Incident, error) {
+func (t *TestAPI) FetchIncidents(_ context.Context) ([]api.Incident, error) {
 	i := []api.Incident{
 		{Description: "Trains delayed by 3 hours", DateUpdated: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), Affected: []string{"Outer"}, Type: "Delay"},
 		{Description: "All trains are broken", DateUpdated: time.Date(2009, time.December, 11, 23, 0, 0, 0, time.UTC), Affected: []string{"Central"}, Type: "Alert"},
@@ -69,21 +68,21 @@ func (t *TestApi) FetchIncidents(_ context.Context) ([]api.Incident, error) {
 	return i, nil
 }
 
-func (t *TestApi) GetPredictionInput(_ context.Context, arg string) ([]api.PredictionInput, error) {
-	matches := utils.FuzzyFindFrom(arg, data.SearchableStops(ALL_STOPS))
+func (t *TestAPI) GetPredictionInput(_ context.Context, arg string) ([]api.PredictionInput, error) {
+	matches := data.FuzzyFindFrom(arg, data.SearchableStops(allStops))
 
 	ids := make([]api.PredictionInput, 0, matches.Len())
 
 	for _, m := range matches {
-		id := ALL_STOPS[m.Index].StopID
-		agency := ALL_STOPS[m.Index].AgencyID
+		id := allStops[m.Index].StopID
+		agency := allStops[m.Index].AgencyID
 		ids = append(ids, api.PredictionInput{StopID: id, AgencyID: agency})
 	}
 
 	return ids, nil
 }
 
-func (t *TestApi) GetLineColor(stop string) (string, string) {
+func (t *TestAPI) GetLineColor(stop string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	switch stop {
 	case "Central":
@@ -97,6 +96,6 @@ func (t *TestApi) GetLineColor(stop string) (string, string) {
 	}
 }
 
-func (t *TestApi) IsGhostTrain(line, destination string) bool {
+func (t *TestAPI) IsGhostTrain(line, destination string) bool {
 	return line == "--" || destination == "NO PASSENGERS"
 }

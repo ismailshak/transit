@@ -14,20 +14,19 @@ import (
 
 	"github.com/ismailshak/transit/internal/data"
 	"github.com/ismailshak/transit/internal/logger"
-	"github.com/ismailshak/transit/internal/utils"
 )
 
-// API to interact with San Francisco's 511 API
-type SFApi struct {
+// SFAPI is the API to interact with San Francisco's 511 API
+type SFAPI struct {
 	apiKey  string
-	baseUrl string
+	baseURL string
 	http    *http.Client
 	log     *logger.Logger
 	now     func() time.Time
 	store   *data.TransitDB
 }
 
-type SF_StopPlace struct {
+type sfStopPlace struct {
 	ID       string `json:"@id"`
 	Name     string `json:"Name"`
 	Centroid struct {
@@ -36,10 +35,10 @@ type SF_StopPlace struct {
 			Longitude string
 		}
 	}
-	TrasnsportMode string `json:"TransportMode"`
+	TransportMode string `json:"TransportMode"`
 }
 
-type SF_StopPlacesResponse struct {
+type sfStopPlacesResponse struct {
 	Siri struct {
 		ServiceDelivery struct {
 			ResponseTimestamp  string `json:"ResponseTimestamp"`
@@ -48,7 +47,7 @@ type SF_StopPlacesResponse struct {
 				DataObjects       struct {
 					SiteFrame struct {
 						StopPlaces struct {
-							StopPlace []SF_StopPlace
+							StopPlace []sfStopPlace
 						} `json:"stopPlaces"`
 					}
 				} `json:"dataObjects"`
@@ -57,7 +56,7 @@ type SF_StopPlacesResponse struct {
 	}
 }
 
-type SF_MonitoredVehicleJourney struct {
+type sfMonitoredVehicleJourney struct {
 	LineRef         string
 	DestinationRef  string
 	DestinationName string
@@ -69,17 +68,17 @@ type SF_MonitoredVehicleJourney struct {
 	}
 }
 
-type SF_StopMonitoringResponse struct {
+type sfStopMonitoringResponse struct {
 	ServiceDelivery struct {
 		StopMonitoringDelivery struct {
 			MonitoredStopVisit []struct {
-				MonitoredVehicleJourney SF_MonitoredVehicleJourney
+				MonitoredVehicleJourney sfMonitoredVehicleJourney
 			}
 		}
 	}
 }
 
-type SF_ServiceAlertsResponse struct {
+type sfServiceAlertsResponse struct {
 	Entities []struct {
 		ID    string `json:"Id"`
 		Alert struct {
@@ -112,9 +111,9 @@ func newSFHTTPError(req *http.Request, statusCode int) *HTTPError {
 
 }
 
-func (sf *SFApi) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
+func (sf *SFAPI) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
 	parts := make([]string, 0, len(route)+1)
-	parts = append(parts, sf.baseUrl)
+	parts = append(parts, sf.baseURL)
 	parts = append(parts, route...)
 	url := strings.Join(parts, "/")
 
@@ -126,7 +125,7 @@ func (sf *SFApi) BuildRequest(ctx context.Context, method string, route ...strin
 	return req, nil
 }
 
-func (sf *SFApi) fetchStopsForAgency(ctx context.Context, agency *data.Agency) ([]*data.Stop, error) {
+func (sf *SFAPI) fetchStopsForAgency(ctx context.Context, agency *data.Agency) ([]*data.Stop, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "stopplaces")
 	if err != nil {
 		return nil, err
@@ -158,7 +157,7 @@ func (sf *SFApi) fetchStopsForAgency(ctx context.Context, agency *data.Agency) (
 	// Remove BOM from response
 	body = bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))
 
-	var stopPlaces SF_StopPlacesResponse
+	var stopPlaces sfStopPlacesResponse
 	err = json.Unmarshal(body, &stopPlaces)
 
 	if err != nil {
@@ -169,13 +168,15 @@ func (sf *SFApi) fetchStopsForAgency(ctx context.Context, agency *data.Agency) (
 
 	for _, sp := range stopPlaces.Siri.ServiceDelivery.DataObjectDelivery.DataObjects.SiteFrame.StopPlaces.StopPlace {
 		var stopType data.StopType
-		if sp.TrasnsportMode == "bus" {
+
+		switch sp.TransportMode {
+		case "bus":
 			stopType = data.BusStop
-		} else if sp.TrasnsportMode == "rail" { // CT train type
+		case "rail": // CT train type
 			stopType = data.TrainStation
-		} else if sp.TrasnsportMode == "intercityRail" { // BART train type
+		case "intercityRail": // BART train type
 			stopType = data.TrainStation
-		} else {
+		default:
 			continue
 		}
 
@@ -195,7 +196,7 @@ func (sf *SFApi) fetchStopsForAgency(ctx context.Context, agency *data.Agency) (
 	return stops, nil
 }
 
-func (sf *SFApi) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
+func (sf *SFAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error) {
 	bart := &data.Agency{
 		AgencyID: "BA",
 		Language: "en",
@@ -222,9 +223,7 @@ func (sf *SFApi) FetchStaticData(ctx context.Context) (*data.StaticData, error) 
 		return nil, fmt.Errorf("fetch Caltrain stops: %w", err)
 	}
 
-	var stops []*data.Stop
-
-	stops = append(bartStops, calStops...)
+	stops := append(bartStops, calStops...)
 
 	staticData := data.StaticData{
 		Agencies: []*data.Agency{bart, cal},
@@ -236,8 +235,8 @@ func (sf *SFApi) FetchStaticData(ctx context.Context) (*data.StaticData, error) 
 
 // Removes the `-X` suffix from the line name where X is a direction (e.g. -N, -S, -E, -W)
 // and abbreviates the line name
-func (sf *SFApi) formatLine(line string) string {
-	trimmed := strings.Split(line, "-")[0]
+func (sf *SFAPI) formatLine(line string) string {
+	trimmed, _, _ := strings.Cut(line, "-")
 	switch trimmed {
 	case "Yellow":
 		return "YL"
@@ -254,7 +253,7 @@ func (sf *SFApi) formatLine(line string) string {
 	}
 }
 
-func (sf *SFApi) fetchPrediction(ctx context.Context, in PredictionInput) ([]Prediction, error) {
+func (sf *SFAPI) fetchPrediction(ctx context.Context, in PredictionInput) ([]Prediction, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "StopMonitoring")
 	if err != nil {
 		return nil, err
@@ -291,7 +290,7 @@ func (sf *SFApi) fetchPrediction(ctx context.Context, in PredictionInput) ([]Pre
 		sf.log.Debug(string(body))
 	}
 
-	var stopMonitoring SF_StopMonitoringResponse
+	var stopMonitoring sfStopMonitoringResponse
 
 	err = json.Unmarshal(body, &stopMonitoring)
 	if err != nil {
@@ -307,21 +306,21 @@ func (sf *SFApi) fetchPrediction(ctx context.Context, in PredictionInput) ([]Pre
 
 	for _, msv := range stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit {
 		mvj := msv.MonitoredVehicleJourney
-		var arrival_string string
+		var arrivalString string
 		// Caltain API does not return ExpectedArrivalTime, it's set to null
 		if mvj.MonitoredCall.ExpectedArrivalTime != "" {
-			arrival_string = mvj.MonitoredCall.ExpectedArrivalTime
+			arrivalString = mvj.MonitoredCall.ExpectedArrivalTime
 		} else {
-			arrival_string = mvj.MonitoredCall.AimedArrivalTime
+			arrivalString = mvj.MonitoredCall.AimedArrivalTime
 		}
 
-		arrival_time, err := time.Parse(time.RFC3339, arrival_string)
+		arrivalTime, err := time.Parse(time.RFC3339, arrivalString)
 		if err != nil {
 			return nil, err
 		}
 
 		now := sf.now()
-		arrival := strconv.Itoa(int(arrival_time.Sub(now).Minutes()))
+		arrival := strconv.Itoa(int(arrivalTime.Sub(now).Minutes()))
 
 		p := Prediction{
 			LocationName:    mvj.MonitoredCall.StopPointName,
@@ -337,7 +336,7 @@ func (sf *SFApi) fetchPrediction(ctx context.Context, in PredictionInput) ([]Pre
 	return predictions, nil
 }
 
-func (sf *SFApi) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
+func (sf *SFAPI) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
 	predictions := make([]Prediction, 0)
 
 	for _, in := range input {
@@ -360,7 +359,7 @@ func (sf *SFApi) FetchPredictions(ctx context.Context, input []PredictionInput) 
 	return predictions, nil
 }
 
-func (sf *SFApi) FetchIncidents(ctx context.Context) ([]Incident, error) {
+func (sf *SFAPI) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	agencies, err := sf.store.GetLocationAgencies(ctx, data.SFSlug)
 	if err != nil {
 		return nil, err
@@ -372,86 +371,105 @@ func (sf *SFApi) FetchIncidents(ctx context.Context) ([]Incident, error) {
 
 	// TODO surely there's a way to fetch multiple agencies at once
 	for _, agency := range agencies {
-		req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "servicealerts")
+		var agencyName string
+		if shouldDisplayAgency {
+			agencyName = agency.Name
+		}
+
+		inc, err := sf.fetchAgencyIncidents(ctx, agency, agencyName)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("alerts for %s: %w", agency.AgencyID, err)
 		}
 
-		q := req.URL.Query()
-		q.Add("api_key", sf.apiKey)
-		q.Add("agency", agency.AgencyID)
-		q.Add("format", "json")
-		req.URL.RawQuery = q.Encode()
-
-		resp, err := sf.http.Do(req)
-		if err != nil {
-			return nil, err
-		}
-
-		defer resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			return nil, newSFHTTPError(req, resp.StatusCode)
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		// Remove BOM from response
-		body = bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))
-
-		var serviceAlerts SF_ServiceAlertsResponse
-		err = json.Unmarshal(body, &serviceAlerts)
-		if err != nil {
-			return nil, err
-		}
-
-		// Avoid the expensive conversion unless we have to
-		if sf.log.Verbose() {
-			sf.log.Debug(string(body))
-		}
-
-		for _, entity := range serviceAlerts.Entities {
-			var start, end time.Time
-			if len(entity.Alert.ActivePeriods) > 0 {
-				start = time.Unix(entity.Alert.ActivePeriods[0].Start, 0)
-				end = time.Unix(entity.Alert.ActivePeriods[0].End, 0)
-			}
-
-			var affected []string
-			// TODO: StopID could be duplicated because they would have different RouteIDs * sigh *
-			for _, e := range entity.Alert.InformedEntities {
-				if e.StopID != "" {
-					affected = append(affected, e.StopID) // TODO: stop name instead? hopefully not a performance hit (but maybe doesn't matter due to incidents being rare)
-				}
-			}
-
-			inc := Incident{
-				ActivePeriodStart: start,                                               // TODO: Figure out what scenario triggers multiple active periods
-				ActivePeriodEnd:   end,                                                 // TODO: ^ here too
-				Affected:          affected,                                            // TODO: parse informed entities
-				Agency:            utils.Ternary(shouldDisplayAgency, agency.Name, ""), // Derive from header?
-				Description:       entity.Alert.DescriptionText.Translations[0].Text,   // TODO: assumes english is always first
-				DateUpdated:       time.Time{},                                         // TODO: figure out where this is
-				Type:              data.ResolveGTFSAlertEffect(entity.Alert.Effect),
-			}
-
-			incidents = append(incidents, inc)
-		}
+		incidents = append(incidents, inc...)
 	}
 
 	return incidents, nil
 }
 
-func (sf *SFApi) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
+func (sf *SFAPI) fetchAgencyIncidents(ctx context.Context, agency data.Agency, agencyName string) ([]Incident, error) {
+	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "servicealerts")
+	if err != nil {
+		return nil, err
+	}
+
+	q := req.URL.Query()
+	q.Add("api_key", sf.apiKey)
+	q.Add("agency", agency.AgencyID)
+	q.Add("format", "json")
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := sf.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, newSFHTTPError(req, resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove BOM from response
+	body = bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))
+
+	var serviceAlerts sfServiceAlertsResponse
+	err = json.Unmarshal(body, &serviceAlerts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Avoid the expensive conversion unless we have to
+	if sf.log.Verbose() {
+		sf.log.Debug(string(body))
+	}
+
+	var incidents []Incident
+
+	for _, entity := range serviceAlerts.Entities {
+		var start, end time.Time
+		if len(entity.Alert.ActivePeriods) > 0 {
+			start = time.Unix(entity.Alert.ActivePeriods[0].Start, 0)
+			end = time.Unix(entity.Alert.ActivePeriods[0].End, 0)
+		}
+
+		var affected []string
+		// TODO: StopID could be duplicated because they would have different RouteIDs * sigh *
+		for _, e := range entity.Alert.InformedEntities {
+			if e.StopID != "" {
+				affected = append(affected, e.StopID) // TODO: stop name instead? hopefully not a performance hit (but maybe doesn't matter due to incidents being rare)
+			}
+		}
+
+		inc := Incident{
+			ActivePeriodStart: start,                                             // TODO: Figure out what scenario triggers multiple active periods
+			ActivePeriodEnd:   end,                                               // TODO: ^ here too
+			Affected:          affected,                                          // TODO: parse informed entities
+			Agency:            agencyName,                                        // Derive from header?
+			Description:       entity.Alert.DescriptionText.Translations[0].Text, // TODO: assumes english is always first
+			DateUpdated:       time.Time{},                                       // TODO: figure out where this is
+			Type:              data.ResolveGTFSAlertEffect(entity.Alert.Effect),
+		}
+
+		incidents = append(incidents, inc)
+	}
+
+	return incidents, nil
+
+}
+
+func (sf *SFAPI) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
 	stops, err := sf.store.GetStopsByLocation(ctx, data.SFSlug, true)
 	if err != nil {
 		return nil, err
 	}
 
-	matches := utils.FuzzyFindFrom(arg, data.SearchableStops(stops))
+	matches := data.FuzzyFindFrom(arg, data.SearchableStops(stops))
 
 	if matches.Len() == 0 {
 		sf.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
@@ -474,7 +492,7 @@ func (sf *SFApi) GetPredictionInput(ctx context.Context, arg string) ([]Predicti
 	return input, nil
 }
 
-func (sf *SFApi) GetLineColor(stop string) (string, string) {
+func (sf *SFAPI) GetLineColor(stop string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	trimmed := strings.Trim(stop, " ")
 	switch trimmed {
@@ -493,6 +511,6 @@ func (sf *SFApi) GetLineColor(stop string) (string, string) {
 	}
 }
 
-func (sf *SFApi) IsGhostTrain(line, destination string) bool {
+func (sf *SFAPI) IsGhostTrain(line, destination string) bool {
 	return line == "--" || destination == "NO PASSENGERS"
 }

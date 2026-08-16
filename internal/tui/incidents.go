@@ -7,16 +7,15 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/internal/utils"
 	"github.com/ismailshak/transit/pkg/api"
 	"golang.org/x/term"
 )
 
 const (
-	DATE_FORMAT = "2 Jan 06 3:04pm"
+	dateFormat = "2 Jan 06 3:04pm"
 )
 
-func PrintIncidents(client api.Api, incidents []api.Incident) {
+func PrintIncidents(client api.API, incidents []api.Incident) {
 	if len(incidents) == 0 {
 		fmt.Println("No incidents reported")
 		return
@@ -24,11 +23,7 @@ func PrintIncidents(client api.Api, incidents []api.Incident) {
 
 	maxWidth := 80
 	termWidth, _, _ := term.GetSize(int(os.Stdin.Fd()))
-	width := termWidth - 5 // some padding
-
-	if width > maxWidth {
-		width = maxWidth
-	}
+	width := min(termWidth-5, maxWidth) // -5 for some padding
 
 	for _, inc := range incidents {
 		render(client, inc, width)
@@ -40,7 +35,7 @@ func formatUpdatedAt(date time.Time) string {
 		return ""
 	}
 
-	return date.Format(DATE_FORMAT)
+	return date.Format(dateFormat)
 }
 
 func formatStartEnd(start, end time.Time) string {
@@ -49,14 +44,14 @@ func formatStartEnd(start, end time.Time) string {
 	}
 
 	if start.IsZero() {
-		return fmt.Sprintf("Ends: %s", end.Format(DATE_FORMAT))
+		return fmt.Sprintf("Ends: %s", end.Format(dateFormat))
 	}
 
 	if end.IsZero() {
-		return fmt.Sprintf("Starts: %s", end.Format(DATE_FORMAT))
+		return fmt.Sprintf("Starts: %s", end.Format(dateFormat))
 	}
 
-	return fmt.Sprintf("%s - %s", start.Format(DATE_FORMAT), end.Format(DATE_FORMAT))
+	return fmt.Sprintf("%s - %s", start.Format(dateFormat), end.Format(dateFormat))
 }
 
 func genFooter(incident *api.Incident) string {
@@ -67,19 +62,31 @@ func genFooter(incident *api.Incident) string {
 		return ""
 	}
 
-	activePeriod := utils.Ternary(duration != "", lipgloss.NewStyle().Margin(1, 1, 0).Render(duration), "")
+	var activePeriod string
+	if duration != "" {
+		activePeriod = lipgloss.NewStyle().Margin(1, 1, 0).Render(duration)
+	}
 
-	agencyHorMargin := utils.Ternary(duration == "", 1, 2) // If duration will render, add extra margin
-	agency := utils.Ternary(incident.Agency != "", lipgloss.NewStyle().Margin(1, agencyHorMargin, 0).Foreground(lipgloss.Color("30")).Render(incident.Agency), "")
+	var agencyHorMargin int
+	if duration == "" {
+		agencyHorMargin = 1
+	} else {
+		agencyHorMargin = 2
+	}
+
+	var agency string
+	if incident.Agency != "" {
+		agency = lipgloss.NewStyle().Margin(1, agencyHorMargin, 0).Foreground(lipgloss.Color("30")).Render(incident.Agency)
+	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Left, activePeriod, agency)
 }
 
-func render(client api.Api, incident api.Incident, width int) {
+func render(client api.API, incident api.Incident, width int) {
 	list := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), true, true, true, true).
 		Padding(1, 1).
-		BorderForeground(SUBTLE)
+		BorderForeground(Subtle)
 
 	incType := lipgloss.NewStyle().Padding(0, 1).Bold(true).Render(incident.Type)
 
@@ -103,7 +110,7 @@ func render(client api.Api, incident api.Incident, width int) {
 	}
 }
 
-func genAffected(client api.Api, affected []string) string {
+func genAffected(client api.API, affected []string) string {
 	builder := strings.Builder{}
 
 	for _, a := range affected {

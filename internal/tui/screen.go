@@ -8,9 +8,9 @@ import (
 	"github.com/ismailshak/transit/pkg/api"
 )
 
-// Create and print a screen that resembles a station's. Will display
+// PrintArrivalScreen creates and prints a screen that resembles a station's. Will display
 // an arriving train's line, destination and arriving trains (in "minutes-away")
-func PrintArrivalScreen(client api.Api, destinationLookup *map[string][]api.Prediction, sortedDestinations []string) {
+func PrintArrivalScreen(client api.API, destinationLookup *map[string][]api.Prediction, sortedDestinations []string) {
 	list := getScreen()
 
 	// since this is the same for all items, fishing it out from the first one
@@ -42,7 +42,7 @@ func PrintArrivalScreen(client api.Api, destinationLookup *map[string][]api.Pred
 func getScreen() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, false, false).
-		BorderForeground(SUBTLE)
+		BorderForeground(Subtle)
 }
 
 // Generate the header that will be printed at the top of the screen
@@ -51,13 +51,13 @@ func genHeader(header string) string {
 		Bold(true).
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderBottom(true).
-		BorderForeground(SUBTLE).
+		BorderForeground(Subtle).
 		PaddingTop(1).
 		Render(header)
 }
 
 // Generates a row printed on the screen
-func genRow(client api.Api, destination []api.Prediction) string {
+func genRow(client api.API, destination []api.Prediction) string {
 	formattedLine := genLine(client, destination[0].Line)
 	formattedDest := genDestination(destination[0].Destination)
 	formattedMins := genTimeList(destination)
@@ -66,7 +66,7 @@ func genRow(client api.Api, destination []api.Prediction) string {
 }
 
 // Generate and color a metro's line
-func genLine(client api.Api, line string) string {
+func genLine(client api.API, line string) string {
 	bg, fg := client.GetLineColor(line)
 	return lipgloss.NewStyle().
 		Bold(true).
@@ -99,7 +99,7 @@ func genTimeList(destination []api.Prediction) string {
 // Generate a formatted entry for a single ETA
 func genTimeEntry(time string) string {
 	return lipgloss.NewStyle().
-		Foreground(ORANGE).
+		Foreground(Orange).
 		Align(lipgloss.Right).
 		Render(time)
 }

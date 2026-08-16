@@ -2,19 +2,19 @@ package tui
 
 import "fmt"
 
-// An alternate buffer drawn on top of the active terminal screen.
+// TerminalBuffer is an alternate buffer drawn on top of the active terminal screen.
 // This buffer will not erase the user's current terminal, but render itself
 // on top of the existing buffer.
 type TerminalBuffer struct {
 	alternateBufferActive bool
 }
 
-// Returns an alternate buffer instance
+// NewBuffer returns an alternate buffer instance
 func NewBuffer() *TerminalBuffer {
 	return &TerminalBuffer{}
 }
 
-// Renders a buffer on top of the current one
+// StartAlternateBuffer renders a buffer on top of the current one
 func (b *TerminalBuffer) StartAlternateBuffer() {
 	if !b.alternateBufferActive {
 		fmt.Println("\x1b[?1049h")
@@ -22,7 +22,7 @@ func (b *TerminalBuffer) StartAlternateBuffer() {
 	}
 }
 
-// Closes the alternate buffer and returns to the original buffer
+// StopAlternateBuffer closes the alternate buffer and returns to the original buffer
 func (b *TerminalBuffer) StopAlternateBuffer() {
 	if b.alternateBufferActive {
 		fmt.Println("\x1b[?1049l")
@@ -30,7 +30,7 @@ func (b *TerminalBuffer) StopAlternateBuffer() {
 	}
 }
 
-// Erase the entire content of the buffer and leaves
+// RefreshScreen erases the entire content of the buffer and leaves
 // cursor in the in the first row and column of the buffer
 func (b *TerminalBuffer) RefreshScreen() {
 	// Move cursor to 0,0

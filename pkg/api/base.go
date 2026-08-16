@@ -19,13 +19,13 @@ const (
 	httpTimeout = 15 * time.Second
 )
 
-// Data required to make a prediction request
+// PredictionInput is data required to make a prediction request
 type PredictionInput struct {
 	StopID   string
 	AgencyID string
 }
 
-// Next train arrival prediction data
+// Prediction is next train arrival prediction data
 type Prediction struct {
 	// Minutes until a train arrives
 	Min string
@@ -39,7 +39,7 @@ type Prediction struct {
 	Line string
 }
 
-// Disruptions and/or delays data
+// Incident is disruptions and/or delays data
 type Incident struct {
 	// The start date/time of the active period for the incident
 	ActivePeriodStart time.Time
@@ -57,8 +57,8 @@ type Incident struct {
 	Type string
 }
 
-// Base interface that defines what each location client api must implement
-type Api interface {
+// API is the base interface that defines what each location client api must implement
+type API interface {
 	// Fetches all required static data. Used to hydrate database
 	FetchStaticData(ctx context.Context) (*data.StaticData, error)
 	// Fetches arrival information for list of location unique identifiers
@@ -75,14 +75,14 @@ type Api interface {
 }
 
 // NewDMV builds a client for the DMV Metro Area, backed by WMATA
-func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*DmvApi, error) {
+func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*DmvAPI, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
 
-	return &DmvApi{
+	return &DmvAPI{
 		apiKey:  apiKey,
-		baseUrl: dmvBaseURL,
+		baseURL: dmvBaseURL,
 		http:    &http.Client{Timeout: httpTimeout},
 		log:     log,
 		store:   store,
@@ -91,14 +91,14 @@ func NewDMV(apiKey string, store *data.TransitDB, log *logger.Logger) (*DmvApi, 
 
 // NewSF builds a client for the San Francisco Bay Area, backed by 511.
 // The now function supplies the clock that arrival times are measured against.
-func NewSF(apiKey string, store *data.TransitDB, log *logger.Logger, now func() time.Time) (*SFApi, error) {
+func NewSF(apiKey string, store *data.TransitDB, log *logger.Logger, now func() time.Time) (*SFAPI, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
 
-	return &SFApi{
+	return &SFAPI{
 		apiKey:  apiKey,
-		baseUrl: sfBaseURL,
+		baseURL: sfBaseURL,
 		http:    &http.Client{Timeout: httpTimeout},
 		log:     log,
 		now:     now,

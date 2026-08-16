@@ -95,16 +95,16 @@ func (a *App) defaultPreRun(cmd *cobra.Command, args []string) error {
 }
 
 // client returns the API client for the configured location.
-func (a *App) client() (api.Api, error) {
+func (a *App) client() (api.API, error) {
 	switch data.LocationSlug(a.Cfg.Core.Location) {
 	case data.DMVSlug:
-		client, err := api.NewDMV(a.Cfg.DMV.ApiKey, a.Store, a.Log)
+		client, err := api.NewDMV(a.Cfg.DMV.APIKey, a.Store, a.Log)
 		if err != nil {
 			return nil, fmt.Errorf("dmv client: %w", err)
 		}
 		return client, nil
 	case data.SFSlug:
-		client, err := api.NewSF(a.Cfg.SF.ApiKey, a.Store, a.Log, a.Now)
+		client, err := api.NewSF(a.Cfg.SF.APIKey, a.Store, a.Log, a.Now)
 		if err != nil {
 			return nil, fmt.Errorf("sf client: %w", err)
 		}

@@ -136,7 +136,7 @@ func (a *App) executeInitConfig(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) executeInitData(ctx context.Context, client api.Api, location data.LocationSlug) error {
+func (a *App) executeInitData(ctx context.Context, client api.API, location data.LocationSlug) error {
 	count, err := a.Store.CountStopsByLocation(ctx, location)
 	if err != nil {
 		return fmt.Errorf("count stops: %w", err)
