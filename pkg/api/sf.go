@@ -223,7 +223,9 @@ func (sf *SFAPI) FetchStaticData(ctx context.Context) (*data.StaticData, error) 
 		return nil, fmt.Errorf("fetch Caltrain stops: %w", err)
 	}
 
-	stops := append(bartStops, calStops...)
+	var stops []*data.Stop
+
+	stops = append(bartStops, calStops...)
 
 	staticData := data.StaticData{
 		Agencies: []*data.Agency{bart, cal},

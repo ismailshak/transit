@@ -63,22 +63,24 @@ func MigratedDB(t *testing.T) *data.TransitDB {
 func InitMigrationsTable(t *testing.T, db *sql.DB) {
 	t.Helper()
 
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(t.Context(), nil)
 	if err != nil {
 		t.Fatalf("Failed to begin transaction: %s", err)
 	}
 
 	defer tx.Rollback()
 
-	_, err = tx.Exec(data.CreateMigrationsTableSQL)
+	_, err = tx.ExecContext(t.Context(), data.CreateMigrationsTableSQL)
 	if err != nil {
 		t.Fatalf("Failed to create migration: %s", err)
 	}
 
-	_, err = tx.Exec(data.InsertMigrationSQL, "1_FakeMigration")
-
-	tx.Commit()
+	_, err = tx.ExecContext(t.Context(), data.InsertMigrationSQL, "1_FakeMigration")
 	if err != nil {
+		t.Fatalf("Failed to insert migration: %s", err)
+	}
+
+	if err := tx.Commit(); err != nil {
 		t.Fatalf("Failed to commit transaction: %s", err)
 	}
 }
