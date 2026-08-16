@@ -23,7 +23,7 @@ func PrintIncidents(client api.API, incidents []api.Incident) {
 
 	maxWidth := 80
 	termWidth, _, _ := term.GetSize(int(os.Stdin.Fd()))
-	width := min(termWidth-5, maxWidth) // -5 for some padding
+	width := min(max(termWidth-5, 0), maxWidth) // -5 for some padding
 
 	for _, inc := range incidents {
 		render(client, inc, width)
