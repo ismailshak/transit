@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/transit"
 	_ "modernc.org/sqlite"
 )
@@ -18,24 +17,17 @@ type Store struct {
 	// but queries and mutations should be made through methods on this struct
 	// TODO: Make private
 	DB *sql.DB
-
-	log *logger.Logger
 }
 
 // NewStore opens the SQLite database at path. The file is created if it doesn't
 // exist and no connection is made until the first query.
-func NewStore(path string, log *logger.Logger) (*Store, error) {
+func NewStore(path string) (*Store, error) {
 	conn, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
 	}
 
-	db := &Store{
-		DB:  conn,
-		log: log,
-	}
-
-	return db, nil
+	return &Store{DB: conn}, nil
 }
 
 // Ping verifies the connection to the database.
@@ -64,7 +56,7 @@ func (s *Store) SyncMigrations(ctx context.Context) error {
 		return nil
 	}
 
-	err = runMigrations(ctx, s.DB, s.log, count)
+	err = runMigrations(ctx, s.DB, count)
 	if err != nil {
 		return err
 	}
@@ -78,7 +70,7 @@ func (s *Store) InsertAgencies(ctx context.Context, agencies []*transit.Agency) 
 		return err
 	}
 
-	defer rollback(trx, s.log)
+	defer rollback(trx)
 
 	stmt, err := trx.PrepareContext(ctx, InsertAgencySQL)
 	if err != nil {
@@ -193,7 +185,7 @@ func (s *Store) InsertStops(ctx context.Context, stops []*transit.Stop) error {
 		return err
 	}
 
-	defer rollback(trx, s.log)
+	defer rollback(trx)
 
 	stmt, err := trx.PrepareContext(ctx, InsertStopSQL)
 	if err != nil {
@@ -280,12 +272,7 @@ func (s *Store) MatchStops(ctx context.Context, location transit.LocationSlug, q
 }
 
 // rollback undoes trx unless it already committed which reports sql.ErrTxDone.
-// Any other error means the rollback itself failed.
-func rollback(trx *sql.Tx, log *logger.Logger) {
-	err := trx.Rollback()
-	if err == nil || errors.Is(err, sql.ErrTxDone) {
-		return
-	}
-
-	log.Debug(fmt.Sprintf("Failed to roll back transaction: %s", err))
+// TODO: once there's a debug stream to write to report this rollback error
+func rollback(trx *sql.Tx) {
+	_ = trx.Rollback()
 }

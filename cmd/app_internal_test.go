@@ -3,16 +3,16 @@ package cmd
 import (
 	"bytes"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
-
-	"github.com/ismailshak/transit/internal/logger"
 )
 
 type testApp struct {
 	*App
 	t    *testing.T
 	out  *bytes.Buffer
+	err  *bytes.Buffer
 	home string
 }
 
@@ -20,10 +20,12 @@ func newTestApp(t *testing.T) *testApp {
 	t.Helper()
 
 	out := &bytes.Buffer{}
+	errOut := &bytes.Buffer{}
 	app := &testApp{
-		App:  &App{Out: out, Now: time.Now, Log: logger.New(false)},
+		App:  &App{Out: out, Err: errOut, Now: time.Now},
 		t:    t,
 		out:  out,
+		err:  errOut,
 		home: testHome(t),
 	}
 
@@ -94,11 +96,27 @@ func TestAppRun(t *testing.T) {
 			t.Error("expected a store but got nil, the db hook did not run")
 		}
 
-		if !app.Log.Verbose() {
-			t.Error("expected a verbose logger, root's PersistentPreRun did not rebuild it from the flag")
+		if !app.verbose {
+			t.Error("expected verbose to be set, --verbose is not bound to the field")
 		}
 	})
 
+	t.Run("a failing command writes its diagnostic to Err, not Out", func(t *testing.T) {
+		app := newTestApp(t)
+
+		code := app.run("at", "--nonsense")
+		if code != 2 {
+			t.Fatalf("expected exit code 2 but got %d", code)
+		}
+
+		if app.out.Len() != 0 {
+			t.Errorf("expected nothing on Out but got %q, a diagnostic reached stdout", app.out)
+		}
+
+		if !strings.Contains(app.err.String(), "unknown flag") {
+			t.Errorf("expected the flag error on Err but got %q", app.err)
+		}
+	})
 }
 
 func TestAppClose(t *testing.T) {

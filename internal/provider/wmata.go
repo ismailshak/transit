@@ -14,7 +14,6 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/gtfs"
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
@@ -28,7 +27,6 @@ type WMATClient struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
-	log     *logger.Logger
 	store   *store.Store
 }
 
@@ -93,11 +91,10 @@ func (w *WMATClient) FetchStaticData(ctx context.Context) (*transit.StaticData, 
 		return nil, err
 	}
 
+	// TODO: name the file we couldn't clean up, once there's a debug stream to name it on
 	defer func() {
 		f.Close() //nolint:errcheck // only here for the copy below, we close it ourselves after that
-		if err := os.RemoveAll(zipPath); err != nil {
-			w.log.Warn(fmt.Sprintf("Leftover gtfs archive at '%s': %s", zipPath, err))
-		}
+		_ = os.RemoveAll(zipPath)
 	}()
 
 	if _, err := io.Copy(f, resp.Body); err != nil {
@@ -116,9 +113,7 @@ func (w *WMATClient) FetchStaticData(ctx context.Context) (*transit.StaticData, 
 	}
 
 	defer func() {
-		if err := os.RemoveAll(feed); err != nil {
-			w.log.Warn(fmt.Sprintf("Leftover gtfs data at '%s': %s", feed, err))
-		}
+		_ = os.RemoveAll(feed)
 	}()
 
 	err = gtfs.UnzipStaticGTFS(zipPath, feed)
@@ -149,11 +144,6 @@ func (w *WMATClient) FetchPredictions(ctx context.Context, input []PredictionInp
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-
-	// Avoid the expensive conversion unless we have to
-	if w.log.Verbose() {
-		w.log.Debug(string(body))
-	}
 
 	if resp.StatusCode != 200 {
 		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
@@ -189,11 +179,6 @@ func (w *WMATClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 
 	body, _ := io.ReadAll(resp.Body)
 
-	// Avoid the expensive conversion unless we have to
-	if w.log.Verbose() {
-		w.log.Debug(string(body))
-	}
-
 	if resp.StatusCode != 200 {
 		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
@@ -227,13 +212,12 @@ func (w *WMATClient) GetPredictionInput(ctx context.Context, arg string) ([]Pred
 		return nil, err
 	}
 
+	// TODO: report these to the caller so it can warn on different situations
 	if len(stops) == 0 {
-		w.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
 		return nil, nil
 	}
 
 	if len(stops) > 5 {
-		w.log.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
 		return nil, nil
 	}
 

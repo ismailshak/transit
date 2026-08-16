@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/gtfs"
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
@@ -23,7 +22,6 @@ type SFClient struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
-	log     *logger.Logger
 	now     func() time.Time
 	store   *store.Store
 }
@@ -289,11 +287,6 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]
 	// Remove BOM from response
 	body = bytes.TrimPrefix(body, []byte("\xef\xbb\xbf"))
 
-	// Avoid the expensive conversion unless we have to
-	if sf.log.Verbose() {
-		sf.log.Debug(string(body))
-	}
-
 	var stopMonitoring sfStopMonitoringResponse
 
 	err = json.Unmarshal(body, &stopMonitoring)
@@ -428,11 +421,6 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 		return nil, err
 	}
 
-	// Avoid the expensive conversion unless we have to
-	if sf.log.Verbose() {
-		sf.log.Debug(string(body))
-	}
-
 	var incidents []Incident
 
 	for _, entity := range serviceAlerts.Entities {
@@ -473,13 +461,12 @@ func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]Predi
 		return nil, err
 	}
 
+	// TODO: report these to the caller so it can warn on different situations
 	if len(stops) == 0 {
-		sf.log.Warn(fmt.Sprintf("Skipping '%s': could not find a matching station\n", arg))
 		return nil, nil
 	}
 
 	if len(stops) > 5 {
-		sf.log.Warn(fmt.Sprintf("Skipping '%s': too many matches found\n", arg))
 		return nil, nil
 	}
 

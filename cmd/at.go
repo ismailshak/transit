@@ -91,7 +91,7 @@ func (a *App) watchAt(ctx context.Context, client provider.API, args []string) e
 			}
 
 			if !errors.Is(err, provider.ErrNoDepartures) {
-				a.Log.Error(err.Error())
+				a.errorf("%s", err)
 			}
 		}
 

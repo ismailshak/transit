@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/store"
 )
 
@@ -20,7 +19,7 @@ func BlankDB(t *testing.T) *store.Store {
 
 	t.Logf("Temp database at: %s", dbPath)
 
-	db, err := store.NewStore(dbPath, logger.New(false))
+	db, err := store.NewStore(dbPath)
 	if err != nil {
 		t.Fatal("Failed to connect to test database", err)
 	}
@@ -41,7 +40,7 @@ func MigratedDB(t *testing.T) *store.Store {
 	testDir := t.TempDir()
 	dbPath := filepath.Join(testDir, "transit-test-migrated.db")
 
-	db, err := store.NewStore(dbPath, logger.New(false))
+	db, err := store.NewStore(dbPath)
 	if err != nil {
 		t.Fatal("Failed to connect to test database", err)
 	}

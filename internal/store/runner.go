@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-
-	"github.com/ismailshak/transit/internal/logger"
 )
 
 // migration is a record of a database migration that was executed
@@ -42,7 +40,7 @@ func MigrationCount(ctx context.Context, db *sql.DB) (int, error) {
 	return count, nil
 }
 
-func runMigrations(ctx context.Context, db *sql.DB, log *logger.Logger, rowCount int) error {
+func runMigrations(ctx context.Context, db *sql.DB, rowCount int) error {
 	migrationRows, err := CurrentMigrations(ctx, db, rowCount)
 	if err != nil {
 		return err
@@ -50,7 +48,7 @@ func runMigrations(ctx context.Context, db *sql.DB, log *logger.Logger, rowCount
 
 	for i, changeset := range migrationChangesets {
 		if i+1 > len(migrationRows) {
-			err = run(ctx, db, log, &changeset)
+			err = run(ctx, db, &changeset)
 			if err != nil {
 				return err
 			}
@@ -94,15 +92,13 @@ func CurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]migrati
 	return migrationRows, rows.Err()
 }
 
-func run(ctx context.Context, db *sql.DB, log *logger.Logger, changeset *MigrationChangeset) error {
+func run(ctx context.Context, db *sql.DB, changeset *MigrationChangeset) error {
 	trx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 
-	defer rollback(trx, log)
-
-	log.Debug(fmt.Sprintf("Running new database migration: %s", changeset.Name))
+	defer rollback(trx)
 
 	err = changeset.Up(ctx, trx)
 	if err != nil {

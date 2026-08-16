@@ -31,9 +31,7 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/ismailshak/transit/internal/version.version={{.Version}}
-      - -X github.com/ismailshak/transit/internal/version.commit={{.Commit}}
-      - -X github.com/ismailshak/transit/internal/version.date={{.Date}}
+      - -X github.com/ismailshak/transit/cmd.version={{.Version}}
 
 archives:
   - name_template: >-

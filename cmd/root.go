@@ -10,16 +10,13 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/ui"
-	"github.com/ismailshak/transit/internal/version"
 	"github.com/spf13/cobra"
 )
 
 func (a *App) newRootCmd() *cobra.Command {
 	var versionFlag bool // TODO; make -v the version flag
-	var verboseFlag bool // TODO; turn this into a --level flag or keep as verbose?
 
 	rootCmd := &cobra.Command{
 		Use:           "transit",
@@ -30,12 +27,9 @@ func (a *App) newRootCmd() *cobra.Command {
 		// command. Cobra would say the same thing implicitly via legacyArgs;
 		// stating it lets the failure carry errUsage.
 		Args: usageArgs(cobra.NoArgs),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			a.Log = logger.New(verboseFlag)
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if versionFlag {
-				version.Execute()
+				a.executeVersion()
 				return nil
 			}
 
@@ -54,7 +48,7 @@ func (a *App) newRootCmd() *cobra.Command {
 
 	// Global, persistent flags
 	rootCmd.PersistentFlags().StringVarP(&a.configOverride, "config", "c", "", "config file (defaults to $HOME/.config/transit/config.yml)")
-	rootCmd.PersistentFlags().BoolVarP(&verboseFlag, "verbose", "v", false, "turn on verbose logging")
+	rootCmd.PersistentFlags().BoolVarP(&a.verbose, "verbose", "v", false, "turn on verbose logging")
 
 	// Local to root flags
 	rootCmd.Flags().BoolVarP(&versionFlag, "version", "V", false, "print installed version number")
@@ -72,12 +66,12 @@ func (a *App) newRootCmd() *cobra.Command {
 
 // Run builds the app, runs the command tree, and returns a process exit code.
 func Run() int {
-	app := &App{Out: os.Stdout, Now: time.Now, Log: logger.New(false)}
+	app := &App{Out: os.Stdout, Err: os.Stderr, Now: time.Now}
 	// Too late to change the exit code, but logging to make debugging this scenario
 	// easier
 	defer func() {
 		if err := app.close(); err != nil {
-			app.Log.Warn(fmt.Sprintf("Failed to close the database: %s", err))
+			app.warnf("Failed to close the database: %s", err)
 		}
 	}()
 

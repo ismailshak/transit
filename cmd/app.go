@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
-	"github.com/ismailshak/transit/internal/logger"
 	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
@@ -16,17 +15,20 @@ import (
 )
 
 // App is the assembled program, holding everything a command needs. It's built
-// once in [Run] and never leaves this package.
+// once in [Run] and should not be used in other packages.
 type App struct {
 	Cfg   *config.Config
 	Store *store.Store
-	Log   *logger.Logger
 	Out   io.Writer
+	Err   io.Writer
 	Now   func() time.Time
 
-	// Bound to --config in newRootCmd, read in configSetupPreRun.
+	// Bound to --config in newRootCmd.
 	// Empty means the default location.
 	configOverride string
+
+	// Bound to --verbose in newRootCmd.
+	verbose bool
 }
 
 // run executes the command tree against args and returns a process exit code.
@@ -37,7 +39,7 @@ func (a *App) run(ctx context.Context, args []string) int {
 
 	err := cmd.ExecuteContext(ctx)
 	if err != nil && !cancelled(err) {
-		a.Log.Error(err.Error())
+		a.errorf("%s", err)
 	}
 
 	return exitCode(err)
@@ -70,7 +72,7 @@ func (a *App) dbSetupPreRun(ctx context.Context) error {
 		return fmt.Errorf("locate config: %w", err)
 	}
 
-	db, err := store.NewStore(filepath.Join(path, "transit.db"), a.Log)
+	db, err := store.NewStore(filepath.Join(path, "transit.db"))
 	if err != nil {
 		return fmt.Errorf("establish store: %w", err)
 	}
@@ -99,13 +101,13 @@ func (a *App) defaultPreRun(cmd *cobra.Command, args []string) error {
 func (a *App) client() (provider.API, error) {
 	switch transit.LocationSlug(a.Cfg.Core.Location) {
 	case transit.DMVSlug:
-		client, err := provider.NewDMV(a.Cfg.DMV.APIKey, a.Store, a.Log)
+		client, err := provider.NewDMV(a.Cfg.DMV.APIKey, a.Store)
 		if err != nil {
 			return nil, fmt.Errorf("dmv client: %w", err)
 		}
 		return client, nil
 	case transit.SFSlug:
-		client, err := provider.NewSF(a.Cfg.SF.APIKey, a.Store, a.Log, a.Now)
+		client, err := provider.NewSF(a.Cfg.SF.APIKey, a.Store, a.Now)
 		if err != nil {
 			return nil, fmt.Errorf("sf client: %w", err)
 		}
