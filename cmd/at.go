@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"sort"
 	"time"
 
+	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/tui"
 	"github.com/ismailshak/transit/pkg/api"
 	"github.com/spf13/cobra"
@@ -50,36 +53,99 @@ try being more specific by adding more characters.
 }
 
 func (a *App) executeAt(ctx context.Context, client api.API, args []string) error {
-	var rendered, resolved int
+	targets, err := a.resolveStops(ctx, client, args)
+	if err != nil {
+		return err
+	}
 
-	// TODO: pull client.GetPredictionInput() out of this so that `Watch` is more performant
-	for _, arg := range args {
-		codes, err := client.GetPredictionInput(ctx, arg)
-		if err != nil {
-			return fmt.Errorf("resolve %q: %w", arg, err)
+	return a.renderDepartures(ctx, client, targets)
+}
+
+func (a *App) watchAt(ctx context.Context, client api.API, args []string) error {
+	interval, err := watchInterval(a.Cfg.Core.WatchInterval)
+	if err != nil {
+		return err
+	}
+
+	targets, err := a.resolveStops(ctx, client, args)
+	if err != nil {
+		return err
+	}
+
+	message := tui.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	buffer := tui.NewBuffer()
+	buffer.StartAlternateBuffer()
+	defer buffer.StopAlternateBuffer()
+
+	for {
+		buffer.RefreshScreen()
+		_, _ = fmt.Fprintln(a.Out, message)
+
+		if err := a.renderDepartures(ctx, client, targets); err != nil {
+			if endsWatch(err) {
+				return err
+			}
+
+			if !errors.Is(err, api.ErrNoDepartures) {
+				a.Log.Error(err.Error())
+			}
 		}
-		if codes == nil {
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+		}
+	}
+}
+
+// target is one argument resolved to the stop codes a provider wants
+type target struct {
+	arg   string
+	input []api.PredictionInput
+}
+
+func (a *App) resolveStops(ctx context.Context, client api.API, args []string) ([]target, error) {
+	var targets []target
+
+	for _, arg := range args {
+		input, err := client.GetPredictionInput(ctx, arg)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %q: %w", arg, err)
+		}
+		if input == nil {
 			continue
 		}
 
-		resolved++
+		targets = append(targets, target{arg: arg, input: input})
+	}
 
-		predictions, err := client.FetchPredictions(ctx, codes)
+	if len(targets) == 0 {
+		return nil, fmt.Errorf("%w: no station matched %v", errUsage, args)
+	}
+
+	return targets, nil
+}
+
+func (a *App) renderDepartures(ctx context.Context, client api.API, targets []target) error {
+	var rendered int
+	for _, t := range targets {
+		departures, err := client.FetchPredictions(ctx, t.input)
 		if errors.Is(err, api.ErrNoDepartures) {
 			continue
 		}
 
 		if err != nil {
-			return fmt.Errorf("fetch predictions for %q: %w", arg, err)
+			return fmt.Errorf("fetch predictions for %q: %w", t.arg, err)
 		}
 
-		destinationLookup, sortedDestinations := groupByDestination(predictions)
+		destinationLookup, sortedDestinations := groupByDestination(departures)
 		tui.PrintArrivalScreen(client, &destinationLookup, sortedDestinations)
 		rendered++
-	}
-
-	if resolved == 0 {
-		return fmt.Errorf("%w: no station matched %v", errUsage, args)
 	}
 
 	if rendered == 0 {
@@ -87,35 +153,6 @@ func (a *App) executeAt(ctx context.Context, client api.API, args []string) erro
 	}
 
 	return nil
-}
-
-func (a *App) watchAt(ctx context.Context, client api.API, args []string) error {
-	buffer := tui.NewBuffer()
-	interval := time.Second * time.Duration(a.Cfg.Core.WatchInterval)
-	message := tui.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
-
-	buffer.StartAlternateBuffer()
-
-	go func() {
-		for {
-			buffer.RefreshScreen()
-			_, _ = fmt.Fprintln(a.Out, message)
-			// Watch mode reports errors on screen rather than ending the loop
-			if err := a.executeAt(ctx, client, args); err != nil && !errors.Is(err, api.ErrNoDepartures) && !cancelled(err) {
-				a.Log.Error(err.Error())
-			}
-
-			time.Sleep(interval)
-		}
-	}()
-
-	// blocking expression
-	<-ctx.Done()
-
-	buffer.StopAlternateBuffer()
-
-	// Return cancelled context so that the correct exit code is returned
-	return ctx.Err()
 }
 
 // Groups predictions by destination (assumes already sorted by minutes).
@@ -139,4 +176,48 @@ func groupByDestination(predictions []api.Prediction) (map[string][]api.Predicti
 	sort.Strings(destinations)
 
 	return destMap, destinations
+}
+
+// watchInterval converts the configured seconds into a duration. A non-positive
+// value would panic time.NewTicker, and config set already refuses one.
+func watchInterval(seconds int) (time.Duration, error) {
+	if seconds <= 0 {
+		return 0, fmt.Errorf("%w: watch_interval must be greater than 0", config.ErrInvalid)
+	}
+	return time.Duration(seconds) * time.Second, nil
+}
+
+// endsWatch reports whether an error should end the session. Only recoverable
+// errors keep the loop going.
+func endsWatch(err error) bool {
+	// Check cancelled first as a cancelled request can surface as net.OpError below.
+	if cancelled(err) {
+		return true
+	}
+
+	if httpErr, ok := errors.AsType[*api.HTTPError](err); ok {
+		// 5xx and 429 are the upstream's problem and it could recover.
+		return httpErr.StatusCode < 500 && httpErr.StatusCode != http.StatusTooManyRequests
+	}
+
+	// Things the network can fix on its own. Timeout arrives as DeadlineExceeded.
+	if _, ok := errors.AsType[*net.OpError](err); ok {
+		return false
+	}
+
+	// A name that never resolved didn't get as far as a dial so there's no OpError here.
+	if _, ok := errors.AsType[*net.DNSError](err); ok {
+		return false
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+
+	// Loop could start before trains start operating.
+	if errors.Is(err, api.ErrNoDepartures) {
+		return false
+	}
+
+	return true
 }
