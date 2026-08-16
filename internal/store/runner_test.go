@@ -29,7 +29,7 @@ func TestSkippingMigrationsTableIfExists(t *testing.T) {
 		t.Errorf("Failed skipping migrations table: %s", err)
 	}
 
-	count, err := store.GetMigrationCount(t.Context(), db.DB)
+	count, err := store.MigrationCount(t.Context(), db.DB)
 	if err != nil {
 		t.Errorf("Failed to get migration count: %s", err)
 	}
@@ -38,7 +38,7 @@ func TestSkippingMigrationsTableIfExists(t *testing.T) {
 		t.Errorf("Expected 1 migration. Got %d", count)
 	}
 
-	migrations, err := store.GetCurrentMigrations(t.Context(), db.DB, count)
+	migrations, err := store.CurrentMigrations(t.Context(), db.DB, count)
 	if err != nil {
 		t.Errorf("Failed to get migrations: %s", err)
 	}

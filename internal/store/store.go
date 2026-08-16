@@ -23,7 +23,7 @@ type Store struct {
 }
 
 // NewStore opens the SQLite database at path. The file is created if it doesn't
-// exist, and no connection is made until the first query.
+// exist and no connection is made until the first query.
 func NewStore(path string, log *logger.Logger) (*Store, error) {
 	conn, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -38,6 +38,7 @@ func NewStore(path string, log *logger.Logger) (*Store, error) {
 	return db, nil
 }
 
+// Ping verifies the connection to the database.
 func (s *Store) Ping(ctx context.Context) error {
 	return s.DB.PingContext(ctx)
 }
@@ -47,14 +48,14 @@ func (s *Store) Close() error {
 	return s.DB.Close()
 }
 
-// SyncMigrations keeps migrations up-to-date, and handles first time migration run
+// SyncMigrations keeps migrations up-to-date and handles first time migration run
 func (s *Store) SyncMigrations(ctx context.Context) error {
 	err := CreateMigrationTable(ctx, s.DB)
 	if err != nil {
 		return err
 	}
 
-	count, err := GetMigrationCount(ctx, s.DB)
+	count, err := MigrationCount(ctx, s.DB)
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func (s *Store) SyncMigrations(ctx context.Context) error {
 		return nil
 	}
 
-	err = RunMigrations(ctx, s.DB, s.log, count)
+	err = runMigrations(ctx, s.DB, s.log, count)
 	if err != nil {
 		return err
 	}
@@ -99,7 +100,8 @@ func (s *Store) InsertAgencies(ctx context.Context, agencies []*transit.Agency) 
 	return nil
 }
 
-func (s *Store) GetLocation(ctx context.Context, location transit.LocationSlug) (*transit.Location, error) {
+// Location returns one location by its slug. A slug with no row returns nil.
+func (s *Store) Location(ctx context.Context, location transit.LocationSlug) (*transit.Location, error) {
 	row := s.DB.QueryRowContext(ctx, SelectLocationSQL, location)
 
 	var l transit.Location
@@ -117,7 +119,8 @@ func (s *Store) GetLocation(ctx context.Context, location transit.LocationSlug) 
 	return &l, nil
 }
 
-func (s *Store) GetAllLocations(ctx context.Context) ([]transit.Location, error) {
+// AllLocations returns every location the migrations seeded.
+func (s *Store) AllLocations(ctx context.Context) ([]transit.Location, error) {
 	rows, err := s.DB.QueryContext(ctx, SelectAllLocationsSQL)
 	if err != nil {
 		return nil, fmt.Errorf("query locations: %w", err)
@@ -140,7 +143,10 @@ func (s *Store) GetAllLocations(ctx context.Context) ([]transit.Location, error)
 	return locations, rows.Err()
 }
 
-func (s *Store) GetStopsByLocation(ctx context.Context, location transit.LocationSlug, parentsOnly bool) ([]*transit.Stop, error) {
+// StopsByLocation returns the stops seeded for a location. parentsOnly only returns
+// stops with no parent. Those are the stations rather and not the platforms
+// underneath them.
+func (s *Store) StopsByLocation(ctx context.Context, location transit.LocationSlug, parentsOnly bool) ([]*transit.Stop, error) {
 	var statement string
 	if parentsOnly {
 		statement = SelectParentStopsByLocationSQL
@@ -209,6 +215,7 @@ func (s *Store) InsertStops(ctx context.Context, stops []*transit.Stop) error {
 	return nil
 }
 
+// CountStopsByLocation returns the number of stops seeded for a location slug.
 func (s *Store) CountStopsByLocation(ctx context.Context, location transit.LocationSlug) (int, error) {
 	row := s.DB.QueryRowContext(ctx, CountStopsByLocationSQL, location)
 
@@ -220,7 +227,10 @@ func (s *Store) CountStopsByLocation(ctx context.Context, location transit.Locat
 	return count, nil
 }
 
-func (s *Store) GetLocationAgencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error) {
+// LocationAgencies reads the agencies seeded for a location. An unseeded location
+// returns an empty slice and no error. Nothing tells that apart from a location
+// with no agencies.
+func (s *Store) LocationAgencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error) {
 	rows, err := s.DB.QueryContext(ctx, SelectAgenciesByLocationSQL, location)
 	if err != nil {
 		return nil, fmt.Errorf("query agencies: %w", err)
@@ -251,7 +261,7 @@ func (s *Store) GetLocationAgencies(ctx context.Context, location transit.Locati
 	return agencies, rows.Err()
 }
 
-// rollback undoes trx unless it already committed, which reports sql.ErrTxDone.
+// rollback undoes trx unless it already committed which reports sql.ErrTxDone.
 // Any other error means the rollback itself failed.
 func rollback(trx *sql.Tx, log *logger.Logger) {
 	err := trx.Rollback()

@@ -57,7 +57,7 @@ func (a *App) getConfiguredLocation(ctx context.Context) (string, error) {
 		return location, nil
 	}
 
-	locations, err := a.Store.GetAllLocations(ctx)
+	locations, err := a.Store.AllLocations(ctx)
 	if err != nil {
 		return "", fmt.Errorf("fetch locations: %w", err)
 	}

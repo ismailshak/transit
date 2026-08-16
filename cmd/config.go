@@ -132,7 +132,7 @@ func (a *App) validateKey(ctx context.Context, key, value string) error {
 }
 
 func (a *App) validateLocation(ctx context.Context, location string) error {
-	l, err := a.Store.GetLocation(ctx, transit.LocationSlug(location))
+	l, err := a.Store.Location(ctx, transit.LocationSlug(location))
 	if err != nil {
 		return fmt.Errorf("get location data: %w", err)
 	}

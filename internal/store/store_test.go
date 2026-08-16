@@ -47,7 +47,7 @@ func TestGetValidLocation(t *testing.T) {
 		t.Fatalf("Failed to insert location fixture data: %s", err)
 	}
 
-	locationRow, err := db.GetLocation(t.Context(), locationFixture.Slug)
+	locationRow, err := db.Location(t.Context(), locationFixture.Slug)
 
 	if err != nil {
 		t.Fatalf("Failed to get location from db: %s", err)
@@ -78,7 +78,7 @@ func TestGetInvalidLocation(t *testing.T) {
 		t.Fatalf("Failed to insert location fixture data: %s", err)
 	}
 
-	locationRow, err := db.GetLocation(t.Context(), "invalid")
+	locationRow, err := db.Location(t.Context(), "invalid")
 
 	if err != nil {
 		t.Fatalf("Failed to get location from db: %s", err)
@@ -95,7 +95,7 @@ func TestGetLocationSeparatesMissingFromFailed(t *testing.T) {
 
 		db := testutils.MigratedDB(t)
 
-		location, err := db.GetLocation(t.Context(), "nowhere")
+		location, err := db.Location(t.Context(), "nowhere")
 		if err != nil {
 			t.Fatalf("expected no error but got %v", err)
 		}
@@ -113,7 +113,7 @@ func TestGetLocationSeparatesMissingFromFailed(t *testing.T) {
 			t.Fatalf("expected no error but got %v", err)
 		}
 
-		location, err := db.GetLocation(t.Context(), locationFixture.Slug)
+		location, err := db.Location(t.Context(), locationFixture.Slug)
 		if err == nil {
 			t.Fatal("expected an error but got nil, a closed database reads as an empty one")
 		}
@@ -132,13 +132,13 @@ func TestCancelledContextReachesTheDriver(t *testing.T) {
 	}{
 		"many rows": {
 			call: func(ctx context.Context, db *store.Store) error {
-				_, err := db.GetAllLocations(ctx)
+				_, err := db.AllLocations(ctx)
 				return err
 			},
 		},
 		"one row": {
 			call: func(ctx context.Context, db *store.Store) error {
-				_, err := db.GetLocation(ctx, locationFixture.Slug)
+				_, err := db.Location(ctx, locationFixture.Slug)
 				return err
 			},
 		},
@@ -188,7 +188,7 @@ func TestGetStopsByLocationExcludesParent(t *testing.T) {
 		}
 	}
 
-	stops, err := db.GetStopsByLocation(t.Context(), testLocation, true)
+	stops, err := db.StopsByLocation(t.Context(), testLocation, true)
 	if err != nil {
 		t.Fatalf("GetStopsByLocation() returned an error: %s", err)
 	}
@@ -234,7 +234,7 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 		}
 	}
 
-	stops, err := db.GetStopsByLocation(t.Context(), testLocation, false)
+	stops, err := db.StopsByLocation(t.Context(), testLocation, false)
 	if err != nil {
 		t.Fatalf("GetStopsByLocation() returned an error: %s", err)
 	}

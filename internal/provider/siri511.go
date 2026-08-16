@@ -364,7 +364,7 @@ func (sf *SFClient) FetchPredictions(ctx context.Context, input []PredictionInpu
 }
 
 func (sf *SFClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
-	agencies, err := sf.store.GetLocationAgencies(ctx, transit.SFSlug)
+	agencies, err := sf.store.LocationAgencies(ctx, transit.SFSlug)
 	if err != nil {
 		return nil, err
 	}
@@ -468,7 +468,7 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 }
 
 func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := sf.store.GetStopsByLocation(ctx, transit.SFSlug, true)
+	stops, err := sf.store.StopsByLocation(ctx, transit.SFSlug, true)
 	if err != nil {
 		return nil, err
 	}

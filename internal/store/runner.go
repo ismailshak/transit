@@ -25,7 +25,8 @@ func CreateMigrationTable(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-func GetMigrationCount(ctx context.Context, db *sql.DB) (int, error) {
+// MigrationCount reports how many migrations have already been applied.
+func MigrationCount(ctx context.Context, db *sql.DB) (int, error) {
 	row := db.QueryRowContext(ctx, CountMigrationsSQL)
 
 	var count int
@@ -41,8 +42,8 @@ func GetMigrationCount(ctx context.Context, db *sql.DB) (int, error) {
 	return count, nil
 }
 
-func RunMigrations(ctx context.Context, db *sql.DB, log *logger.Logger, rowCount int) error {
-	migrationRows, err := GetCurrentMigrations(ctx, db, rowCount)
+func runMigrations(ctx context.Context, db *sql.DB, log *logger.Logger, rowCount int) error {
+	migrationRows, err := CurrentMigrations(ctx, db, rowCount)
 	if err != nil {
 		return err
 	}
@@ -65,7 +66,8 @@ func RunMigrations(ctx context.Context, db *sql.DB, log *logger.Logger, rowCount
 	return nil
 }
 
-func GetCurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]migration, error) {
+// CurrentMigrations reads the migrations already applied.
+func CurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]migration, error) {
 	if rowCount == 0 {
 		return []migration{}, nil
 	}

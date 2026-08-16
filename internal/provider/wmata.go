@@ -222,7 +222,7 @@ func (w *WMATClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 }
 
 func (w *WMATClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := w.store.GetStopsByLocation(ctx, transit.DMVSlug, true)
+	stops, err := w.store.StopsByLocation(ctx, transit.DMVSlug, true)
 	if err != nil {
 		return nil, err
 	}
