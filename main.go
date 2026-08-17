@@ -3,10 +3,10 @@ package main
 import (
 	"os"
 
-	"github.com/ismailshak/transit/cmd"
+	"github.com/ismailshak/transit/internal/cli"
 )
 
 func main() {
-	exit := cmd.Run()
+	exit := cli.Run()
 	os.Exit(exit)
 }
