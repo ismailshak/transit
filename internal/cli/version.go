@@ -8,7 +8,7 @@ import (
 
 // Set by goreleaser at release time. To mimic it locally:
 //
-// go build -ldflags "-X github.com/ismailshak/transit/cmd.version=1.2.3" -o transit
+// go build -ldflags "-X github.com/ismailshak/transit/internal/cli.version=1.2.3" -o transit
 // TODO: Do we still need -ldflags via goreleaser with these new tools?
 var version = "dev"
 
