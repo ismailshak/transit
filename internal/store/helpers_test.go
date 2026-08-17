@@ -1,7 +1,6 @@
 package store_test
 
 import (
-	"database/sql"
 	"path/filepath"
 	"testing"
 
@@ -54,29 +53,4 @@ func migratedDB(t *testing.T) *store.Store {
 	})
 
 	return db
-}
-
-func initMigrationsTable(t *testing.T, db *sql.DB) {
-	t.Helper()
-
-	tx, err := db.BeginTx(t.Context(), nil)
-	if err != nil {
-		t.Fatalf("Failed to begin transaction: %s", err)
-	}
-
-	defer func() { _ = tx.Rollback() }()
-
-	_, err = tx.ExecContext(t.Context(), store.CreateMigrationsTableSQL)
-	if err != nil {
-		t.Fatalf("Failed to create migration: %s", err)
-	}
-
-	_, err = tx.ExecContext(t.Context(), store.InsertMigrationSQL, "1_FakeMigration")
-	if err != nil {
-		t.Fatalf("Failed to insert migration: %s", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		t.Fatalf("Failed to commit transaction: %s", err)
-	}
 }
