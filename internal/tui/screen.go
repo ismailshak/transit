@@ -5,12 +5,12 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/pkg/api"
+	"github.com/ismailshak/transit/internal/provider"
 )
 
 // PrintArrivalScreen creates and prints a screen that resembles a station's. Will display
 // an arriving train's line, destination and arriving trains (in "minutes-away")
-func PrintArrivalScreen(client api.API, destinationLookup *map[string][]api.Prediction, sortedDestinations []string) {
+func PrintArrivalScreen(client provider.API, destinationLookup *map[string][]provider.Prediction, sortedDestinations []string) {
 	list := getScreen()
 
 	// since this is the same for all items, fishing it out from the first one
@@ -57,7 +57,7 @@ func genHeader(header string) string {
 }
 
 // Generates a row printed on the screen
-func genRow(client api.API, destination []api.Prediction) string {
+func genRow(client provider.API, destination []provider.Prediction) string {
 	formattedLine := genLine(client, destination[0].Line)
 	formattedDest := genDestination(destination[0].Destination)
 	formattedMins := genTimeList(destination)
@@ -66,7 +66,7 @@ func genRow(client api.API, destination []api.Prediction) string {
 }
 
 // Generate and color a metro's line
-func genLine(client api.API, line string) string {
+func genLine(client provider.API, line string) string {
 	bg, fg := client.GetLineColor(line)
 	return lipgloss.NewStyle().
 		Bold(true).
@@ -87,7 +87,7 @@ func genDestination(destination string) string {
 }
 
 // Generates a comma separated list of formatted minutes until
-func genTimeList(destination []api.Prediction) string {
+func genTimeList(destination []provider.Prediction) string {
 	formatted := []string{}
 	for _, d := range destination {
 		formatted = append(formatted, genTimeEntry(d.Min))

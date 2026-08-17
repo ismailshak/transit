@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/pkg/api"
+	"github.com/ismailshak/transit/internal/provider"
 	"golang.org/x/term"
 )
 
@@ -15,7 +15,7 @@ const (
 	dateFormat = "2 Jan 06 3:04pm"
 )
 
-func PrintIncidents(client api.API, incidents []api.Incident) {
+func PrintIncidents(client provider.API, incidents []provider.Incident) {
 	if len(incidents) == 0 {
 		fmt.Println("No incidents reported")
 		return
@@ -54,7 +54,7 @@ func formatStartEnd(start, end time.Time) string {
 	return fmt.Sprintf("%s - %s", start.Format(dateFormat), end.Format(dateFormat))
 }
 
-func genFooter(incident *api.Incident) string {
+func genFooter(incident *provider.Incident) string {
 	duration := formatStartEnd(incident.ActivePeriodStart, incident.ActivePeriodEnd)
 	agencyName := incident.Agency
 
@@ -82,7 +82,7 @@ func genFooter(incident *api.Incident) string {
 	return lipgloss.JoinHorizontal(lipgloss.Left, activePeriod, agency)
 }
 
-func render(client api.API, incident api.Incident, width int) {
+func render(client provider.API, incident provider.Incident, width int) {
 	list := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), true, true, true, true).
 		Padding(1, 1).
@@ -110,7 +110,7 @@ func render(client api.API, incident api.Incident, width int) {
 	}
 }
 
-func genAffected(client api.API, affected []string) string {
+func genAffected(client provider.API, affected []string) string {
 	builder := strings.Builder{}
 
 	for _, a := range affected {
