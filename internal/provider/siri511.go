@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -223,13 +224,9 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.StaticData, e
 		return nil, fmt.Errorf("fetch Caltrain stops: %w", err)
 	}
 
-	var stops []*transit.Stop
-
-	stops = append(bartStops, calStops...)
-
 	staticData := transit.StaticData{
 		Agencies: []*transit.Agency{bart, cal},
-		Stops:    stops,
+		Stops:    slices.Concat(bartStops, calStops),
 	}
 
 	return &staticData, nil

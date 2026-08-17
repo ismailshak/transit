@@ -12,13 +12,15 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// Store is a handle on the SQLite database. The zero value isn't usable
+// so build one with [New].
 type Store struct {
 	db *sql.DB
 }
 
-// NewStore opens the SQLite database at path. The file is created if it doesn't
+// New opens the SQLite database at path. The file is created if it doesn't
 // exist and no connection is made until the first query.
-func NewStore(path string) (*Store, error) {
+func New(path string) (*Store, error) {
 	conn, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
@@ -61,6 +63,7 @@ func (s *Store) SyncMigrations(ctx context.Context) error {
 	return nil
 }
 
+// InsertAgencies writes agencies in one transaction. Nothing is inserted if any row fails.
 func (s *Store) InsertAgencies(ctx context.Context, agencies []*transit.Agency) error {
 	trx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -133,7 +136,7 @@ func (s *Store) AllLocations(ctx context.Context) ([]transit.Location, error) {
 }
 
 // StopsByLocation returns the stops seeded for a location. parentsOnly only returns
-// stops with no parent. Those are the stations rather and not the platforms
+// stops with no parent. Those are the stations and not the platforms
 // underneath them.
 func (s *Store) StopsByLocation(ctx context.Context, location transit.LocationSlug, parentsOnly bool) ([]*transit.Stop, error) {
 	var statement string
@@ -176,6 +179,7 @@ func (s *Store) StopsByLocation(ctx context.Context, location transit.LocationSl
 	return stops, rows.Err()
 }
 
+// InsertStops writes stops in one transaction. Nothing is inserted if any row fails.
 func (s *Store) InsertStops(ctx context.Context, stops []*transit.Stop) error {
 	trx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

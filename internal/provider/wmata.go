@@ -22,8 +22,8 @@ const (
 	wmataDateTimeLayout = "2006-01-02T15:04:05"
 )
 
-// WMATClient is the API to interact with WMATA
-type WMATClient struct {
+// WMATAClient is the API to interact with WMATA
+type WMATAClient struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
@@ -47,7 +47,7 @@ type wmataIncidentsResponse struct {
 	Incidents []wmataIncident
 }
 
-func (w *WMATClient) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
+func (w *WMATAClient) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
 	parts := make([]string, 0, len(route)+1)
 	parts = append(parts, w.baseURL)
 	parts = append(parts, route...)
@@ -63,7 +63,7 @@ func (w *WMATClient) BuildRequest(ctx context.Context, method string, route ...s
 	return req, nil
 }
 
-func (w *WMATClient) FetchStaticData(ctx context.Context) (*transit.StaticData, error) {
+func (w *WMATAClient) FetchStaticData(ctx context.Context) (*transit.StaticData, error) {
 	req, err := w.BuildRequest(ctx, http.MethodGet, "gtfs/rail-gtfs-static.zip")
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func (w *WMATClient) FetchStaticData(ctx context.Context) (*transit.StaticData, 
 	return gtfs.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, "MET")
 }
 
-func (w *WMATClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
+func (w *WMATAClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
 	codes := make([]string, 0, len(input))
 	for _, i := range input {
 		codes = append(codes, i.StopID)
@@ -163,7 +163,7 @@ func (w *WMATClient) FetchPredictions(ctx context.Context, input []PredictionInp
 	return predictions.Trains, nil
 }
 
-func (w *WMATClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
+func (w *WMATAClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	req, err := w.BuildRequest(ctx, http.MethodGet, "Incidents.svc/json/Incidents")
 	if err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func (w *WMATClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 	return incidents, nil
 }
 
-func (w *WMATClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
+func (w *WMATAClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
 	stops, err := w.store.MatchStops(ctx, transit.DMVSlug, arg)
 	if err != nil {
 		return nil, err
@@ -232,7 +232,7 @@ func (w *WMATClient) GetPredictionInput(ctx context.Context, arg string) ([]Pred
 	return input, nil
 }
 
-func (w *WMATClient) GetLineColor(stop string) (string, string) {
+func (w *WMATAClient) GetLineColor(stop string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	switch stop {
 	case "SV", "Silver":
@@ -252,7 +252,7 @@ func (w *WMATClient) GetLineColor(stop string) (string, string) {
 	}
 }
 
-func (w *WMATClient) IsGhostTrain(line, destination string) bool {
+func (w *WMATAClient) IsGhostTrain(line, destination string) bool {
 	return line == "--" || destination == "No Passenger" || line == "No"
 }
 

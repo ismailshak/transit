@@ -75,22 +75,22 @@ type API interface {
 }
 
 // NewDMV builds a client for the DMV Metro Area, backed by WMATA
-func NewDMV(apiKey string, store *store.Store) (*WMATClient, error) {
+func NewDMV(apiKey string, s *store.Store) (*WMATAClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
 
-	return &WMATClient{
+	return &WMATAClient{
 		apiKey:  apiKey,
 		baseURL: wmataBaseURL,
 		http:    &http.Client{Timeout: httpTimeout},
-		store:   store,
+		store:   s,
 	}, nil
 }
 
 // NewSF builds a client for the San Francisco Bay Area, backed by 511.
 // The now function supplies the clock that arrival times are measured against.
-func NewSF(apiKey string, store *store.Store, now func() time.Time) (*SFClient, error) {
+func NewSF(apiKey string, s *store.Store, now func() time.Time) (*SFClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
@@ -100,6 +100,6 @@ func NewSF(apiKey string, store *store.Store, now func() time.Time) (*SFClient, 
 		baseURL: sfBaseURL,
 		http:    &http.Client{Timeout: httpTimeout},
 		now:     now,
-		store:   store,
+		store:   s,
 	}, nil
 }

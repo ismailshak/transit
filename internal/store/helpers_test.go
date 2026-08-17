@@ -15,7 +15,7 @@ func blankDB(t *testing.T) *store.Store {
 
 	t.Logf("Temp database at: %s", dbPath)
 
-	db, err := store.NewStore(dbPath)
+	db, err := store.New(dbPath)
 	if err != nil {
 		t.Fatal("Failed to connect to test database", err)
 	}
@@ -36,7 +36,7 @@ func migratedDB(t *testing.T) *store.Store {
 	testDir := t.TempDir()
 	dbPath := filepath.Join(testDir, "transit-test-migrated.db")
 
-	db, err := store.NewStore(dbPath)
+	db, err := store.New(dbPath)
 	if err != nil {
 		t.Fatal("Failed to connect to test database", err)
 	}

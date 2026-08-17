@@ -72,7 +72,7 @@ func (a *App) dbSetupPreRun(ctx context.Context) error {
 		return fmt.Errorf("locate config: %w", err)
 	}
 
-	db, err := store.NewStore(filepath.Join(path, "transit.db"))
+	db, err := store.New(filepath.Join(path, "transit.db"))
 	if err != nil {
 		return fmt.Errorf("establish store: %w", err)
 	}

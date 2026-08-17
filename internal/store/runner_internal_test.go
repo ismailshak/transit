@@ -12,7 +12,7 @@ func openTestDB(t *testing.T) *sql.DB {
 
 	path := filepath.Join(t.TempDir(), "transit-test-runner.db")
 
-	s, err := NewStore(path)
+	s, err := New(path)
 	if err != nil {
 		t.Fatal("Failed to connect to test database", err)
 	}
