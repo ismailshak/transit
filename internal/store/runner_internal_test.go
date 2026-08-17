@@ -24,7 +24,7 @@ func openTestDB(t *testing.T) *sql.DB {
 		}
 	})
 
-	return s.DB
+	return s.db
 }
 
 func initMigrationsTable(t *testing.T, db *sql.DB) {
@@ -37,12 +37,12 @@ func initMigrationsTable(t *testing.T, db *sql.DB) {
 
 	defer func() { _ = tx.Rollback() }()
 
-	_, err = tx.ExecContext(t.Context(), CreateMigrationsTableSQL)
+	_, err = tx.ExecContext(t.Context(), createMigrationsTableSQL)
 	if err != nil {
 		t.Fatalf("Failed to create migration: %s", err)
 	}
 
-	_, err = tx.ExecContext(t.Context(), InsertMigrationSQL, "1_FakeMigration")
+	_, err = tx.ExecContext(t.Context(), insertMigrationSQL, "1_FakeMigration")
 	if err != nil {
 		t.Fatalf("Failed to insert migration: %s", err)
 	}
@@ -57,7 +57,7 @@ func TestCreatingMigrationTable(t *testing.T) {
 
 	db := openTestDB(t)
 
-	err := CreateMigrationTable(t.Context(), db)
+	err := createMigrationTable(t.Context(), db)
 	if err != nil {
 		t.Errorf("Failed to create migrations table: %s", err)
 	}
@@ -69,12 +69,12 @@ func TestSkippingMigrationsTableIfExists(t *testing.T) {
 	db := openTestDB(t)
 	initMigrationsTable(t, db)
 
-	err := CreateMigrationTable(t.Context(), db)
+	err := createMigrationTable(t.Context(), db)
 	if err != nil {
 		t.Errorf("Failed skipping migrations table: %s", err)
 	}
 
-	count, err := MigrationCount(t.Context(), db)
+	count, err := migrationCount(t.Context(), db)
 	if err != nil {
 		t.Errorf("Failed to get migration count: %s", err)
 	}
@@ -83,7 +83,7 @@ func TestSkippingMigrationsTableIfExists(t *testing.T) {
 		t.Errorf("Expected 1 migration. Got %d", count)
 	}
 
-	migrations, err := CurrentMigrations(t.Context(), db, count)
+	migrations, err := currentMigrations(t.Context(), db, count)
 	if err != nil {
 		t.Errorf("Failed to get migrations: %s", err)
 	}

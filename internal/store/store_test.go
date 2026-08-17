@@ -13,8 +13,6 @@ import (
 
 var testLocation transit.LocationSlug = "moon"
 
-var locationFixture = &transit.Location{Slug: "x", Name: "XYZ", SupportsGTFS: true}
-
 var stopsFixture = []*transit.Stop{
 	{StopID: "A", Name: "AAA", Location: testLocation, AgencyID: "MET", Latitude: "12.1818181", Longitude: "-332.99933", Type: "train", ParentID: ""},
 	{StopID: "B", Name: "BBB", Location: testLocation, AgencyID: "MET", Latitude: "12.1813458", Longitude: "-332.99993", Type: "train", ParentID: "A"},
@@ -45,27 +43,16 @@ func TestGetValidLocation(t *testing.T) {
 
 	db := migratedDB(t)
 
-	_, err := db.DB.ExecContext(
-		t.Context(),
-		"INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)",
-		locationFixture.Slug,
-		locationFixture.Name,
-		locationFixture.SupportsGTFS,
-	)
-
-	if err != nil {
-		t.Fatalf("Failed to insert location fixture data: %s", err)
-	}
-
-	locationRow, err := db.Location(t.Context(), locationFixture.Slug)
+	// The dmv row arrives with the migrations. Nothing else can insert a location.
+	locationRow, err := db.Location(t.Context(), transit.DMVSlug)
 
 	if err != nil {
 		t.Fatalf("Failed to get location from db: %s", err)
 	}
 
-	assert.Equal(t, locationFixture.Slug, locationRow.Slug)
-	assert.Equal(t, locationFixture.Name, locationRow.Name)
-	assert.Equal(t, locationFixture.SupportsGTFS, locationRow.SupportsGTFS)
+	assert.Equal(t, transit.DMVSlug, locationRow.Slug)
+	assert.Equal(t, "District Of Columbia, Maryland and Virginia (US)", locationRow.Name)
+	assert.True(t, locationRow.SupportsGTFS)
 	assert.NotEqual(t, locationRow.CreatedAt, "")
 	assert.NotNil(t, locationRow.CreatedAt)
 	assert.NotEqual(t, locationRow.UpdatedAt, "")
@@ -76,18 +63,6 @@ func TestGetInvalidLocation(t *testing.T) {
 	t.Parallel()
 
 	db := migratedDB(t)
-
-	_, err := db.DB.ExecContext(
-		t.Context(),
-		"INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)",
-		locationFixture.Slug,
-		locationFixture.Name,
-		locationFixture.SupportsGTFS,
-	)
-
-	if err != nil {
-		t.Fatalf("Failed to insert location fixture data: %s", err)
-	}
 
 	locationRow, err := db.Location(t.Context(), "invalid")
 
@@ -124,7 +99,7 @@ func TestGetLocationSeparatesMissingFromFailed(t *testing.T) {
 			t.Fatalf("expected no error but got %v", err)
 		}
 
-		location, err := db.Location(t.Context(), locationFixture.Slug)
+		location, err := db.Location(t.Context(), transit.DMVSlug)
 		if err == nil {
 			t.Fatal("expected an error but got nil, a closed database reads as an empty one")
 		}
@@ -149,7 +124,7 @@ func TestCancelledContextReachesTheDriver(t *testing.T) {
 		},
 		"one row": {
 			call: func(ctx context.Context, db *store.Store) error {
-				_, err := db.Location(ctx, locationFixture.Slug)
+				_, err := db.Location(ctx, transit.DMVSlug)
 				return err
 			},
 		},
@@ -181,23 +156,8 @@ func TestGetStopsByLocationExcludesParent(t *testing.T) {
 
 	db := migratedDB(t)
 
-	for _, f := range stopsFixture {
-		_, err := db.DB.ExecContext(
-			t.Context(),
-			"INSERT INTO stops (stop_id, name, location, agency_id, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			f.StopID,
-			f.Name,
-			f.Location,
-			f.AgencyID,
-			f.Latitude,
-			f.Longitude,
-			f.Type,
-			f.ParentID,
-		)
-
-		if err != nil {
-			t.Fatalf("Failed to insert stop fixture data: %s", err)
-		}
+	if err := db.InsertStops(t.Context(), stopsFixture); err != nil {
+		t.Fatalf("Failed to insert stop fixture data: %s", err)
 	}
 
 	stops, err := db.StopsByLocation(t.Context(), testLocation, true)
@@ -228,23 +188,8 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 
 	db := migratedDB(t)
 
-	for _, f := range stopsFixture {
-		_, err := db.DB.ExecContext(
-			t.Context(),
-			"INSERT INTO stops (stop_id, name, location, agency_id, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-			f.StopID,
-			f.Name,
-			f.Location,
-			f.AgencyID,
-			f.Latitude,
-			f.Longitude,
-			f.Type,
-			f.ParentID,
-		)
-
-		if err != nil {
-			t.Fatalf("Failed to insert fixture data: %s", err)
-		}
+	if err := db.InsertStops(t.Context(), stopsFixture); err != nil {
+		t.Fatalf("Failed to insert fixture data: %s", err)
 	}
 
 	stops, err := db.StopsByLocation(t.Context(), testLocation, false)
@@ -323,36 +268,9 @@ func TestInsertManyStops(t *testing.T) {
 		t.Fatalf("InsertStops() returned an error: %s", err)
 	}
 
-	rows, err := db.DB.QueryContext(t.Context(), "SELECT rowid, * FROM stops")
+	stopRows, err := db.StopsByLocation(t.Context(), testLocation, false)
 	if err != nil {
-		t.Fatalf("SELECT returned an error: %s", err)
-	}
-
-	defer rows.Close()
-
-	stopRows := make([]*transit.Stop, 0, 4)
-
-	for rows.Next() {
-		var row transit.Stop
-		err = rows.Scan(
-			&row.ID,
-			&row.StopID,
-			&row.Name,
-			&row.Location,
-			&row.AgencyID,
-			&row.Latitude,
-			&row.Longitude,
-			&row.Type,
-			&row.ParentID,
-			&row.CreatedAt,
-			&row.UpdatedAt,
-		)
-
-		if err != nil {
-			t.Errorf("Failed to scan stop row. %s", err)
-		}
-
-		stopRows = append(stopRows, &row)
+		t.Fatalf("StopsByLocation() returned an error: %s", err)
 	}
 
 	if len(stopsFixture) != len(stopRows) {

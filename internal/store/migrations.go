@@ -9,20 +9,20 @@ import (
 	"github.com/ismailshak/transit/internal/transit"
 )
 
-// Changeset applies a change to the database schema
-type Changeset func(ctx context.Context, trx *sql.Tx) error
+// changeFn applies a change to the database schema
+type changeFn func(ctx context.Context, trx *sql.Tx) error
 
-type MigrationChangeset struct {
+type changeset struct {
 	// Name of the migration. Value will be stored in the migrations table
 	Name string
 	// Applies forward changes to the database schema
-	Up Changeset
+	Up changeFn
 	// Rolls back the changes made by Up
-	Down Changeset
+	Down changeFn
 }
 
 // The list of all migrations to run
-var migrationChangesets = []MigrationChangeset{
+var migrationChangesets = []changeset{
 	{
 		Name: "0001_Init",
 		Up:   createInitialTables,
@@ -45,22 +45,22 @@ func failedMigration(message string, err error) error {
 }
 
 func createInitialTables(ctx context.Context, trx *sql.Tx) error {
-	_, err := trx.ExecContext(ctx, CreateLocationsTableSQL)
+	_, err := trx.ExecContext(ctx, createLocationsTableSQL)
 	if err != nil {
 		return failedMigration("failed to create 'locations' table: ", err)
 	}
 
-	_, err = trx.ExecContext(ctx, CreateAgenciesTableSQL)
+	_, err = trx.ExecContext(ctx, createAgenciesTableSQL)
 	if err != nil {
 		return failedMigration("failed to create 'agencies' table: ", err)
 	}
 
-	_, err = trx.ExecContext(ctx, CreateStopsTableSQL)
+	_, err = trx.ExecContext(ctx, createStopsTableSQL)
 	if err != nil {
 		return failedMigration("failed to create 'stops' table: ", err)
 	}
 
-	_, err = trx.ExecContext(ctx, CreateStopLocationIndexSQL)
+	_, err = trx.ExecContext(ctx, createStopLocationIndexSQL)
 	if err != nil {
 		return failedMigration("failed to create 'stop.location' index: ", err)
 	}
@@ -75,7 +75,7 @@ func dropInitialTables(ctx context.Context, trx *sql.Tx) error {
 func addDMVToLocations(ctx context.Context, trx *sql.Tx) error {
 	_, err := trx.ExecContext(
 		ctx,
-		InsertLocationSQL,
+		insertLocationSQL,
 		transit.DMVSlug,
 		"District Of Columbia, Maryland and Virginia (US)",
 		true,
@@ -95,7 +95,7 @@ func deleteDMVFromLocations(ctx context.Context, trx *sql.Tx) error {
 func addSFToLocations(ctx context.Context, trx *sql.Tx) error {
 	_, err := trx.ExecContext(
 		ctx,
-		InsertLocationSQL,
+		insertLocationSQL,
 		transit.SFSlug,
 		"San Francisco Bay Area (US)",
 		true,

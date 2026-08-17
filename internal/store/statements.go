@@ -4,22 +4,22 @@ package store
 	MIGRATIONS TABLE
 */
 
-const CreateMigrationsTableSQL = `CREATE TABLE IF NOT EXISTS migrations (
+const createMigrationsTableSQL = `CREATE TABLE IF NOT EXISTS migrations (
 	name TEXT NOT NULL,
 	migrated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`
 
-const CountMigrationsSQL = "SELECT COUNT(*) FROM migrations"
+const countMigrationsSQL = "SELECT COUNT(*) FROM migrations"
 
-const SelectMigrationsSQL = "SELECT rowid, name, DATETIME(migrated_at, 'localtime') FROM migrations"
+const selectMigrationsSQL = "SELECT rowid, name, DATETIME(migrated_at, 'localtime') FROM migrations"
 
-const InsertMigrationSQL = "INSERT INTO migrations (name) VALUES (?)"
+const insertMigrationSQL = "INSERT INTO migrations (name) VALUES (?)"
 
 /*
 	AGENCIES TABLE
 */
 
-const CreateAgenciesTableSQL = `CREATE TABLE agencies (
+const createAgenciesTableSQL = `CREATE TABLE agencies (
 	agency_id TEXT NOT NULL,
 	name TEXT NOT NULL,
 	location REFERENCES locations(slug),
@@ -29,16 +29,16 @@ const CreateAgenciesTableSQL = `CREATE TABLE agencies (
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`
 
-const InsertAgencySQL = "INSERT INTO agencies (agency_id, name, location, timezone, language) VALUES (?, ?, ?, ?, ?)"
+const insertAgencySQL = "INSERT INTO agencies (agency_id, name, location, timezone, language) VALUES (?, ?, ?, ?, ?)"
 
-const SelectAgenciesByLocationSQL = "SELECT rowid, * FROM agencies WHERE location = ?"
+const selectAgenciesByLocationSQL = "SELECT rowid, * FROM agencies WHERE location = ?"
 
 /*
 	LOCATIONS TABLE
 */
 
-// CreateLocationsTableSQL creates the locations table. An index will be created for `slug` due to 'UNIQUE' constraint
-const CreateLocationsTableSQL = `CREATE TABLE locations (
+// createLocationsTableSQL creates the locations table. An index will be created for `slug` due to 'UNIQUE' constraint
+const createLocationsTableSQL = `CREATE TABLE locations (
 	slug TEXT NOT NULL UNIQUE,
 	name TEXT NOT NULL,
 	supports_gtfs BOOLEAN NOT NULL,
@@ -46,17 +46,17 @@ const CreateLocationsTableSQL = `CREATE TABLE locations (
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`
 
-const SelectLocationSQL = "SELECT rowid, * FROM locations WHERE slug = ?"
+const selectLocationSQL = "SELECT rowid, * FROM locations WHERE slug = ?"
 
-const SelectAllLocationsSQL = "SELECT rowid, * FROM locations"
+const selectAllLocationsSQL = "SELECT rowid, * FROM locations"
 
-const InsertLocationSQL = "INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)"
+const insertLocationSQL = "INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)"
 
 /*
 	STOPS TABLE
 */
 
-const CreateStopsTableSQL = `CREATE TABLE stops (
+const createStopsTableSQL = `CREATE TABLE stops (
 	stop_id TEXT NOT NULL,
 	name TEXT NOT NULL,
 	location REFERENCES locations(slug),
@@ -69,12 +69,12 @@ const CreateStopsTableSQL = `CREATE TABLE stops (
 	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )`
 
-const CreateStopLocationIndexSQL = "CREATE INDEX stop_location_index ON stops(location)"
+const createStopLocationIndexSQL = "CREATE INDEX stop_location_index ON stops(location)"
 
-const CountStopsByLocationSQL = "SELECT COUNT(*) FROM stops WHERE location = ?"
+const countStopsByLocationSQL = "SELECT COUNT(*) FROM stops WHERE location = ?"
 
-const SelectStopsByLocationSQL = "SELECT rowid, * FROM stops WHERE location = ?"
+const selectStopsByLocationSQL = "SELECT rowid, * FROM stops WHERE location = ?"
 
-const SelectParentStopsByLocationSQL = `SELECT rowid, * FROM stops WHERE location = ? AND parent_id = ""`
+const selectParentStopsByLocationSQL = `SELECT rowid, * FROM stops WHERE location = ? AND parent_id = ""`
 
-const InsertStopSQL = "INSERT INTO stops (stop_id, name, location, agency_id, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+const insertStopSQL = "INSERT INTO stops (stop_id, name, location, agency_id, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"

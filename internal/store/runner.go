@@ -14,8 +14,8 @@ type migration struct {
 	MigratedAt string
 }
 
-func CreateMigrationTable(ctx context.Context, db *sql.DB) error {
-	_, err := db.ExecContext(ctx, CreateMigrationsTableSQL)
+func createMigrationTable(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, createMigrationsTableSQL)
 	if err != nil {
 		return fmt.Errorf("create migrations table: %w", err)
 	}
@@ -23,9 +23,9 @@ func CreateMigrationTable(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// MigrationCount reports how many migrations have already been applied.
-func MigrationCount(ctx context.Context, db *sql.DB) (int, error) {
-	row := db.QueryRowContext(ctx, CountMigrationsSQL)
+// migrationCount reports how many migrations have already been applied.
+func migrationCount(ctx context.Context, db *sql.DB) (int, error) {
+	row := db.QueryRowContext(ctx, countMigrationsSQL)
 
 	var count int
 	err := row.Scan(&count)
@@ -41,14 +41,14 @@ func MigrationCount(ctx context.Context, db *sql.DB) (int, error) {
 }
 
 func runMigrations(ctx context.Context, db *sql.DB, rowCount int) error {
-	migrationRows, err := CurrentMigrations(ctx, db, rowCount)
+	migrationRows, err := currentMigrations(ctx, db, rowCount)
 	if err != nil {
 		return err
 	}
 
-	for i, changeset := range migrationChangesets {
+	for i, cs := range migrationChangesets {
 		if i+1 > len(migrationRows) {
-			err = run(ctx, db, &changeset)
+			err = run(ctx, db, &cs)
 			if err != nil {
 				return err
 			}
@@ -56,7 +56,7 @@ func runMigrations(ctx context.Context, db *sql.DB, rowCount int) error {
 			continue
 		}
 
-		if changeset.Name != migrationRows[i].Name {
+		if cs.Name != migrationRows[i].Name {
 			return errors.New("corrupt migrations (out of sync)")
 		}
 	}
@@ -64,13 +64,13 @@ func runMigrations(ctx context.Context, db *sql.DB, rowCount int) error {
 	return nil
 }
 
-// CurrentMigrations reads the migrations already applied.
-func CurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]migration, error) {
+// currentMigrations reads the migrations already applied.
+func currentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]migration, error) {
 	if rowCount == 0 {
 		return []migration{}, nil
 	}
 
-	rows, err := db.QueryContext(ctx, SelectMigrationsSQL)
+	rows, err := db.QueryContext(ctx, selectMigrationsSQL)
 	if err != nil {
 		return nil, fmt.Errorf("query migrations: %w", err)
 	}
@@ -92,7 +92,7 @@ func CurrentMigrations(ctx context.Context, db *sql.DB, rowCount int) ([]migrati
 	return migrationRows, rows.Err()
 }
 
-func run(ctx context.Context, db *sql.DB, changeset *MigrationChangeset) error {
+func run(ctx context.Context, db *sql.DB, cs *changeset) error {
 	trx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -100,12 +100,12 @@ func run(ctx context.Context, db *sql.DB, changeset *MigrationChangeset) error {
 
 	defer rollback(trx)
 
-	err = changeset.Up(ctx, trx)
+	err = cs.Up(ctx, trx)
 	if err != nil {
 		return err
 	}
 
-	_, err = trx.ExecContext(ctx, InsertMigrationSQL, changeset.Name)
+	_, err = trx.ExecContext(ctx, insertMigrationSQL, cs.Name)
 	if err != nil {
 		return err
 	}

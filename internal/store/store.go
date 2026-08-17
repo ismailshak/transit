@@ -13,10 +13,7 @@ import (
 )
 
 type Store struct {
-	// Exposing the direct database connection if needed
-	// but queries and mutations should be made through methods on this struct
-	// TODO: Make private
-	DB *sql.DB
+	db *sql.DB
 }
 
 // NewStore opens the SQLite database at path. The file is created if it doesn't
@@ -27,27 +24,27 @@ func NewStore(path string) (*Store, error) {
 		return nil, err
 	}
 
-	return &Store{DB: conn}, nil
+	return &Store{db: conn}, nil
 }
 
 // Ping verifies the connection to the database.
 func (s *Store) Ping(ctx context.Context) error {
-	return s.DB.PingContext(ctx)
+	return s.db.PingContext(ctx)
 }
 
 // Close closes the database connection, once active queries have finished.
 func (s *Store) Close() error {
-	return s.DB.Close()
+	return s.db.Close()
 }
 
 // SyncMigrations keeps migrations up-to-date and handles first time migration run
 func (s *Store) SyncMigrations(ctx context.Context) error {
-	err := CreateMigrationTable(ctx, s.DB)
+	err := createMigrationTable(ctx, s.db)
 	if err != nil {
 		return err
 	}
 
-	count, err := MigrationCount(ctx, s.DB)
+	count, err := migrationCount(ctx, s.db)
 	if err != nil {
 		return err
 	}
@@ -56,7 +53,7 @@ func (s *Store) SyncMigrations(ctx context.Context) error {
 		return nil
 	}
 
-	err = runMigrations(ctx, s.DB, count)
+	err = runMigrations(ctx, s.db, count)
 	if err != nil {
 		return err
 	}
@@ -65,14 +62,14 @@ func (s *Store) SyncMigrations(ctx context.Context) error {
 }
 
 func (s *Store) InsertAgencies(ctx context.Context, agencies []*transit.Agency) error {
-	trx, err := s.DB.BeginTx(ctx, nil)
+	trx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
 	defer rollback(trx)
 
-	stmt, err := trx.PrepareContext(ctx, InsertAgencySQL)
+	stmt, err := trx.PrepareContext(ctx, insertAgencySQL)
 	if err != nil {
 		return err
 	}
@@ -94,7 +91,7 @@ func (s *Store) InsertAgencies(ctx context.Context, agencies []*transit.Agency) 
 
 // Location returns one location by its slug. A slug with no row returns nil.
 func (s *Store) Location(ctx context.Context, location transit.LocationSlug) (*transit.Location, error) {
-	row := s.DB.QueryRowContext(ctx, SelectLocationSQL, location)
+	row := s.db.QueryRowContext(ctx, selectLocationSQL, location)
 
 	var l transit.Location
 
@@ -113,7 +110,7 @@ func (s *Store) Location(ctx context.Context, location transit.LocationSlug) (*t
 
 // AllLocations returns every location the migrations seeded.
 func (s *Store) AllLocations(ctx context.Context) ([]transit.Location, error) {
-	rows, err := s.DB.QueryContext(ctx, SelectAllLocationsSQL)
+	rows, err := s.db.QueryContext(ctx, selectAllLocationsSQL)
 	if err != nil {
 		return nil, fmt.Errorf("query locations: %w", err)
 	}
@@ -141,12 +138,12 @@ func (s *Store) AllLocations(ctx context.Context) ([]transit.Location, error) {
 func (s *Store) StopsByLocation(ctx context.Context, location transit.LocationSlug, parentsOnly bool) ([]*transit.Stop, error) {
 	var statement string
 	if parentsOnly {
-		statement = SelectParentStopsByLocationSQL
+		statement = selectParentStopsByLocationSQL
 	} else {
-		statement = SelectStopsByLocationSQL
+		statement = selectStopsByLocationSQL
 	}
 
-	rows, err := s.DB.QueryContext(ctx, statement, location)
+	rows, err := s.db.QueryContext(ctx, statement, location)
 	if err != nil {
 		return nil, fmt.Errorf("query stops: %w", err)
 	}
@@ -180,14 +177,14 @@ func (s *Store) StopsByLocation(ctx context.Context, location transit.LocationSl
 }
 
 func (s *Store) InsertStops(ctx context.Context, stops []*transit.Stop) error {
-	trx, err := s.DB.BeginTx(ctx, nil)
+	trx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 
 	defer rollback(trx)
 
-	stmt, err := trx.PrepareContext(ctx, InsertStopSQL)
+	stmt, err := trx.PrepareContext(ctx, insertStopSQL)
 	if err != nil {
 		return err
 	}
@@ -209,7 +206,7 @@ func (s *Store) InsertStops(ctx context.Context, stops []*transit.Stop) error {
 
 // CountStopsByLocation returns the number of stops seeded for a location slug.
 func (s *Store) CountStopsByLocation(ctx context.Context, location transit.LocationSlug) (int, error) {
-	row := s.DB.QueryRowContext(ctx, CountStopsByLocationSQL, location)
+	row := s.db.QueryRowContext(ctx, countStopsByLocationSQL, location)
 
 	var count int
 	if err := row.Scan(&count); err != nil {
@@ -223,7 +220,7 @@ func (s *Store) CountStopsByLocation(ctx context.Context, location transit.Locat
 // returns an empty slice and no error. Nothing tells that apart from a location
 // with no agencies.
 func (s *Store) LocationAgencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error) {
-	rows, err := s.DB.QueryContext(ctx, SelectAgenciesByLocationSQL, location)
+	rows, err := s.db.QueryContext(ctx, selectAgenciesByLocationSQL, location)
 	if err != nil {
 		return nil, fmt.Errorf("query agencies: %w", err)
 	}
@@ -261,7 +258,7 @@ func (s *Store) MatchStops(ctx context.Context, location transit.LocationSlug, q
 		return nil, err
 	}
 
-	matches := FuzzyFindFrom(query, SearchableStops(stops))
+	matches := fuzzyFindFrom(query, searchableStops(stops))
 
 	matched := make([]*transit.Stop, 0, matches.Len())
 	for _, m := range matches {
