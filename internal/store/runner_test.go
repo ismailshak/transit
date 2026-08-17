@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	"github.com/ismailshak/transit/internal/store"
-	"github.com/ismailshak/transit/internal/testutils"
 )
 
 func TestCreatingMigrationTable(t *testing.T) {
 	t.Parallel()
 
-	db := testutils.BlankDB(t)
+	db := blankDB(t)
 
 	err := store.CreateMigrationTable(t.Context(), db.DB)
 	if err != nil {
@@ -21,8 +20,8 @@ func TestCreatingMigrationTable(t *testing.T) {
 func TestSkippingMigrationsTableIfExists(t *testing.T) {
 	t.Parallel()
 
-	db := testutils.BlankDB(t)
-	testutils.InitMigrationsTable(t, db.DB)
+	db := blankDB(t)
+	initMigrationsTable(t, db.DB)
 
 	err := store.CreateMigrationTable(t.Context(), db.DB)
 	if err != nil {

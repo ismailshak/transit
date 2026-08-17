@@ -1,7 +1,4 @@
-// Package testutils provides helper functions for testing purposes
-//
-// Should not be used by any non _test packages
-package testutils
+package store_test
 
 import (
 	"database/sql"
@@ -11,8 +8,8 @@ import (
 	"github.com/ismailshak/transit/internal/store"
 )
 
-// BlankDB creates a temporary database that has no tables
-func BlankDB(t *testing.T) *store.Store {
+// blankDB creates a temporary database that has no tables
+func blankDB(t *testing.T) *store.Store {
 	t.Helper()
 	testDir := t.TempDir()
 	dbPath := filepath.Join(testDir, "transit-test-blank.db")
@@ -34,8 +31,8 @@ func BlankDB(t *testing.T) *store.Store {
 	return db
 }
 
-// MigratedDB creates a temporary test database that's fully migrated
-func MigratedDB(t *testing.T) *store.Store {
+// migratedDB creates a temporary test database that's fully migrated
+func migratedDB(t *testing.T) *store.Store {
 	t.Helper()
 	testDir := t.TempDir()
 	dbPath := filepath.Join(testDir, "transit-test-migrated.db")
@@ -59,7 +56,7 @@ func MigratedDB(t *testing.T) *store.Store {
 	return db
 }
 
-func InitMigrationsTable(t *testing.T, db *sql.DB) {
+func initMigrationsTable(t *testing.T, db *sql.DB) {
 	t.Helper()
 
 	tx, err := db.BeginTx(t.Context(), nil)
@@ -67,7 +64,7 @@ func InitMigrationsTable(t *testing.T, db *sql.DB) {
 		t.Fatalf("Failed to begin transaction: %s", err)
 	}
 
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	_, err = tx.ExecContext(t.Context(), store.CreateMigrationsTableSQL)
 	if err != nil {

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/ismailshak/transit/internal/store"
-	"github.com/ismailshak/transit/internal/testutils"
 	"github.com/ismailshak/transit/internal/transit"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,7 +32,7 @@ var matchFixture = []*transit.Stop{
 }
 
 func TestMigrationCompletes(t *testing.T) {
-	db := testutils.BlankDB(t)
+	db := blankDB(t)
 	err := db.SyncMigrations(t.Context())
 
 	if err != nil {
@@ -44,9 +43,10 @@ func TestMigrationCompletes(t *testing.T) {
 func TestGetValidLocation(t *testing.T) {
 	t.Parallel()
 
-	db := testutils.MigratedDB(t)
+	db := migratedDB(t)
 
-	_, err := db.DB.Exec(
+	_, err := db.DB.ExecContext(
+		t.Context(),
 		"INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)",
 		locationFixture.Slug,
 		locationFixture.Name,
@@ -75,9 +75,10 @@ func TestGetValidLocation(t *testing.T) {
 func TestGetInvalidLocation(t *testing.T) {
 	t.Parallel()
 
-	db := testutils.MigratedDB(t)
+	db := migratedDB(t)
 
-	_, err := db.DB.Exec(
+	_, err := db.DB.ExecContext(
+		t.Context(),
 		"INSERT INTO locations (slug, name, supports_gtfs) VALUES (?, ?, ?)",
 		locationFixture.Slug,
 		locationFixture.Name,
@@ -103,7 +104,7 @@ func TestGetLocationSeparatesMissingFromFailed(t *testing.T) {
 	t.Run("a slug with no row", func(t *testing.T) {
 		t.Parallel()
 
-		db := testutils.MigratedDB(t)
+		db := migratedDB(t)
 
 		location, err := db.Location(t.Context(), "nowhere")
 		if err != nil {
@@ -118,7 +119,7 @@ func TestGetLocationSeparatesMissingFromFailed(t *testing.T) {
 	t.Run("a query that fails", func(t *testing.T) {
 		t.Parallel()
 
-		db := testutils.MigratedDB(t)
+		db := migratedDB(t)
 		if err := db.Close(); err != nil {
 			t.Fatalf("expected no error but got %v", err)
 		}
@@ -163,7 +164,7 @@ func TestCancelledContextReachesTheDriver(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			db := testutils.MigratedDB(t)
+			db := migratedDB(t)
 
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
@@ -178,10 +179,11 @@ func TestCancelledContextReachesTheDriver(t *testing.T) {
 func TestGetStopsByLocationExcludesParent(t *testing.T) {
 	t.Parallel()
 
-	db := testutils.MigratedDB(t)
+	db := migratedDB(t)
 
 	for _, f := range stopsFixture {
-		_, err := db.DB.Exec(
+		_, err := db.DB.ExecContext(
+			t.Context(),
 			"INSERT INTO stops (stop_id, name, location, agency_id, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 			f.StopID,
 			f.Name,
@@ -224,10 +226,11 @@ func TestGetStopsByLocationExcludesParent(t *testing.T) {
 func TestGetStopsByLocationIncludesParent(t *testing.T) {
 	t.Parallel()
 
-	db := testutils.MigratedDB(t)
+	db := migratedDB(t)
 
 	for _, f := range stopsFixture {
-		_, err := db.DB.Exec(
+		_, err := db.DB.ExecContext(
+			t.Context(),
 			"INSERT INTO stops (stop_id, name, location, agency_id, latitude, longitude, type, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 			f.StopID,
 			f.Name,
@@ -273,7 +276,7 @@ func TestGetStopsByLocationIncludesParent(t *testing.T) {
 func TestMatchStops(t *testing.T) {
 	t.Parallel()
 
-	db := testutils.MigratedDB(t)
+	db := migratedDB(t)
 	if err := db.InsertStops(t.Context(), matchFixture); err != nil {
 		t.Fatalf("Failed to insert stop fixture data: %s", err)
 	}
@@ -315,12 +318,12 @@ func TestMatchStops(t *testing.T) {
 func TestInsertManyStops(t *testing.T) {
 	t.Parallel()
 
-	db := testutils.MigratedDB(t)
+	db := migratedDB(t)
 	if err := db.InsertStops(t.Context(), stopsFixture); err != nil {
 		t.Fatalf("InsertStops() returned an error: %s", err)
 	}
 
-	rows, err := db.DB.Query("SELECT rowid, * FROM stops")
+	rows, err := db.DB.QueryContext(t.Context(), "SELECT rowid, * FROM stops")
 	if err != nil {
 		t.Fatalf("SELECT returned an error: %s", err)
 	}
