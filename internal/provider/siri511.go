@@ -126,7 +126,7 @@ func (sf *SFClient) BuildRequest(ctx context.Context, method string, route ...st
 	return req, nil
 }
 
-func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *transit.Agency) ([]*transit.Stop, error) {
+func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency transit.Agency) ([]transit.Stop, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "stopplaces")
 	if err != nil {
 		return nil, err
@@ -165,7 +165,7 @@ func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *transit.Age
 		return nil, err
 	}
 
-	var stops []*transit.Stop
+	var stops []transit.Stop
 
 	for _, sp := range stopPlaces.Siri.ServiceDelivery.DataObjectDelivery.DataObjects.SiteFrame.StopPlaces.StopPlace {
 		var stopType transit.StopType
@@ -191,14 +191,14 @@ func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *transit.Age
 			Type:      stopType,
 		}
 
-		stops = append(stops, &stop)
+		stops = append(stops, stop)
 	}
 
 	return stops, nil
 }
 
-func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.StaticData, error) {
-	bart := &transit.Agency{
+func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.Static, error) {
+	bart := transit.Agency{
 		AgencyID: "BA",
 		Language: "en",
 		Location: transit.SFSlug,
@@ -211,7 +211,7 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.StaticData, e
 		return nil, fmt.Errorf("fetch BART stops: %w", err)
 	}
 
-	cal := &transit.Agency{
+	cal := transit.Agency{
 		AgencyID: "CT",
 		Language: "en",
 		Location: transit.SFSlug,
@@ -224,8 +224,8 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.StaticData, e
 		return nil, fmt.Errorf("fetch Caltrain stops: %w", err)
 	}
 
-	staticData := transit.StaticData{
-		Agencies: []*transit.Agency{bart, cal},
+	staticData := transit.Static{
+		Agencies: []transit.Agency{bart, cal},
 		Stops:    slices.Concat(bartStops, calStops),
 	}
 

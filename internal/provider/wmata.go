@@ -63,7 +63,7 @@ func (w *WMATAClient) BuildRequest(ctx context.Context, method string, route ...
 	return req, nil
 }
 
-func (w *WMATAClient) FetchStaticData(ctx context.Context) (*transit.StaticData, error) {
+func (w *WMATAClient) FetchStaticData(ctx context.Context) (*transit.Static, error) {
 	req, err := w.BuildRequest(ctx, http.MethodGet, "gtfs/rail-gtfs-static.zip")
 	if err != nil {
 		return nil, err

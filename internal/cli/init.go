@@ -147,7 +147,7 @@ func (a *App) executeInitData(ctx context.Context, client provider.API, location
 		return nil
 	}
 
-	var d *transit.StaticData
+	var d *transit.Static
 	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
 		SpinMessage:    "Fetching data...",
 		ErrorMessage:   "Failed to fetch data",

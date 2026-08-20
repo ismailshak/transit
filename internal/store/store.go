@@ -64,7 +64,7 @@ func (s *Store) SyncMigrations(ctx context.Context) error {
 }
 
 // InsertAgencies writes agencies in one transaction. Nothing is inserted if any row fails.
-func (s *Store) InsertAgencies(ctx context.Context, agencies []*transit.Agency) error {
+func (s *Store) InsertAgencies(ctx context.Context, agencies []transit.Agency) error {
 	trx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func (s *Store) AllLocations(ctx context.Context) ([]transit.Location, error) {
 // StopsByLocation returns the stops seeded for a location. parentsOnly only returns
 // stops with no parent. Those are the stations and not the platforms
 // underneath them.
-func (s *Store) StopsByLocation(ctx context.Context, location transit.LocationSlug, parentsOnly bool) ([]*transit.Stop, error) {
+func (s *Store) StopsByLocation(ctx context.Context, location transit.LocationSlug, parentsOnly bool) ([]transit.Stop, error) {
 	var statement string
 	if parentsOnly {
 		statement = selectParentStopsByLocationSQL
@@ -153,7 +153,7 @@ func (s *Store) StopsByLocation(ctx context.Context, location transit.LocationSl
 
 	defer rows.Close()
 
-	stops := make([]*transit.Stop, 0, 64) // arbitrary capacity to avoid excessive reallocations
+	stops := make([]transit.Stop, 0, 64) // arbitrary capacity to avoid excessive reallocations
 
 	for rows.Next() {
 		var row transit.Stop
@@ -173,14 +173,14 @@ func (s *Store) StopsByLocation(ctx context.Context, location transit.LocationSl
 			return nil, fmt.Errorf("scan stop: %w", err)
 		}
 
-		stops = append(stops, &row)
+		stops = append(stops, row)
 	}
 
 	return stops, rows.Err()
 }
 
 // InsertStops writes stops in one transaction. Nothing is inserted if any row fails.
-func (s *Store) InsertStops(ctx context.Context, stops []*transit.Stop) error {
+func (s *Store) InsertStops(ctx context.Context, stops []transit.Stop) error {
 	trx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -256,7 +256,7 @@ func (s *Store) LocationAgencies(ctx context.Context, location transit.LocationS
 
 // MatchStops fuzzy matches query against the names of the stations seeded for a
 // location. Matches come back best first. No match is an empty slice.
-func (s *Store) MatchStops(ctx context.Context, location transit.LocationSlug, query string) ([]*transit.Stop, error) {
+func (s *Store) MatchStops(ctx context.Context, location transit.LocationSlug, query string) ([]transit.Stop, error) {
 	stops, err := s.StopsByLocation(ctx, location, true)
 	if err != nil {
 		return nil, err
@@ -264,7 +264,7 @@ func (s *Store) MatchStops(ctx context.Context, location transit.LocationSlug, q
 
 	matches := fuzzyFindFrom(query, searchableStops(stops))
 
-	matched := make([]*transit.Stop, 0, matches.Len())
+	matched := make([]transit.Stop, 0, matches.Len())
 	for _, m := range matches {
 		matched = append(matched, stops[m.Index])
 	}

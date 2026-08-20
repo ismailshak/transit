@@ -149,17 +149,6 @@ type StopRoute struct {
 	RouteID string
 }
 
-// Static is the reference data a Source seeds, covering everything that doesn't change between
-// fetches. A Source omits what it has no equivalent for.
-type Static struct {
-	Agencies   []Agency
-	Stops      []Stop
-	Routes     []Route
-	Trips      []Trip
-	StopRoutes []StopRoute
-	Version    string // Identifies this edition of the data.
-}
-
 // Agency is a public entity administrating and managing transit services.
 type Agency struct {
 	StoreEntity
@@ -196,10 +185,15 @@ type Stop struct {
 	ParentID  string // A StopID if this stop is embedded inside another.
 }
 
-// StaticData is data, that doesn't change often, that we store in the database.
-type StaticData struct {
-	Agencies []*Agency
-	Stops    []*Stop
+// Static is the reference data a Source seeds. This is everything that doesn't change between
+// fetches. A Source omits what it has no equivalent for.
+type Static struct {
+	Agencies   []Agency
+	Stops      []Stop
+	Routes     []Route
+	Trips      []Trip
+	StopRoutes []StopRoute
+	Version    string // Identifies this edition of the data.
 }
 
 func oldest(sources []SourceStatus) time.Time {
