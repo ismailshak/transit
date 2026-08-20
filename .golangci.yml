@@ -14,6 +14,7 @@ linters:
     - noctx       # HTTP requests built without a context.Context
     - unconvert   # redundant type conversions
     - misspell    # typos in comments and strings
+    - godot       # comments that don't end in a period
   settings:
     errcheck:
       # Read-side closers only since nothing is buffered on a reader, so the error
@@ -25,6 +26,10 @@ linters:
     gocritic:
       enabled-checks:
         - deferInLoop
+    godot:
+      scope: declarations
+      exclude:
+        - "(?i)^ *todo"
     staticcheck:
       checks:
         - all
