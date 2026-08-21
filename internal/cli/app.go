@@ -101,13 +101,13 @@ func (a *App) defaultPreRun(cmd *cobra.Command, args []string) error {
 func (a *App) client() (provider.API, error) {
 	switch transit.LocationSlug(a.Cfg.Core.Location) {
 	case transit.DMVSlug:
-		client, err := provider.NewDMV(a.Cfg.DMV.APIKey, a.Store)
+		client, err := provider.NewDMV(a.Cfg.DMV.APIKey, a.Store, a.Now)
 		if err != nil {
 			return nil, fmt.Errorf("dmv client: %w", err)
 		}
 		return client, nil
 	case transit.SFSlug:
-		client, err := provider.NewSF(a.Cfg.SF.APIKey, a.Store, a.Now)
+		client, err := provider.NewSF(a.Cfg.SF.APIKey, a.Store)
 		if err != nil {
 			return nil, fmt.Errorf("sf client: %w", err)
 		}

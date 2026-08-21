@@ -20,6 +20,8 @@ import (
 
 const (
 	wmataDateTimeLayout = "2006-01-02T15:04:05"
+	sourceWMATARail     = "wmata-rail"
+	agencyWMATA         = "MET"
 )
 
 // WMATAClient is the API to interact with WMATA.
@@ -27,6 +29,7 @@ type WMATAClient struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
+	now     func() time.Time
 	store   *store.Store
 }
 
@@ -134,10 +137,10 @@ func (w *WMATAClient) FetchStaticData(ctx context.Context) (*transit.Static, err
 		return nil, err
 	}
 
-	return gtfs.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, "MET")
+	return gtfs.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, agencyWMATA)
 }
 
-func (w *WMATAClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
+func (w *WMATAClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]transit.Departure, error) {
 	codes := make([]string, 0, len(input))
 	for _, i := range input {
 		codes = append(codes, i.StopID)
@@ -162,6 +165,8 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, input []PredictionIn
 		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
 
+	asOf := w.now()
+
 	var predictionsResponse wmataPredictionsResponse
 	err = json.Unmarshal(body, &predictionsResponse)
 
@@ -169,19 +174,32 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, input []PredictionIn
 		return nil, fmt.Errorf("parse predictions response: %w", err)
 	}
 
-	if len(predictionsResponse.Trains) == 0 {
-		return nil, ErrNoDepartures
+	predictions := make([]transit.Departure, 0, len(predictionsResponse.Trains))
+	for _, t := range predictionsResponse.Trains {
+		arrives, ok := railArrival(t.Min, asOf)
+		if !ok {
+			continue
+		}
+
+		bg, fg := w.GetLineColor(t.Line)
+
+		predictions = append(predictions, transit.Departure{
+			Source:    sourceWMATARail,
+			StopID:    t.LocationCode,
+			StopName:  t.LocationName,
+			AgencyID:  agencyWMATA,
+			Mode:      "",
+			Line:      t.Line,
+			LineColor: bg,
+			LineText:  fg,
+			Headsign:  t.Destination,
+			Direction: t.Group,
+			Arrives:   arrives,
+		})
 	}
 
-	predictions := make([]Prediction, 0, len(predictionsResponse.Trains))
-	for _, t := range predictionsResponse.Trains {
-		predictions = append(predictions, Prediction{
-			Destination:     t.Destination,
-			DestinationName: t.DestinationName,
-			Line:            t.Line,
-			LocationName:    t.LocationName,
-			Min:             t.Min,
-		})
+	if len(predictions) == 0 {
+		return nil, ErrNoDepartures
 	}
 
 	return predictions, nil
@@ -256,9 +274,9 @@ func (w *WMATAClient) GetPredictionInput(ctx context.Context, arg string) ([]Pre
 	return input, nil
 }
 
-func (w *WMATAClient) GetLineColor(stop string) (string, string) {
+func (w *WMATAClient) GetLineColor(line string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
-	switch stop {
+	switch line {
 	case "SV", "Silver":
 		return "#919D9D", black
 	case "RD", "Red":
@@ -298,4 +316,24 @@ func parseLinesAffected(lines string) []string {
 // A station can have more than one ID.
 func formatWMATAStopID(id string) []string {
 	return strings.Split(id, "_")[1:]
+}
+
+// railArrival converts the rendered countdown WMATA returns into an absolute
+// instant in time.
+func railArrival(min string, asOf time.Time) (time.Time, bool) {
+	switch min {
+	case "BRD":
+		return asOf, true
+	case "ARR":
+		return asOf.Add(30 * time.Second), true // 30s is a guess. WMATA doesn't specify what it translates to.
+	case "---", "":
+		return time.Time{}, false
+	}
+
+	n, err := strconv.Atoi(min)
+	if err != nil {
+		return time.Time{}, false
+	}
+
+	return asOf.Add(time.Duration(n) * time.Minute), true
 }

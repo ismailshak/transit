@@ -11,6 +11,7 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -144,7 +145,7 @@ func (a *App) renderDepartures(ctx context.Context, client provider.API, targets
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(departures)
-		tui.PrintArrivalScreen(client, &destinationLookup, sortedDestinations)
+		tui.PrintArrivalScreen(client, &destinationLookup, sortedDestinations, a.Now())
 		rendered++
 	}
 
@@ -158,17 +159,17 @@ func (a *App) renderDepartures(ctx context.Context, client provider.API, targets
 // Groups predictions by destination (assumes already sorted by minutes).
 // Sometimes the same destination can have multiple lines, so we group by both.
 // Returns grouped map and returns a sorted list of destinations
-func groupByDestination(predictions []provider.Prediction) (map[string][]provider.Prediction, []string) {
-	destMap := make(map[string][]provider.Prediction)
+func groupByDestination(departures []transit.Departure) (map[string][]transit.Departure, []string) {
+	destMap := make(map[string][]transit.Departure)
 	var destinations []string
 
-	for _, p := range predictions {
-		key := fmt.Sprintf("%s-%s", p.Destination, p.Line)
+	for _, d := range departures {
+		key := fmt.Sprintf("%s-%s", d.Headsign, d.Line)
 		_, exists := destMap[key]
 		if exists {
-			destMap[key] = append(destMap[key], p)
+			destMap[key] = append(destMap[key], d)
 		} else {
-			destMap[key] = []provider.Prediction{p}
+			destMap[key] = []transit.Departure{d}
 			destinations = append(destinations, key)
 		}
 	}

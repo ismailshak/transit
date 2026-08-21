@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -18,12 +17,15 @@ import (
 	"github.com/ismailshak/transit/internal/transit"
 )
 
-// SFClient is the API to interact with San Francisco's 511 API
+const (
+	source511 = "bayarea511"
+)
+
+// SFClient is the API to interact with San Francisco's 511 API.
 type SFClient struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
-	now     func() time.Time
 	store   *store.Store
 }
 
@@ -32,10 +34,10 @@ type sfStopPlace struct {
 	Name     string `json:"Name"`
 	Centroid struct {
 		Location struct {
-			Latitude  string
-			Longitude string
-		}
-	}
+			Latitude  string `json:"Latitude"`
+			Longitude string `json:"Longitude"`
+		} `json:"Location"`
+	} `json:"Centroid"`
 	TransportMode string `json:"TransportMode"`
 }
 
@@ -48,35 +50,36 @@ type sfStopPlacesResponse struct {
 				DataObjects       struct {
 					SiteFrame struct {
 						StopPlaces struct {
-							StopPlace []sfStopPlace
+							StopPlace []sfStopPlace `json:"StopPlace"`
 						} `json:"stopPlaces"`
-					}
+					} `json:"SiteFrame"`
 				} `json:"dataObjects"`
-			}
-		}
-	}
+			} `json:"DataObjectDelivery"`
+		} `json:"ServiceDelivery"`
+	} `json:"Siri"`
 }
 
 type sfMonitoredVehicleJourney struct {
-	LineRef         string
-	DestinationRef  string
-	DestinationName string
+	DirectionRef    string `json:"DirectionRef"`
+	LineRef         string `json:"LineRef"`
+	DestinationRef  string `json:"DestinationRef"`
+	DestinationName string `json:"DestinationName"`
 	MonitoredCall   struct {
-		AimedArrivalTime    string
-		DestinationDisplay  string
-		ExpectedArrivalTime string
-		StopPointName       string
-	}
+		AimedArrivalTime    string `json:"AimedArrivalTime"`
+		DestinationDisplay  string `json:"DestinationDisplay"`
+		ExpectedArrivalTime string `json:"ExpectedArrivalTime"`
+		StopPointName       string `json:"StopPointName"`
+	} `json:"MonitoredCall"`
 }
 
 type sfStopMonitoringResponse struct {
 	ServiceDelivery struct {
 		StopMonitoringDelivery struct {
 			MonitoredStopVisit []struct {
-				MonitoredVehicleJourney sfMonitoredVehicleJourney
-			}
-		}
-	}
+				MonitoredVehicleJourney sfMonitoredVehicleJourney `json:"MonitoredVehicleJourney"`
+			} `json:"MonitoredStopVisit"`
+		} `json:"StopMonitoringDelivery"`
+	} `json:"ServiceDelivery"`
 }
 
 type sfServiceAlertsResponse struct {
@@ -84,23 +87,23 @@ type sfServiceAlertsResponse struct {
 		ID    string `json:"Id"`
 		Alert struct {
 			ActivePeriods []struct {
-				Start int64
-				End   int64
-			}
+				Start int64 `json:"Start"`
+				End   int64 `json:"End"`
+			} `json:"ActivePeriods"`
 			InformedEntities []struct {
-				AgencyID string
-				StopID   string
-			}
+				AgencyID string `json:"AgencyId"`
+				StopID   string `json:"StopId"`
+			} `json:"InformedEntities"`
 			Cause           int `json:"cause"`
 			Effect          int `json:"effect"`
 			DescriptionText struct {
 				Translations []struct {
-					Language string
-					Text     string
-				}
-			}
-		}
-	}
+					Language string `json:"Language"`
+					Text     string `json:"Text"`
+				} `json:"Translations"`
+			} `json:"DescriptionText"`
+		} `json:"Alert"`
+	} `json:"Entities"`
 }
 
 func newSFHTTPError(req *http.Request, statusCode int) *HTTPError {
@@ -232,27 +235,7 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.Static, error
 	return &staticData, nil
 }
 
-// Removes the `-X` suffix from the line name where X is a direction (e.g. -N, -S, -E, -W)
-// and abbreviates the line name
-func (sf *SFClient) formatLine(line string) string {
-	trimmed, _, _ := strings.Cut(line, "-")
-	switch trimmed {
-	case "Yellow":
-		return "YL"
-	case "Red":
-		return "RD"
-	case "Orange":
-		return "OR"
-	case "Green":
-		return "GR"
-	case "Blue":
-		return "BL"
-	default:
-		return trimmed
-	}
-}
-
-func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]Prediction, error) {
+func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]transit.Departure, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "StopMonitoring")
 	if err != nil {
 		return nil, err
@@ -296,7 +279,7 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]
 		return nil, ErrNoDepartures
 	}
 
-	predictions := make([]Prediction, 0, monitoredStopVisits)
+	predictions := make([]transit.Departure, 0, monitoredStopVisits)
 
 	for _, msv := range stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit {
 		mvj := msv.MonitoredVehicleJourney
@@ -313,25 +296,30 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]
 			return nil, err
 		}
 
-		now := sf.now()
-		arrival := strconv.Itoa(int(arrivalTime.Sub(now).Minutes()))
+		bg, fg := sf.GetLineColor(mvj.LineRef)
 
-		p := Prediction{
-			LocationName:    mvj.MonitoredCall.StopPointName,
-			Destination:     mvj.MonitoredCall.DestinationDisplay,
-			DestinationName: mvj.DestinationName,
-			Line:            sf.formatLine(mvj.LineRef),
-			Min:             arrival,
+		d := transit.Departure{
+			Source:    source511,
+			StopID:    in.StopID,
+			StopName:  mvj.MonitoredCall.StopPointName,
+			AgencyID:  in.AgencyID,
+			Mode:      "",
+			Line:      mvj.LineRef,
+			LineColor: bg,
+			LineText:  fg,
+			Headsign:  mvj.MonitoredCall.DestinationDisplay,
+			Direction: mvj.DirectionRef,
+			Arrives:   arrivalTime,
 		}
 
-		predictions = append(predictions, p)
+		predictions = append(predictions, d)
 	}
 
 	return predictions, nil
 }
 
-func (sf *SFClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
-	predictions := make([]Prediction, 0)
+func (sf *SFClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]transit.Departure, error) {
+	predictions := make([]transit.Departure, 0)
 
 	for _, in := range input {
 		p, err := sf.fetchPrediction(ctx, in)
@@ -476,19 +464,19 @@ func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]Predi
 	return input, nil
 }
 
-func (sf *SFClient) GetLineColor(stop string) (string, string) {
+func (sf *SFClient) GetLineColor(line string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
-	trimmed := strings.Trim(stop, " ")
+	trimmed, _, _ := strings.Cut(line, "-")
 	switch trimmed {
-	case "RD":
+	case "Red":
 		return "#ED1D24", black
-	case "OR":
+	case "Orange":
 		return "#FAA61A", black
-	case "YL":
+	case "Yellow":
 		return "#FFE600", black
-	case "GR":
+	case "Green":
 		return "#50B848", white
-	case "BL":
+	case "Blue":
 		return "#009AD9", white
 	default:
 		return white, black

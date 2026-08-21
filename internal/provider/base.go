@@ -25,20 +25,6 @@ type PredictionInput struct {
 	AgencyID string
 }
 
-// Prediction is next train arrival prediction data
-type Prediction struct {
-	// Minutes until a train arrives
-	Min string
-	// The short name for a train station
-	LocationName string
-	// The short name for the train's destination
-	Destination string
-	// The full name for the train's destination
-	DestinationName string
-	// The train's line
-	Line string
-}
-
 // Incident is disruptions and/or delays data
 type Incident struct {
 	// The start date/time of the active period for the incident
@@ -62,7 +48,7 @@ type API interface {
 	// Fetches all required static data. Used to hydrate database
 	FetchStaticData(ctx context.Context) (*transit.Static, error)
 	// Fetches arrival information for list of location unique identifiers
-	FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error)
+	FetchPredictions(ctx context.Context, input []PredictionInput) ([]transit.Departure, error)
 	// Fetch all incidents reported by the agency for a location
 	FetchIncidents(ctx context.Context) ([]Incident, error)
 	// Given user input for a location, returns the formatted input required to make a prediction request
@@ -75,7 +61,7 @@ type API interface {
 }
 
 // NewDMV builds a client for the DMV Metro Area, backed by WMATA
-func NewDMV(apiKey string, s *store.Store) (*WMATAClient, error) {
+func NewDMV(apiKey string, s *store.Store, now func() time.Time) (*WMATAClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
@@ -84,13 +70,13 @@ func NewDMV(apiKey string, s *store.Store) (*WMATAClient, error) {
 		apiKey:  apiKey,
 		baseURL: wmataBaseURL,
 		http:    &http.Client{Timeout: httpTimeout},
+		now:     now,
 		store:   s,
 	}, nil
 }
 
 // NewSF builds a client for the San Francisco Bay Area, backed by 511.
-// The now function supplies the clock that arrival times are measured against.
-func NewSF(apiKey string, s *store.Store, now func() time.Time) (*SFClient, error) {
+func NewSF(apiKey string, s *store.Store) (*SFClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
@@ -99,7 +85,6 @@ func NewSF(apiKey string, s *store.Store, now func() time.Time) (*SFClient, erro
 		apiKey:  apiKey,
 		baseURL: sfBaseURL,
 		http:    &http.Client{Timeout: httpTimeout},
-		now:     now,
 		store:   s,
 	}, nil
 }
