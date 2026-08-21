@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 	"golang.org/x/term"
 )
 
@@ -15,8 +16,8 @@ const (
 	dateFormat = "2 Jan 06 3:04pm"
 )
 
-func PrintIncidents(client provider.API, incidents []provider.Incident) {
-	if len(incidents) == 0 {
+func PrintIncidents(client provider.API, alertSet transit.AlertSet, showAgency bool) {
+	if len(alertSet.Alerts) == 0 {
 		fmt.Println("No incidents reported")
 		return
 	}
@@ -25,9 +26,12 @@ func PrintIncidents(client provider.API, incidents []provider.Incident) {
 	termWidth, _, _ := term.GetSize(int(os.Stdin.Fd()))
 	width := min(max(termWidth-5, 0), maxWidth) // -5 for some padding
 
-	for _, inc := range incidents {
-		render(client, inc, width)
+	for _, a := range alertSet.Alerts {
+		render(client, a, width, showAgency)
 	}
+
+	// TODO: Print once
+	fmt.Println(lipgloss.NewStyle().Margin(1, 1).Faint(true).Render(formatUpdatedAt(alertSet.AsOf())))
 }
 
 func formatUpdatedAt(date time.Time) string {
@@ -35,7 +39,7 @@ func formatUpdatedAt(date time.Time) string {
 		return ""
 	}
 
-	return date.Format(dateFormat)
+	return "as of " + date.Format(dateFormat)
 }
 
 func formatStartEnd(start, end time.Time) string {
@@ -48,17 +52,21 @@ func formatStartEnd(start, end time.Time) string {
 	}
 
 	if end.IsZero() {
-		return fmt.Sprintf("Starts: %s", end.Format(dateFormat))
+		return fmt.Sprintf("Starts: %s", start.Format(dateFormat))
 	}
 
 	return fmt.Sprintf("%s - %s", start.Format(dateFormat), end.Format(dateFormat))
 }
 
-func genFooter(incident *provider.Incident) string {
-	duration := formatStartEnd(incident.ActivePeriodStart, incident.ActivePeriodEnd)
-	agencyName := incident.Agency
+func genFooter(alert *transit.Alert, showAgency bool) string {
+	duration := formatStartEnd(alert.Starts, alert.Ends)
 
-	if agencyName == "" && duration == "" {
+	var agencyID string
+	if showAgency {
+		agencyID = alert.AgencyID
+	}
+
+	if agencyID == "" && duration == "" {
 		return ""
 	}
 
@@ -75,30 +83,28 @@ func genFooter(incident *provider.Incident) string {
 	}
 
 	var agency string
-	if incident.Agency != "" {
-		agency = lipgloss.NewStyle().Margin(1, agencyHorMargin, 0).Foreground(lipgloss.Color("30")).Render(incident.Agency)
+	if agencyID != "" {
+		agency = lipgloss.NewStyle().Margin(1, agencyHorMargin, 0).Foreground(lipgloss.Color("30")).Render(agencyID)
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Left, activePeriod, agency)
 }
 
-func render(client provider.API, incident provider.Incident, width int) {
+func render(client provider.API, alert transit.Alert, width int, showAgency bool) {
 	list := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), true, true, true, true).
 		Padding(1, 1).
 		BorderForeground(Subtle)
 
-	incType := lipgloss.NewStyle().Padding(0, 1).Bold(true).Render(incident.Type)
+	effect := lipgloss.NewStyle().Padding(0, 1).Bold(true).Render(alert.Effect)
 
-	update := lipgloss.NewStyle().Margin(0, 1).Render(formatUpdatedAt(incident.DateUpdated))
+	affected := genAffected(client, alert.Affected)
 
-	affected := genAffected(client, incident.Affected)
+	header := lipgloss.JoinHorizontal(lipgloss.Left, effect, affected)
 
-	header := lipgloss.JoinHorizontal(lipgloss.Left, incType, affected, update)
+	description := lipgloss.NewStyle().Width(width).Margin(1, 1, 0).Render(alert.Description)
 
-	description := lipgloss.NewStyle().Width(width).Margin(1, 1, 0).Render(incident.Description)
-
-	footer := genFooter(&incident)
+	footer := genFooter(&alert, showAgency)
 
 	// TODO Clean up UI
 	if footer == "" {
@@ -110,13 +116,20 @@ func render(client provider.API, incident provider.Incident, width int) {
 	}
 }
 
-func genAffected(client provider.API, affected []string) string {
+func genAffected(client provider.API, affected []transit.AlertRef) string {
 	builder := strings.Builder{}
 
 	for _, a := range affected {
-		bg, fg := client.GetLineColor(a)
-		line := lipgloss.NewStyle().Padding(0, 1).Margin(0, 1).Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg)).Render(a)
-		builder.WriteString(line)
+		style := lipgloss.NewStyle().Padding(0, 1).Margin(0, 1)
+
+		if a.Kind == transit.RefRoute {
+			bg, fg := client.GetLineColor(a.ID)
+			style = style.Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg))
+		} else {
+			style = style.Border(lipgloss.NormalBorder(), true, true).BorderForeground(Subtle).Foreground(Subtle)
+		}
+
+		builder.WriteString(style.Render(a.ID))
 	}
 
 	return builder.String()

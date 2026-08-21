@@ -2,9 +2,11 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -30,11 +32,30 @@ func (a *App) newIncidentsCmd() *cobra.Command {
 }
 
 func (a *App) executeIncidents(ctx context.Context, client provider.API) error {
-	incidents, err := client.FetchIncidents(ctx)
+	alertSet, err := client.FetchIncidents(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch incidents: %w", err)
 	}
 
-	tui.PrintIncidents(client, incidents)
+	degraded := alertSet.Degraded()
+	if len(alertSet.Sources) == 0 {
+		return errors.New("no sources were asked for alerts")
+	}
+
+	if len(degraded) == len(alertSet.Sources) {
+		return errors.New("every source failed")
+	}
+
+	agencies, err := a.Store.LocationAgencies(ctx, transit.LocationSlug(a.Cfg.Core.Location))
+	if err != nil {
+		return fmt.Errorf("look up agencies: %w", err)
+	}
+
+	tui.PrintIncidents(client, alertSet, len(agencies) > 1)
+
+	for _, s := range degraded {
+		a.warnf("%v", s.Err)
+	}
+
 	return nil
 }

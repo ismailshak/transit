@@ -206,7 +206,22 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, input []PredictionIn
 	return predictions, nil
 }
 
-func (w *WMATAClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
+func (w *WMATAClient) FetchIncidents(ctx context.Context) (transit.AlertSet, error) {
+	alerts, err := w.fetchAlerts(ctx)
+
+	source := transit.SourceStatus{Source: sourceWMATARail, Err: err}
+
+	if err == nil {
+		source.AsOf = w.now()
+	}
+
+	return transit.AlertSet{
+		Alerts:  alerts,
+		Sources: []transit.SourceStatus{source},
+	}, nil
+}
+
+func (w *WMATAClient) fetchAlerts(ctx context.Context) ([]transit.Alert, error) {
 	req, err := w.BuildRequest(ctx, http.MethodGet, "Incidents.svc/json/Incidents")
 	if err != nil {
 		return nil, err
@@ -233,20 +248,23 @@ func (w *WMATAClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 		return nil, fmt.Errorf("parse incidents response: %w", err)
 	}
 
-	incidents := make([]Incident, 0, len(incidentsRes.Incidents))
-	for _, res := range incidentsRes.Incidents {
-		date, _ := time.ParseInLocation(wmataDateTimeLayout, res.DateUpdated, w.location)
-		inc := Incident{
-			Description: res.Description,
-			DateUpdated: date,
-			Affected:    parseLinesAffected(res.LinesAffected),
-			Type:        res.IncidentType,
+	alerts := make([]transit.Alert, 0, len(incidentsRes.Incidents))
+	for _, inc := range incidentsRes.Incidents {
+		date, _ := time.ParseInLocation(wmataDateTimeLayout, inc.DateUpdated, w.location)
+		alert := transit.Alert{
+			Source:      sourceWMATARail,
+			AgencyID:    agencyWMATA,
+			Affected:    parseAffected(inc.LinesAffected),
+			Description: inc.Description,
+			Effect:      inc.IncidentType,
+			Updated:     date,
 		}
 
-		incidents = append(incidents, inc)
+		alerts = append(alerts, alert)
 	}
 
-	return incidents, nil
+	return alerts, nil
+
 }
 
 func (w *WMATAClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
@@ -300,17 +318,22 @@ func (w *WMATAClient) IsGhostTrain(line, destination string) bool {
 }
 
 // Parses the affected format in the incidents response. Semi-colon separated with a space.
-func parseLinesAffected(lines string) []string {
-	splitSlice := strings.Split(strings.ReplaceAll(lines, " ", ""), ";")
+func parseAffected(lines string) []transit.AlertRef {
+	parts := strings.Split(strings.ReplaceAll(lines, " ", ""), ";")
 
-	var filteredSlice []string
-	for _, s := range splitSlice {
-		if s != "" {
-			filteredSlice = append(filteredSlice, s)
+	var refs []transit.AlertRef
+	for _, p := range parts {
+		if p == "" {
+			continue
 		}
+
+		refs = append(refs, transit.AlertRef{
+			Kind: transit.RefRoute,
+			ID:   p,
+		})
 	}
 
-	return filteredSlice
+	return refs
 }
 
 // All WMATA train IDs have the format `STN_X_X` where each X is a unique ID.

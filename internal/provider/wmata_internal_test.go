@@ -4,6 +4,8 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/ismailshak/transit/internal/transit"
 )
 
 func TestParseLinesAffected(t *testing.T) {
@@ -11,25 +13,33 @@ func TestParseLinesAffected(t *testing.T) {
 
 	tests := map[string]struct {
 		lines string
-		want  []string
+		want  []transit.AlertRef
 	}{
 		"single line affected": {
 			lines: "RD;",
-			want:  []string{"RD"},
+			want:  []transit.AlertRef{{Kind: transit.RefRoute, ID: "RD"}},
 		},
 		"multiple lines affected": {
 			lines: "RD; YL; GR; OR; SV; BL;",
-			want:  []string{"RD", "YL", "GR", "OR", "SV", "BL"},
+			want: []transit.AlertRef{
+				{Kind: transit.RefRoute, ID: "RD"},
+				{Kind: transit.RefRoute, ID: "YL"},
+				{Kind: transit.RefRoute, ID: "GR"},
+				{Kind: transit.RefRoute, ID: "OR"},
+				{Kind: transit.RefRoute, ID: "SV"},
+				{Kind: transit.RefRoute, ID: "BL"},
+			},
 		},
 		"no lines": {
 			lines: "",
-			want:  []string{},
+			want:  []transit.AlertRef{},
 		},
 	}
+
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := parseLinesAffected(tc.lines)
+			got := parseAffected(tc.lines)
 
 			if !slices.Equal(got, tc.want) {
 				t.Errorf("expected %v but got %v", tc.want, got)

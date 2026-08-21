@@ -52,7 +52,7 @@ type API interface {
 	// Fetches arrival information for list of location unique identifiers
 	FetchPredictions(ctx context.Context, input []PredictionInput) ([]transit.Departure, error)
 	// Fetch all incidents reported by the agency for a location
-	FetchIncidents(ctx context.Context) ([]Incident, error)
+	FetchIncidents(ctx context.Context) (transit.AlertSet, error)
 	// Given user input for a location, returns the formatted input required to make a prediction request
 	GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error)
 	// Given a line name or abbreviation, return colors that represents it.

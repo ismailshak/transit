@@ -82,7 +82,21 @@ type sfStopMonitoringResponse struct {
 	} `json:"ServiceDelivery"`
 }
 
+type sfTranslation struct {
+	Language string `json:"Language"`
+	Text     string `json:"Text"`
+}
+
+type sfTranslatedText struct {
+	Translations []sfTranslation `json:"Translations"`
+}
+
 type sfServiceAlertsResponse struct {
+	Header struct {
+		GtfsRealtimeVersion string `json:"GtfsRealtimeVersion"`
+		Incrementality      int    `json:"incrementality"`
+		Timestamp           int64  `json:"Timestamp"`
+	} `json:"Header"`
 	Entities []struct {
 		ID    string `json:"Id"`
 		Alert struct {
@@ -93,15 +107,15 @@ type sfServiceAlertsResponse struct {
 			InformedEntities []struct {
 				AgencyID string `json:"AgencyId"`
 				StopID   string `json:"StopId"`
+				RouteID  string `json:"RouteId"`
+				Trip     struct {
+					TripID string `json:"TripId"`
+				} `json:"Trip"`
 			} `json:"InformedEntities"`
-			Cause           int `json:"cause"`
-			Effect          int `json:"effect"`
-			DescriptionText struct {
-				Translations []struct {
-					Language string `json:"Language"`
-					Text     string `json:"Text"`
-				} `json:"Translations"`
-			} `json:"DescriptionText"`
+			Cause           int              `json:"cause"`
+			Effect          int              `json:"effect"`
+			HeaderText      sfTranslatedText `json:"HeaderText"`
+			DescriptionText sfTranslatedText `json:"DescriptionText"`
 		} `json:"Alert"`
 	} `json:"Entities"`
 }
@@ -341,38 +355,40 @@ func (sf *SFClient) FetchPredictions(ctx context.Context, input []PredictionInpu
 	return predictions, nil
 }
 
-func (sf *SFClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
+func (sf *SFClient) FetchIncidents(ctx context.Context) (transit.AlertSet, error) {
 	agencies, err := sf.store.LocationAgencies(ctx, transit.SFSlug)
 	if err != nil {
-		return nil, err
+		return transit.AlertSet{}, err
 	}
 
-	shouldDisplayAgency := len(agencies) > 1
-
-	incidents := make([]Incident, 0, 16) // TODO: figure out a good capacity (16 is arbitrary)
+	var sources []transit.SourceStatus
+	var alerts []transit.Alert
 
 	// TODO surely there's a way to fetch multiple agencies at once
 	for _, agency := range agencies {
-		var agencyName string
-		if shouldDisplayAgency {
-			agencyName = agency.Name
-		}
-
-		inc, err := sf.fetchAgencyIncidents(ctx, agency, agencyName)
+		a, asOf, err := sf.fetchAgencyIncidents(ctx, agency)
 		if err != nil {
-			return nil, fmt.Errorf("alerts for %s: %w", agency.AgencyID, err)
+			sources = append(sources, transit.SourceStatus{
+				Source: source511,
+				Err:    fmt.Errorf("alerts for %s: %w", agency.Name, err),
+			})
+			continue
 		}
 
-		incidents = append(incidents, inc...)
+		sources = append(sources, transit.SourceStatus{Source: source511, AsOf: asOf})
+		alerts = append(alerts, a...)
 	}
 
-	return incidents, nil
+	return transit.AlertSet{
+		Alerts:  alerts,
+		Sources: sources,
+	}, nil
 }
 
-func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Agency, agencyName string) ([]Incident, error) {
+func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Agency) ([]transit.Alert, time.Time, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "servicealerts")
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	q := req.URL.Query()
@@ -383,18 +399,18 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 
 	resp, err := sf.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, newSFHTTPError(req, resp.StatusCode)
+		return nil, time.Time{}, newSFHTTPError(req, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	// Remove BOM from response
@@ -403,41 +419,85 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 	var serviceAlerts sfServiceAlertsResponse
 	err = json.Unmarshal(body, &serviceAlerts)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
-	var incidents []Incident
+	asOf := sfTimestamp(serviceAlerts.Header.Timestamp)
+
+	var alerts []transit.Alert
 
 	for _, entity := range serviceAlerts.Entities {
 		var start, end time.Time
 		if len(entity.Alert.ActivePeriods) > 0 {
-			start = time.Unix(entity.Alert.ActivePeriods[0].Start, 0)
-			end = time.Unix(entity.Alert.ActivePeriods[0].End, 0)
+			start = sfTimestamp(entity.Alert.ActivePeriods[0].Start)
+			end = sfTimestamp(entity.Alert.ActivePeriods[0].End)
 		}
 
-		var affected []string
+		var affected []transit.AlertRef
 		// TODO: StopID could be duplicated because they would have different RouteIDs * sigh *
+		// TODO: Trip.TripID needs the trips.txt join from P5b-1 before it can become a route ref
+		// Agency is on every informed entity. The alert already knows which agency is affected.
 		for _, e := range entity.Alert.InformedEntities {
 			if e.StopID != "" {
-				affected = append(affected, e.StopID) // TODO: stop name instead? hopefully not a performance hit (but maybe doesn't matter due to incidents being rare)
+				affected = append(affected, transit.AlertRef{
+					Kind: transit.RefStop,
+					ID:   e.StopID,
+				})
+			}
+
+			if e.RouteID != "" {
+				affected = append(affected, transit.AlertRef{
+					Kind: transit.RefRoute,
+					ID:   e.RouteID,
+				})
 			}
 		}
 
-		inc := Incident{
-			ActivePeriodStart: start,                                             // TODO: Figure out what scenario triggers multiple active periods
-			ActivePeriodEnd:   end,                                               // TODO: ^ here too
-			Affected:          affected,                                          // TODO: parse informed entities
-			Agency:            agencyName,                                        // Derive from header?
-			Description:       entity.Alert.DescriptionText.Translations[0].Text, // TODO: assumes english is always first
-			DateUpdated:       time.Time{},                                       // TODO: figure out where this is
-			Type:              gtfs.ResolveGTFSAlertEffect(entity.Alert.Effect),
+		alert := transit.Alert{
+			Source:      source511,
+			Description: alertText(entity.Alert.HeaderText, entity.Alert.DescriptionText),
+			Effect:      gtfs.ResolveGTFSAlertEffect(entity.Alert.Effect),
+			AgencyID:    agency.AgencyID,
+			Affected:    affected,
+			Starts:      start, // TODO: Figure out what scenario triggers multiple active periods
+			Ends:        end,   // TODO: ^ here too
+			Updated:     asOf,
 		}
 
-		incidents = append(incidents, inc)
+		alerts = append(alerts, alert)
 	}
 
-	return incidents, nil
+	return alerts, asOf, nil
 
+}
+
+// 511 omits a timestamp rather than sending zero, and time.Unix(0, 0) is 1970.
+func sfTimestamp(sec int64) time.Time {
+	if sec == 0 {
+		return time.Time{}
+	}
+
+	return time.Unix(sec, 0)
+}
+
+// Caltrain sends its text in HeaderText and leaves DescriptionText empty.
+func alertText(header, description sfTranslatedText) string {
+	if text := englishText(header); text != "" {
+		return text
+	}
+
+	return englishText(description)
+}
+
+// 511 ships four languages and doesn't promise an order.
+func englishText(t sfTranslatedText) string {
+	for _, tr := range t.Translations {
+		if tr.Language == "en" {
+			return tr.Text
+		}
+	}
+
+	return ""
 }
 
 func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
