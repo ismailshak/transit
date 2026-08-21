@@ -26,11 +26,12 @@ const (
 
 // WMATAClient is the API to interact with WMATA.
 type WMATAClient struct {
-	apiKey  string
-	baseURL string
-	http    *http.Client
-	now     func() time.Time
-	store   *store.Store
+	apiKey   string
+	baseURL  string
+	location *time.Location
+	http     *http.Client
+	now      func() time.Time
+	store    *store.Store
 }
 
 type wmataTrain struct {
@@ -234,7 +235,7 @@ func (w *WMATAClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 
 	incidents := make([]Incident, 0, len(incidentsRes.Incidents))
 	for _, res := range incidentsRes.Incidents {
-		date, _ := time.Parse(wmataDateTimeLayout, res.DateUpdated)
+		date, _ := time.ParseInLocation(wmataDateTimeLayout, res.DateUpdated, w.location)
 		inc := Incident{
 			Description: res.Description,
 			DateUpdated: date,

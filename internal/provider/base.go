@@ -6,6 +6,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -14,9 +15,10 @@ import (
 )
 
 const (
-	wmataBaseURL = "https://api.wmata.com"
-	sfBaseURL    = "http://api.511.org"
-	httpTimeout  = 15 * time.Second
+	wmataBaseURL  = "https://api.wmata.com"
+	sfBaseURL     = "http://api.511.org"
+	httpTimeout   = 15 * time.Second
+	wmataTimezone = "America/New_York"
 )
 
 // PredictionInput is data required to make a prediction request
@@ -66,12 +68,18 @@ func NewDMV(apiKey string, s *store.Store, now func() time.Time) (*WMATAClient, 
 		return nil, ErrMissingAPIKey
 	}
 
+	location, err := time.LoadLocation(wmataTimezone)
+	if err != nil {
+		return nil, fmt.Errorf("load %s: %w", wmataTimezone, err)
+	}
+
 	return &WMATAClient{
-		apiKey:  apiKey,
-		baseURL: wmataBaseURL,
-		http:    &http.Client{Timeout: httpTimeout},
-		now:     now,
-		store:   s,
+		apiKey:   apiKey,
+		baseURL:  wmataBaseURL,
+		http:     &http.Client{Timeout: httpTimeout},
+		location: location,
+		now:      now,
+		store:    s,
 	}, nil
 }
 
