@@ -15,6 +15,7 @@ linters:
     - unconvert   # redundant type conversions
     - misspell    # typos in comments and strings
     - godot       # comments that don't end in a period
+    - musttag     # struct fields that reach a (un)marshal call without a tag
   settings:
     errcheck:
       # Read-side closers only since nothing is buffered on a reader, so the error

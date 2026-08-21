@@ -22,7 +22,7 @@ const (
 	wmataDateTimeLayout = "2006-01-02T15:04:05"
 )
 
-// WMATAClient is the API to interact with WMATA
+// WMATAClient is the API to interact with WMATA.
 type WMATAClient struct {
 	apiKey  string
 	baseURL string
@@ -30,21 +30,34 @@ type WMATAClient struct {
 	store   *store.Store
 }
 
-// WMATA's predictions API response
+type wmataTrain struct {
+	Car             string `json:"Car"`
+	Destination     string `json:"Destination"`
+	DestinationCode string `json:"DestinationCode"`
+	DestinationName string `json:"DestinationName"`
+	Group           string `json:"Group"`
+	Line            string `json:"Line"`
+	LocationCode    string `json:"LocationCode"`
+	LocationName    string `json:"LocationName"`
+	Min             string `json:"Min"`
+}
+
 type wmataPredictionsResponse struct {
-	Trains []Prediction
+	Trains []wmataTrain `json:"Trains"`
 }
 
 type wmataIncident struct {
-	Description   string
-	IncidentType  string
-	LinesAffected string
-	DateUpdated   string
+	IncidentID   string `json:"IncidentID"`
+	Description  string `json:"Description"`
+	IncidentType string `json:"IncidentType"`
+	// WMATA plans to return this as an array.
+	// https://developer.wmata.com/api-details#api=54763641281d83086473f232&operation=54763641281d830c946a3d77
+	LinesAffected string `json:"LinesAffected"`
+	DateUpdated   string `json:"DateUpdated"`
 }
 
-// WMATA's incidents API response
 type wmataIncidentsResponse struct {
-	Incidents []wmataIncident
+	Incidents []wmataIncident `json:"Incidents"`
 }
 
 func (w *WMATAClient) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
@@ -149,18 +162,29 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, input []PredictionIn
 		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
 
-	var predictions wmataPredictionsResponse
-	err = json.Unmarshal(body, &predictions)
+	var predictionsResponse wmataPredictionsResponse
+	err = json.Unmarshal(body, &predictionsResponse)
 
 	if err != nil {
 		return nil, fmt.Errorf("parse predictions response: %w", err)
 	}
 
-	if len(predictions.Trains) == 0 {
+	if len(predictionsResponse.Trains) == 0 {
 		return nil, ErrNoDepartures
 	}
 
-	return predictions.Trains, nil
+	predictions := make([]Prediction, 0, len(predictionsResponse.Trains))
+	for _, t := range predictionsResponse.Trains {
+		predictions = append(predictions, Prediction{
+			Destination:     t.Destination,
+			DestinationName: t.DestinationName,
+			Line:            t.Line,
+			LocationName:    t.LocationName,
+			Min:             t.Min,
+		})
+	}
+
+	return predictions, nil
 }
 
 func (w *WMATAClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
@@ -190,7 +214,7 @@ func (w *WMATAClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 		return nil, fmt.Errorf("parse incidents response: %w", err)
 	}
 
-	var incidents []Incident
+	incidents := make([]Incident, 0, len(incidentsRes.Incidents))
 	for _, res := range incidentsRes.Incidents {
 		date, _ := time.Parse(wmataDateTimeLayout, res.DateUpdated)
 		inc := Incident{
@@ -256,7 +280,7 @@ func (w *WMATAClient) IsGhostTrain(line, destination string) bool {
 	return line == "--" || destination == "No Passenger" || line == "No"
 }
 
-// Parses the affected format in the incidents response. Semi-colon separated with a space
+// Parses the affected format in the incidents response. Semi-colon separated with a space.
 func parseLinesAffected(lines string) []string {
 	splitSlice := strings.Split(strings.ReplaceAll(lines, " ", ""), ";")
 
@@ -270,8 +294,8 @@ func parseLinesAffected(lines string) []string {
 	return filteredSlice
 }
 
-// All WMATA train IDs have the format `STN_X_X` where each X is a unique ID
-// (train stations can have multiple)
+// All WMATA train IDs have the format `STN_X_X` where each X is a unique ID.
+// A station can have more than one ID.
 func formatWMATAStopID(id string) []string {
 	return strings.Split(id, "_")[1:]
 }
