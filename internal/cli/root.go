@@ -17,7 +17,7 @@ import (
 )
 
 func (a *App) newRootCmd() *cobra.Command {
-	var versionFlag bool // TODO; make -v the version flag
+	var versionFlag bool
 
 	rootCmd := &cobra.Command{
 		Use:           "transit",
