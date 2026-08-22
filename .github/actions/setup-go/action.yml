@@ -3,7 +3,7 @@ description: Installs the toolchain with mise then restores the module and build
 
 outputs:
   cache-hit:
-    description: Whether both Go caches were restored.
+    description: Whether the cache key matched exactly.
     value: ${{ steps.cache.outputs.cache-hit }}
 
 runs:
