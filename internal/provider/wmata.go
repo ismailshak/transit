@@ -170,10 +170,13 @@ func (w *WMATAClient) fetchDepartures(ctx context.Context, refs []transit.StopRe
 
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-
 	if resp.StatusCode != 200 {
 		return nil, time.Time{}, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, time.Time{}, err
 	}
 
 	asOf := w.now()
@@ -245,10 +248,13 @@ func (w *WMATAClient) fetchAlerts(ctx context.Context) ([]transit.Alert, error) 
 
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-
 	if resp.StatusCode != 200 {
 		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	var incidentsRes wmataIncidentsResponse
@@ -260,6 +266,7 @@ func (w *WMATAClient) fetchAlerts(ctx context.Context) ([]transit.Alert, error) 
 
 	alerts := make([]transit.Alert, 0, len(incidentsRes.Incidents))
 	for _, inc := range incidentsRes.Incidents {
+		// A missing or malformed timestamp should only affect the age and not the alert.
 		date, _ := time.ParseInLocation(wmataDateTimeLayout, inc.DateUpdated, w.location)
 		alert := transit.Alert{
 			Source:      sourceWMATARail,
