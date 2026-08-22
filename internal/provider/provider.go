@@ -26,7 +26,7 @@ type staticLookup interface {
 	Agencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error)
 }
 
-// NewDMV builds a client for the DMV Metro Area, backed by WMATA
+// NewDMV builds a client for the DMV Metro Area, backed by WMATA.
 func NewDMV(apiKey string, now func() time.Time) (*WMATAClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
