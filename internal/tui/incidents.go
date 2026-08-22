@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/transit"
 	"golang.org/x/term"
 )
@@ -16,7 +15,7 @@ const (
 	dateFormat = "2 Jan 06 3:04pm"
 )
 
-func PrintIncidents(client provider.API, alertSet transit.AlertSet, showAgency bool) {
+func PrintIncidents(alertSet transit.AlertSet, showAgency bool) {
 	if len(alertSet.Alerts) == 0 {
 		fmt.Println("No incidents reported")
 		return
@@ -27,7 +26,7 @@ func PrintIncidents(client provider.API, alertSet transit.AlertSet, showAgency b
 	width := min(max(termWidth-5, 0), maxWidth) // -5 for some padding
 
 	for _, a := range alertSet.Alerts {
-		render(client, a, width, showAgency)
+		render(a, width, showAgency)
 	}
 
 	// TODO: Print once
@@ -90,7 +89,7 @@ func genFooter(alert *transit.Alert, showAgency bool) string {
 	return lipgloss.JoinHorizontal(lipgloss.Left, activePeriod, agency)
 }
 
-func render(client provider.API, alert transit.Alert, width int, showAgency bool) {
+func render(alert transit.Alert, width int, showAgency bool) {
 	list := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), true, true, true, true).
 		Padding(1, 1).
@@ -98,7 +97,7 @@ func render(client provider.API, alert transit.Alert, width int, showAgency bool
 
 	effect := lipgloss.NewStyle().Padding(0, 1).Bold(true).Render(alert.Effect)
 
-	affected := genAffected(client, alert.Affected)
+	affected := genAffected(alert.Affected)
 
 	header := lipgloss.JoinHorizontal(lipgloss.Left, effect, affected)
 
@@ -116,15 +115,14 @@ func render(client provider.API, alert transit.Alert, width int, showAgency bool
 	}
 }
 
-func genAffected(client provider.API, affected []transit.AlertRef) string {
+func genAffected(affected []transit.AlertRef) string {
 	builder := strings.Builder{}
 
 	for _, a := range affected {
 		style := lipgloss.NewStyle().Padding(0, 1).Margin(0, 1)
 
 		if a.Kind == transit.RefRoute {
-			bg, fg := client.GetLineColor(a.ID)
-			style = style.Background(lipgloss.Color(bg)).Foreground(lipgloss.Color(fg))
+			style = style.Background(lipgloss.Color(a.Color)).Foreground(lipgloss.Color(a.TextColor))
 		} else {
 			style = style.Border(lipgloss.NormalBorder(), true, true).BorderForeground(Subtle).Foreground(Subtle)
 		}

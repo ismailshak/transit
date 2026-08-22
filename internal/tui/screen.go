@@ -7,13 +7,12 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
 // PrintArrivalScreen creates and prints a screen that resembles a station's. Will display
 // an arriving train's line, destination and arriving trains (in "minutes-away").
-func PrintArrivalScreen(client provider.API, destinationLookup *map[string][]transit.Departure, sortedDestinations []string, now time.Time) {
+func PrintArrivalScreen(destinationLookup *map[string][]transit.Departure, sortedDestinations []string, now time.Time) {
 	list := getScreen()
 
 	// since this is the same for all items, fishing it out from the first one
@@ -23,13 +22,7 @@ func PrintArrivalScreen(client provider.API, destinationLookup *map[string][]tra
 	items = append(items, genHeader(header))
 
 	for _, d := range sortedDestinations {
-		destination := (*destinationLookup)[d]
-		if client.IsGhostTrain(destination[0].Line, destination[0].Headsign) {
-			continue
-		}
-
-		item := genRow(client, destination, now)
-		items = append(items, item)
+		items = append(items, genRow((*destinationLookup)[d], now))
 	}
 
 	out := list.Render(
@@ -60,8 +53,8 @@ func genHeader(header string) string {
 }
 
 // Generates a row printed on the screen
-func genRow(client provider.API, destination []transit.Departure, now time.Time) string {
-	formattedLine := genLine(client, destination[0].Line)
+func genRow(destination []transit.Departure, now time.Time) string {
+	formattedLine := genLine(destination[0])
 	formattedDest := genDestination(destination[0].Headsign)
 	formattedMins := genTimeList(destination, now)
 
@@ -69,14 +62,13 @@ func genRow(client provider.API, destination []transit.Departure, now time.Time)
 }
 
 // Generate and color a metro's line
-func genLine(client provider.API, line string) string {
-	bg, fg := client.GetLineColor(line)
+func genLine(d transit.Departure) string {
 	return lipgloss.NewStyle().
 		Bold(true).
-		Background(lipgloss.Color(bg)).
-		Foreground(lipgloss.Color(fg)).
+		Background(lipgloss.Color(d.LineColor)).
+		Foreground(lipgloss.Color(d.LineText)).
 		Padding(0, 1).
-		Render(line)
+		Render(d.Line)
 }
 
 // Generate a formatted (and padded) destination item

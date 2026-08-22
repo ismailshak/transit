@@ -296,6 +296,10 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, ref transit.StopRef) ([
 
 	for _, msv := range stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit {
 		mvj := msv.MonitoredVehicleJourney
+		if isSFGhostTrain(mvj) {
+			continue
+		}
+
 		var arrivalString string
 		// Caltain API does not return ExpectedArrivalTime, it's set to null
 		if mvj.MonitoredCall.ExpectedArrivalTime != "" {
@@ -309,7 +313,7 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, ref transit.StopRef) ([
 			return nil, err
 		}
 
-		bg, fg := sf.GetLineColor(mvj.LineRef)
+		bg, fg := sfLineColor(mvj.LineRef)
 
 		d := transit.Departure{
 			Source:    source511,
@@ -445,9 +449,12 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 			}
 
 			if e.RouteID != "" {
+				bg, fg := sfLineColor(e.RouteID)
 				affected = append(affected, transit.AlertRef{
-					Kind: transit.RefRoute,
-					ID:   e.RouteID,
+					Kind:      transit.RefRoute,
+					ID:        e.RouteID,
+					Color:     bg,
+					TextColor: fg,
 				})
 			}
 		}
@@ -509,7 +516,7 @@ func (sf *SFClient) StopRefs(s transit.Stop) []transit.StopRef {
 	}}
 }
 
-func (sf *SFClient) GetLineColor(line string) (string, string) {
+func sfLineColor(line string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	trimmed, _, _ := strings.Cut(line, "-")
 	switch trimmed {
@@ -528,6 +535,6 @@ func (sf *SFClient) GetLineColor(line string) (string, string) {
 	}
 }
 
-func (sf *SFClient) IsGhostTrain(line, destination string) bool {
-	return line == "--" || destination == "NO PASSENGERS"
+func isSFGhostTrain(mvj sfMonitoredVehicleJourney) bool {
+	return mvj.LineRef == "--" || mvj.MonitoredCall.DestinationDisplay == "NO PASSENGERS"
 }

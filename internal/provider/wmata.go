@@ -175,12 +175,16 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, refs []transit.StopR
 
 	predictions := make([]transit.Departure, 0, len(predictionsResponse.Trains))
 	for _, t := range predictionsResponse.Trains {
+		if isWMATAGhostTrain(t) {
+			continue
+		}
+
 		arrives, ok := railArrival(t.Min, asOf)
 		if !ok {
 			continue
 		}
 
-		bg, fg := w.GetLineColor(t.Line)
+		bg, fg := wmataLineColor(t.Line)
 
 		predictions = append(predictions, transit.Departure{
 			Source:    sourceWMATARail,
@@ -287,7 +291,7 @@ func formatWMATAStopID(id string) []string {
 	return strings.Split(id, "_")[1:]
 }
 
-func (w *WMATAClient) GetLineColor(line string) (string, string) {
+func wmataLineColor(line string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
 	switch line {
 	case "SV", "Silver":
@@ -307,8 +311,8 @@ func (w *WMATAClient) GetLineColor(line string) (string, string) {
 	}
 }
 
-func (w *WMATAClient) IsGhostTrain(line, destination string) bool {
-	return line == "--" || destination == "No Passenger" || line == "No"
+func isWMATAGhostTrain(t wmataTrain) bool {
+	return t.Line == "--" || t.Line == "No" || t.DestinationName == "No Passenger"
 }
 
 // Parses the affected format in the incidents response. Semi-colon separated with a space.
@@ -321,9 +325,12 @@ func parseAffected(lines string) []transit.AlertRef {
 			continue
 		}
 
+		bg, fg := wmataLineColor(p)
 		refs = append(refs, transit.AlertRef{
-			Kind: transit.RefRoute,
-			ID:   p,
+			Kind:      transit.RefRoute,
+			ID:        p,
+			Color:     bg,
+			TextColor: fg,
 		})
 	}
 

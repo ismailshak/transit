@@ -39,6 +39,46 @@ func TestSFTimestamp(t *testing.T) {
 	}
 }
 
+func TestIsSFGhostTrain(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		line        string
+		destination string
+		want        bool
+	}{
+		"a trip with passengers": {
+			line:        "Red-N",
+			destination: "Richmond",
+			want:        false,
+		},
+		"no line": {
+			line:        "--",
+			destination: "Richmond",
+			want:        true,
+		},
+		"a trip without passengers": {
+			line:        "Red-N",
+			destination: "NO PASSENGERS",
+			want:        true,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			var mvj sfMonitoredVehicleJourney
+			mvj.LineRef = tc.line
+			mvj.MonitoredCall.DestinationDisplay = tc.destination
+
+			if got := isSFGhostTrain(mvj); got != tc.want {
+				t.Errorf("expected %v but got %v", tc.want, got)
+			}
+		})
+	}
+}
+
 func TestAlertText(t *testing.T) {
 	t.Parallel()
 

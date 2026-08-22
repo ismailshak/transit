@@ -51,7 +51,7 @@ func (a *App) executeIncidents(ctx context.Context, client provider.API) error {
 		return fmt.Errorf("look up agencies: %w", err)
 	}
 
-	tui.PrintIncidents(client, alertSet, len(agencies) > 1)
+	tui.PrintIncidents(alertSet, len(agencies) > 1)
 
 	for _, s := range degraded {
 		a.warnf("%v", s.Err)

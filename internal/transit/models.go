@@ -94,8 +94,10 @@ func (s DepartureSet) Degraded() []SourceStatus { return degraded(s.Sources) }
 
 // AlertRef is the entity an Alert applies to.
 type AlertRef struct {
-	Kind RefKind
-	ID   string // ID used by the Source to identify the entity.
+	Kind      RefKind
+	ID        string // ID used by the Source to identify the entity.
+	Color     string // The entity's background color. Empty for entities without branding (e.g. stops).
+	TextColor string // The entity's foreground color. Empty for entities without branding (e.g. stops).
 }
 
 // Alert is a disruption to service (planned or not) and the entities it applies to.

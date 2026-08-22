@@ -17,18 +17,22 @@ func TestParseLinesAffected(t *testing.T) {
 	}{
 		"single line affected": {
 			lines: "RD;",
-			want:  []transit.AlertRef{{Kind: transit.RefRoute, ID: "RD"}},
+			want:  []transit.AlertRef{{Kind: transit.RefRoute, ID: "RD", Color: "#BF0D3E", TextColor: "#FFFFFF"}},
 		},
 		"multiple lines affected": {
 			lines: "RD; YL; GR; OR; SV; BL;",
 			want: []transit.AlertRef{
-				{Kind: transit.RefRoute, ID: "RD"},
-				{Kind: transit.RefRoute, ID: "YL"},
-				{Kind: transit.RefRoute, ID: "GR"},
-				{Kind: transit.RefRoute, ID: "OR"},
-				{Kind: transit.RefRoute, ID: "SV"},
-				{Kind: transit.RefRoute, ID: "BL"},
+				{Kind: transit.RefRoute, ID: "RD", Color: "#BF0D3E", TextColor: "#FFFFFF"},
+				{Kind: transit.RefRoute, ID: "YL", Color: "#FFD100", TextColor: "#000000"},
+				{Kind: transit.RefRoute, ID: "GR", Color: "#00B140", TextColor: "#FFFFFF"},
+				{Kind: transit.RefRoute, ID: "OR", Color: "#ED8B00", TextColor: "#000000"},
+				{Kind: transit.RefRoute, ID: "SV", Color: "#919D9D", TextColor: "#000000"},
+				{Kind: transit.RefRoute, ID: "BL", Color: "#009CDE", TextColor: "#FFFFFF"},
 			},
+		},
+		"unknown line falls back to the default colors": {
+			lines: "XX;",
+			want:  []transit.AlertRef{{Kind: transit.RefRoute, ID: "XX", Color: "#FFFFFF", TextColor: "#000000"}},
 		},
 		"no lines": {
 			lines: "",
@@ -42,6 +46,42 @@ func TestParseLinesAffected(t *testing.T) {
 			got := parseAffected(tc.lines)
 
 			if !slices.Equal(got, tc.want) {
+				t.Errorf("expected %v but got %v", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestWMATAIsGhostTrain(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		train wmataTrain
+		want  bool
+	}{
+		"a train with passengers": {
+			train: wmataTrain{Line: "GR", DestinationName: "Downtown Largo", Car: "8"},
+			want:  false,
+		},
+		"the ghost rows in the capture": {
+			train: wmataTrain{Line: "No", DestinationName: "No Passenger", Car: "-"},
+			want:  true,
+		},
+		"no line": {
+			train: wmataTrain{Line: "--", DestinationName: "Downtown Largo"},
+			want:  true,
+		},
+		"no car but has passengers": {
+			train: wmataTrain{Line: "GR", DestinationName: "Downtown Largo", Car: "-"},
+			want:  false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := isWMATAGhostTrain(tc.train); got != tc.want {
 				t.Errorf("expected %v but got %v", tc.want, got)
 			}
 		})

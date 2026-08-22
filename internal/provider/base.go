@@ -55,11 +55,6 @@ type API interface {
 	// Turns a seeded stop into the refs this source understands. One stop can be
 	// several refs. The IDs aren't always the ones the stop was seeded with.
 	StopRefs(s transit.Stop) []transit.StopRef
-	// Given a line name or abbreviation, return colors that represents it.
-	// (bg, fg) tuple returned
-	GetLineColor(stop string) (string, string)
-	// Determines if a train isn't for passengers
-	IsGhostTrain(line, destination string) bool
 }
 
 // NewDMV builds a client for the DMV Metro Area, backed by WMATA

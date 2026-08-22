@@ -157,7 +157,7 @@ func (a *App) renderDepartures(ctx context.Context, client provider.API, targets
 		}
 
 		destinationLookup, sortedDestinations := groupByDestination(departures)
-		tui.PrintArrivalScreen(client, &destinationLookup, sortedDestinations, a.Now())
+		tui.PrintArrivalScreen(&destinationLookup, sortedDestinations, a.Now())
 		rendered++
 	}
 
