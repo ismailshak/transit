@@ -101,7 +101,7 @@ func (a *App) defaultPreRun(cmd *cobra.Command, args []string) error {
 func (a *App) client() (provider.API, error) {
 	switch transit.LocationSlug(a.Cfg.Core.Location) {
 	case transit.DMVSlug:
-		client, err := provider.NewDMV(a.Cfg.DMV.APIKey, a.Store, a.Now)
+		client, err := provider.NewDMV(a.Cfg.DMV.APIKey, a.Now)
 		if err != nil {
 			return nil, fmt.Errorf("dmv client: %w", err)
 		}

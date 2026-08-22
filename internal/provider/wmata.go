@@ -14,7 +14,6 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/gtfs"
-	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
@@ -31,7 +30,6 @@ type WMATAClient struct {
 	location *time.Location
 	http     *http.Client
 	now      func() time.Time
-	store    *store.Store
 }
 
 type wmataTrain struct {
@@ -141,9 +139,9 @@ func (w *WMATAClient) FetchStaticData(ctx context.Context) (*transit.Static, err
 	return gtfs.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, agencyWMATA)
 }
 
-func (w *WMATAClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]transit.Departure, error) {
-	codes := make([]string, 0, len(input))
-	for _, i := range input {
+func (w *WMATAClient) FetchPredictions(ctx context.Context, refs []transit.StopRef) ([]transit.Departure, error) {
+	codes := make([]string, 0, len(refs))
+	for _, i := range refs {
 		codes = append(codes, i.StopID)
 	}
 
@@ -267,30 +265,26 @@ func (w *WMATAClient) fetchAlerts(ctx context.Context) ([]transit.Alert, error) 
 
 }
 
-func (w *WMATAClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := w.store.MatchStops(ctx, transit.DMVSlug, arg)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: report these to the caller so it can warn on different situations
-	if len(stops) == 0 {
-		return nil, nil
-	}
-
-	if len(stops) > 5 {
-		return nil, nil
-	}
-
-	input := make([]PredictionInput, 0, len(stops))
-
-	for _, s := range stops {
-		for _, id := range formatWMATAStopID(s.StopID) {
-			input = append(input, PredictionInput{StopID: id, AgencyID: s.AgencyID})
+// StopRefs splits a station into the platform codes WMATA understands.
+func (w *WMATAClient) StopRefs(s transit.Stop) []transit.StopRef {
+	ids := formatWMATAStopID(s.StopID)
+	refs := make([]transit.StopRef, len(ids))
+	for i, id := range ids {
+		refs[i] = transit.StopRef{
+			StopID:   id,
+			Name:     s.Name,
+			AgencyID: s.AgencyID,
+			Source:   sourceWMATARail,
 		}
 	}
 
-	return input, nil
+	return refs
+}
+
+// All WMATA train IDs have the format `STN_X_X` where each X is a unique ID.
+// A station can have more than one ID.
+func formatWMATAStopID(id string) []string {
+	return strings.Split(id, "_")[1:]
 }
 
 func (w *WMATAClient) GetLineColor(line string) (string, string) {
@@ -334,12 +328,6 @@ func parseAffected(lines string) []transit.AlertRef {
 	}
 
 	return refs
-}
-
-// All WMATA train IDs have the format `STN_X_X` where each X is a unique ID.
-// A station can have more than one ID.
-func formatWMATAStopID(id string) []string {
-	return strings.Split(id, "_")[1:]
 }
 
 // railArrival converts the rendered countdown WMATA returns into an absolute

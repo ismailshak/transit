@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/ismailshak/transit/internal/gtfs"
-	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
@@ -26,7 +25,7 @@ type SFClient struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
-	store   *store.Store
+	store   staticLookup
 }
 
 type sfStopPlace struct {
@@ -249,7 +248,7 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.Static, error
 	return &staticData, nil
 }
 
-func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]transit.Departure, error) {
+func (sf *SFClient) fetchPrediction(ctx context.Context, ref transit.StopRef) ([]transit.Departure, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "StopMonitoring")
 	if err != nil {
 		return nil, err
@@ -257,8 +256,8 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]
 
 	q := req.URL.Query()
 	q.Add("api_key", sf.apiKey)
-	q.Add("agency", in.AgencyID)
-	q.Add("stopcode", in.StopID)
+	q.Add("agency", ref.AgencyID)
+	q.Add("stopcode", ref.StopID)
 	q.Add("format", "json")
 	req.URL.RawQuery = q.Encode()
 
@@ -314,9 +313,9 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]
 
 		d := transit.Departure{
 			Source:    source511,
-			StopID:    in.StopID,
+			StopID:    ref.StopID,
 			StopName:  mvj.MonitoredCall.StopPointName,
-			AgencyID:  in.AgencyID,
+			AgencyID:  ref.AgencyID,
 			Mode:      "",
 			Line:      mvj.LineRef,
 			LineColor: bg,
@@ -332,17 +331,17 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]
 	return predictions, nil
 }
 
-func (sf *SFClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]transit.Departure, error) {
+func (sf *SFClient) FetchPredictions(ctx context.Context, refs []transit.StopRef) ([]transit.Departure, error) {
 	predictions := make([]transit.Departure, 0)
 
-	for _, in := range input {
-		p, err := sf.fetchPrediction(ctx, in)
+	for _, r := range refs {
+		p, err := sf.fetchPrediction(ctx, r)
 		if errors.Is(err, ErrNoDepartures) {
 			continue
 		}
 
 		if err != nil {
-			return nil, fmt.Errorf("fetch predictions for %s: %w", in.StopID, err)
+			return nil, fmt.Errorf("fetch predictions for %s: %w", r.StopID, err)
 		}
 
 		predictions = append(predictions, p...)
@@ -356,7 +355,7 @@ func (sf *SFClient) FetchPredictions(ctx context.Context, input []PredictionInpu
 }
 
 func (sf *SFClient) FetchIncidents(ctx context.Context) (transit.AlertSet, error) {
-	agencies, err := sf.store.LocationAgencies(ctx, transit.SFSlug)
+	agencies, err := sf.store.Agencies(ctx, transit.SFSlug)
 	if err != nil {
 		return transit.AlertSet{}, err
 	}
@@ -500,28 +499,14 @@ func englishText(t sfTranslatedText) string {
 	return ""
 }
 
-func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := sf.store.MatchStops(ctx, transit.SFSlug, arg)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: report these to the caller so it can warn on different situations
-	if len(stops) == 0 {
-		return nil, nil
-	}
-
-	if len(stops) > 5 {
-		return nil, nil
-	}
-
-	input := make([]PredictionInput, 0, len(stops))
-
-	for _, s := range stops {
-		input = append(input, PredictionInput{StopID: s.StopID, AgencyID: s.AgencyID})
-	}
-
-	return input, nil
+// StopRefs returns the ref 511 understands. Its stop codes are the seeded IDs verbatim.
+func (sf *SFClient) StopRefs(s transit.Stop) []transit.StopRef {
+	return []transit.StopRef{{
+		StopID:   s.StopID,
+		Name:     s.Name,
+		AgencyID: s.AgencyID,
+		Source:   source511,
+	}}
 }
 
 func (sf *SFClient) GetLineColor(line string) (string, string) {

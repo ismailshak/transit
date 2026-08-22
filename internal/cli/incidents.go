@@ -46,7 +46,7 @@ func (a *App) executeIncidents(ctx context.Context, client provider.API) error {
 		return errors.New("every source failed")
 	}
 
-	agencies, err := a.Store.LocationAgencies(ctx, transit.LocationSlug(a.Cfg.Core.Location))
+	agencies, err := a.Store.Agencies(ctx, transit.LocationSlug(a.Cfg.Core.Location))
 	if err != nil {
 		return fmt.Errorf("look up agencies: %w", err)
 	}

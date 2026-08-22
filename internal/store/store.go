@@ -220,10 +220,10 @@ func (s *Store) CountStopsByLocation(ctx context.Context, location transit.Locat
 	return count, nil
 }
 
-// LocationAgencies reads the agencies seeded for a location. An unseeded location
+// Agencies reads the agencies seeded for a location. An unseeded location
 // returns an empty slice and no error. Nothing tells that apart from a location
 // with no agencies.
-func (s *Store) LocationAgencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error) {
+func (s *Store) Agencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error) {
 	rows, err := s.db.QueryContext(ctx, selectAgenciesByLocationSQL, location)
 	if err != nil {
 		return nil, fmt.Errorf("query agencies: %w", err)

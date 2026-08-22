@@ -106,23 +106,35 @@ func (a *App) watchAt(ctx context.Context, client provider.API, args []string) e
 
 // target is one argument resolved to the stop codes a provider wants
 type target struct {
-	arg   string
-	input []provider.PredictionInput
+	arg  string
+	refs []transit.StopRef
 }
 
 func (a *App) resolveStops(ctx context.Context, client provider.API, args []string) ([]target, error) {
-	var targets []target
+	slug := transit.LocationSlug(a.Cfg.Core.Location)
 
+	var targets []target
 	for _, arg := range args {
-		input, err := client.GetPredictionInput(ctx, arg)
+		stops, err := a.Store.MatchStops(ctx, slug, arg)
 		if err != nil {
 			return nil, fmt.Errorf("resolve %q: %w", arg, err)
 		}
-		if input == nil {
+
+		// TODO: report these to the caller so it can warn on nothing matching
+		if len(stops) == 0 {
 			continue
 		}
 
-		targets = append(targets, target{arg: arg, input: input})
+		if len(stops) > 5 {
+			continue
+		}
+
+		var refs []transit.StopRef
+		for _, s := range stops {
+			refs = append(refs, client.StopRefs(s)...)
+		}
+
+		targets = append(targets, target{arg: arg, refs: refs})
 	}
 
 	if len(targets) == 0 {
@@ -135,7 +147,7 @@ func (a *App) resolveStops(ctx context.Context, client provider.API, args []stri
 func (a *App) renderDepartures(ctx context.Context, client provider.API, targets []target) error {
 	var rendered int
 	for _, t := range targets {
-		departures, err := client.FetchPredictions(ctx, t.input)
+		departures, err := client.FetchPredictions(ctx, t.refs)
 		if errors.Is(err, provider.ErrNoDepartures) {
 			continue
 		}

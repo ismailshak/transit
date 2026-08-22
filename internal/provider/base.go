@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
@@ -20,12 +19,6 @@ const (
 	httpTimeout   = 15 * time.Second
 	wmataTimezone = "America/New_York"
 )
-
-// PredictionInput is data required to make a prediction request
-type PredictionInput struct {
-	StopID   string
-	AgencyID string
-}
 
 // Incident is disruptions and/or delays data
 type Incident struct {
@@ -45,16 +38,23 @@ type Incident struct {
 	Type string
 }
 
+// staticLookup is the parts of the store the clients read.
+// Makes testing easier.
+type staticLookup interface {
+	Agencies(ctx context.Context, location transit.LocationSlug) ([]transit.Agency, error)
+}
+
 // API is the base interface that defines what each location client api must implement
 type API interface {
 	// Fetches all required static data. Used to hydrate database
 	FetchStaticData(ctx context.Context) (*transit.Static, error)
 	// Fetches arrival information for list of location unique identifiers
-	FetchPredictions(ctx context.Context, input []PredictionInput) ([]transit.Departure, error)
+	FetchPredictions(ctx context.Context, refs []transit.StopRef) ([]transit.Departure, error)
 	// Fetch all incidents reported by the agency for a location
 	FetchIncidents(ctx context.Context) (transit.AlertSet, error)
-	// Given user input for a location, returns the formatted input required to make a prediction request
-	GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error)
+	// Turns a seeded stop into the refs this source understands. One stop can be
+	// several refs. The IDs aren't always the ones the stop was seeded with.
+	StopRefs(s transit.Stop) []transit.StopRef
 	// Given a line name or abbreviation, return colors that represents it.
 	// (bg, fg) tuple returned
 	GetLineColor(stop string) (string, string)
@@ -63,7 +63,7 @@ type API interface {
 }
 
 // NewDMV builds a client for the DMV Metro Area, backed by WMATA
-func NewDMV(apiKey string, s *store.Store, now func() time.Time) (*WMATAClient, error) {
+func NewDMV(apiKey string, now func() time.Time) (*WMATAClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
@@ -79,12 +79,11 @@ func NewDMV(apiKey string, s *store.Store, now func() time.Time) (*WMATAClient, 
 		http:     &http.Client{Timeout: httpTimeout},
 		location: location,
 		now:      now,
-		store:    s,
 	}, nil
 }
 
 // NewSF builds a client for the San Francisco Bay Area, backed by 511.
-func NewSF(apiKey string, s *store.Store) (*SFClient, error) {
+func NewSF(apiKey string, s staticLookup) (*SFClient, error) {
 	if apiKey == "" {
 		return nil, ErrMissingAPIKey
 	}
