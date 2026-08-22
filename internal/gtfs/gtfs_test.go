@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ismailshak/transit/internal/fixtures"
 	"github.com/ismailshak/transit/internal/gtfs"
 	"github.com/ismailshak/transit/internal/transit"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +15,7 @@ import (
 func TestUnzipGTFS(t *testing.T) {
 	t.Parallel()
 
-	pathToZip := fixtures.Path("sample-feed.zip")
+	pathToZip := filepath.Join("testdata", "sample-feed.zip")
 	dest := t.TempDir()
 
 	err := gtfs.UnzipStaticGTFS(pathToZip, dest)
@@ -35,7 +34,11 @@ func TestUnzipGTFS(t *testing.T) {
 		}
 
 		fileName := d.Name()
-		fixtureContent := fixtures.Read(t, "sample-feed", fileName)
+		fixturePath := filepath.Join("testdata", "sample-feed", fileName)
+		fixtureContent, err := os.ReadFile(fixturePath)
+		if err != nil {
+			t.Fatalf("read fixture %s: %s", fixturePath, err)
+		}
 
 		unzippedContent, err := os.ReadFile(filepath.Join(dest, fileName))
 		if err != nil {
@@ -60,7 +63,7 @@ func TestUnzipGTFS(t *testing.T) {
 func TestParseGTFS(t *testing.T) {
 	t.Parallel()
 
-	pathToFeed := fixtures.Path("sample-feed")
+	pathToFeed := filepath.Join("testdata", "sample-feed")
 
 	gtfs, err := gtfs.ParseGTFS(pathToFeed, "someplace", "train", "DTA")
 	if err != nil {
