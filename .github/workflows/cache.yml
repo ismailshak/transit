@@ -1,0 +1,32 @@
+on:
+  push:
+    branches: [main]
+name: Cache
+
+# Since I don't run Test or Verify on main, I need to have a dedicated
+# cache step so that every PR has access to the same cache.
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false # A cancelled job skips the cache upload
+
+permissions:
+  contents: read
+
+jobs:
+  warm:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-go
+        id: setup
+      - name: Compile artifacts
+        if: steps.setup.outputs.cache-hit != 'true'
+        shell: bash # pwsh would carry on after a failed compile and warm a partial cache
+        run: |
+          go test -race -run '^$' ./...
+          just build

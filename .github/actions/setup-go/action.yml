@@ -1,0 +1,32 @@
+name: Set up Go
+description: Installs the toolchain with mise then restores the module and build caches.
+
+outputs:
+  cache-hit:
+    description: Whether both Go caches were restored.
+    value: ${{ steps.cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@v4
+      with:
+        version: 2026.8.3
+        install: true
+        cache: true
+    - name: Locate the Go caches
+      id: paths
+      shell: bash
+      run: |
+        # The paths differ per OS, so ask the toolchain instead of hardcoding them
+        echo "mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+        echo "build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+    - name: Cache Go modules and build output
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ steps.paths.outputs.mod }}
+          ${{ steps.paths.outputs.build }}
+        # mise.toml is in the hash because it owns the specific Go version installed 
+        key: ${{ runner.os }}-${{ runner.arch }}-go-${{ hashFiles('mise.toml', 'go.sum') }}
