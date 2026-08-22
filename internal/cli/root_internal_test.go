@@ -77,7 +77,7 @@ func TestExitCode(t *testing.T) {
 			want: 3,
 		},
 		"upstream unavailable": {
-			err:  fmt.Errorf("fetch incidents: %w", &provider.HTTPError{StatusCode: http.StatusServiceUnavailable}),
+			err:  fmt.Errorf("fetch alerts: %w", &provider.HTTPError{StatusCode: http.StatusServiceUnavailable}),
 			want: 3,
 		},
 		"no departures anywhere": {

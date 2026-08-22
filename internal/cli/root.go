@@ -58,7 +58,7 @@ func (a *App) newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(
 		a.newAtCmd(),
 		a.newConfigCmd(),
-		a.newIncidentsCmd(),
+		a.newAlertsCmd(),
 		a.newInitCmd(),
 	)
 

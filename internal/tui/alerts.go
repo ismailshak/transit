@@ -15,9 +15,9 @@ const (
 	dateFormat = "2 Jan 06 3:04pm"
 )
 
-func PrintIncidents(alertSet transit.AlertSet, showAgency bool) {
+func PrintAlerts(alertSet transit.AlertSet, showAgency bool) {
 	if len(alertSet.Alerts) == 0 {
-		fmt.Println("No incidents reported")
+		fmt.Println("No alerts reported")
 		return
 	}
 
