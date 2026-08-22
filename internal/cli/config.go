@@ -114,7 +114,7 @@ func (a *App) executeSet(ctx context.Context, key, value string) error {
 	return a.Cfg.Set(key, value)
 }
 
-// executePath backs `config path`
+// executePath backs `config path`.
 func (a *App) executePath() error {
 	_, err := fmt.Fprintln(a.Out, a.Cfg.FileUsed())
 	return err

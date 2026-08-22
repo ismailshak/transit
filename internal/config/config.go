@@ -13,17 +13,17 @@ import (
 	"github.com/spf13/viper"
 )
 
-// DmvConfig holds options for the `dmv` section of a user config file
+// DmvConfig holds options for the `dmv` section of a user config file.
 type DmvConfig struct {
 	APIKey string `mapstructure:"api_key"`
 }
 
-// SFConfig holds options for the `sf` section of a user config file
+// SFConfig holds options for the `sf` section of a user config file.
 type SFConfig struct {
 	APIKey string `mapstructure:"api_key"`
 }
 
-// CoreConfig holds options for the `core` section of a user config file
+// CoreConfig holds options for the `core` section of a user config file.
 type CoreConfig struct {
 	Location      string `mapstructure:"location"`
 	WatchInterval int    `mapstructure:"watch_interval"`
@@ -82,14 +82,14 @@ func Load(override string) (*Config, error) {
 
 // Get returns a config value looked up by a key from user input, or nil if the
 // key isn't set. Nested fields are addressable by using a dot (.) as a
-// delimiter e.g. `core.location`
+// delimiter e.g. `core.location`.
 func (c *Config) Get(key string) any {
 	return c.vp.Get(key)
 }
 
 // Set writes a config value from user input back to the file and re-decodes it,
 // so the file and this Config agree once it returns. Nested fields are
-// addressable by using a dot (.) as a delimiter e.g. `core.location`
+// addressable by using a dot (.) as a delimiter e.g. `core.location`.
 func (c *Config) Set(key, value string) error {
 	c.vp.Set(key, value)
 	if err := c.vp.WriteConfig(); err != nil {
@@ -103,7 +103,7 @@ func (c *Config) Set(key, value string) error {
 	return nil
 }
 
-// FileUsed returns the path to the config file these values were loaded from
+// FileUsed returns the path to the config file these values were loaded from.
 func (c *Config) FileUsed() string {
 	return c.vp.ConfigFileUsed()
 }
@@ -126,7 +126,7 @@ func (c *Config) read() error {
 	return nil
 }
 
-// GetConfigDir returns the location of transit's config directory
+// GetConfigDir returns the location of transit's config directory.
 func GetConfigDir() (string, error) {
 	return getDefaultConfigDir()
 }

@@ -14,7 +14,7 @@ const (
 )
 
 // TODO: Confirm color visibility in light themed terminals
-// (better yet, create a color palette for both light and dark themes)
+// (better yet, create a color palette for both light and dark themes).
 var (
 	Subtle    = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
 	Orange    = lipgloss.AdaptiveColor{Light: "#FF5F00", Dark: "#FFAF00"}

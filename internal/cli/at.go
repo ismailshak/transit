@@ -104,7 +104,7 @@ func (a *App) watchAt(ctx context.Context, p transit.Provider, args []string) er
 	}
 }
 
-// target is one argument resolved to the stop codes a provider wants
+// target is one argument resolved to the stop codes a provider wants.
 type target struct {
 	arg  string
 	refs []transit.StopRef
@@ -177,7 +177,7 @@ func (a *App) renderDepartures(ctx context.Context, p transit.Provider, targets 
 
 // Groups departures by destination (assumes already sorted by minutes).
 // Sometimes the same destination can have multiple lines, so we group by both.
-// Returns grouped map and returns a sorted list of destinations
+// Returns grouped map and returns a sorted list of destinations.
 func groupByDestination(departures []transit.Departure) (map[string][]transit.Departure, []string) {
 	destMap := make(map[string][]transit.Departure)
 	var destinations []string

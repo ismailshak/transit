@@ -13,7 +13,7 @@ import (
 )
 
 // ResolveGTFSAlertEffect resolves the GTFS Service Alert "Effect" field to a human-readable string.
-// An invalid effect will return an empty string
+// An invalid effect will return an empty string.
 func ResolveGTFSAlertEffect(effect int) string {
 	switch effect {
 	case 1:
@@ -63,7 +63,7 @@ func UnzipStaticGTFS(path string, dest string) error {
 	return nil
 }
 
-// ParseGTFS parses an unzipped directory that contains the GTFS Static feed
+// ParseGTFS parses an unzipped directory that contains the GTFS Static feed.
 func ParseGTFS(path string, location transit.LocationSlug, st transit.StopType, agency string) (*transit.Static, error) {
 	agencyFile := filepath.Join(path, "agency.txt")
 	stopsFile := filepath.Join(path, "stops.txt")
@@ -134,10 +134,10 @@ func parseGTFSStops(path string, location transit.LocationSlug, st transit.StopT
 	return stops, nil
 }
 
-// ParseEntityFunc is a callback that takes the current parsed row and the header-to-index map as arguments
+// ParseEntityFunc is a callback that takes the current parsed row and the header-to-index map as arguments.
 type ParseEntityFunc func(record []string, headerMap map[string]int)
 
-// Generic GTFS file parser that takes a callback that can handle it's own data via a closure
+// Generic GTFS file parser that takes a callback that can handle it's own data via a closure.
 func parseGTFSEntity(path string, fn ParseEntityFunc) error {
 	f, err := os.Open(path)
 	if err != nil {

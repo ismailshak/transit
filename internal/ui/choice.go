@@ -12,7 +12,7 @@ var ErrCancelled = errors.New("cancelled")
 // e.g. hitting enter on a filter with zero results.
 var ErrNoSelection = errors.New("nothing selected")
 
-// ErrNoInput is returned when the user submits a prompt without entering anything
+// ErrNoInput is returned when the user submits a prompt without entering anything.
 var ErrNoInput = errors.New("no input")
 
 type Choice struct {
