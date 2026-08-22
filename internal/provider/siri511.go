@@ -509,12 +509,20 @@ func sfTimestamp(sec int64) time.Time {
 }
 
 // Caltrain sends its text in HeaderText and leaves DescriptionText empty.
+// BART sends a banner like "BART.gov Alert" as the header and the real text as the description.
 func alertText(header, description sfTranslatedText) string {
-	if text := englishText(header); text != "" {
-		return text
+	headerText := strings.TrimSpace(englishText(header))
+	descriptionText := strings.TrimSpace(englishText(description))
+
+	if headerText == "" {
+		return descriptionText
 	}
 
-	return englishText(description)
+	if descriptionText == "" {
+		return headerText
+	}
+
+	return headerText + ": " + descriptionText
 }
 
 // 511 ships four languages and doesn't promise an order.

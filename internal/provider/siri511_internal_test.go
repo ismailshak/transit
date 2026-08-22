@@ -94,9 +94,19 @@ func TestAlertText(t *testing.T) {
 		description sfTranslatedText
 		want        string
 	}{
-		"header wins when both are filled": {
+		"both are joined when both are filled": {
 			header:      english,
 			description: detail,
+			want:        "Platform change: Train 519 departs from platform 5",
+		},
+		"bart pairs a banner header with the real text": {
+			header:      sfTranslatedText{Translations: []sfTranslation{{Language: "en", Text: "BART.gov Alert"}}},
+			description: sfTranslatedText{Translations: []sfTranslation{{Language: "en", Text: "Expect delays of 30-40 minutes. "}}},
+			want:        "BART.gov Alert: Expect delays of 30-40 minutes.",
+		},
+		"header stands alone when the description is empty": {
+			header:      english,
+			description: blank,
 			want:        "Platform change",
 		},
 		"description fills in when the header is blank": {
