@@ -30,7 +30,9 @@ func PrintIncidents(alertSet transit.AlertSet, showAgency bool) {
 	}
 
 	// TODO: Print once
-	fmt.Println(lipgloss.NewStyle().Margin(1, 1).Faint(true).Render(formatUpdatedAt(alertSet.AsOf())))
+	if updated := formatUpdatedAt(alertSet.AsOf()); updated != "" {
+		fmt.Println(lipgloss.NewStyle().Margin(1, 1).Faint(true).Render(updated))
+	}
 }
 
 func formatUpdatedAt(date time.Time) string {
