@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/ismailshak/transit/internal/tui"
+	"github.com/ismailshak/transit/internal/render"
 )
 
 type SpinnerOptions struct {
@@ -29,7 +29,7 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	sp := spinnerModel{
 		spinner: spinner.New(
 			spinner.WithSpinner(spinner.Dot),
-			spinner.WithStyle(tui.SpinnerStyle),
+			spinner.WithStyle(render.SpinnerStyle),
 		),
 		msg: &opts.SpinMessage,
 	}
@@ -77,12 +77,12 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	}
 
 	if err != nil {
-		tui.OperationFailed(opts.ErrorMessage)
+		render.OperationFailed(opts.ErrorMessage)
 
 		return err
 	}
 
-	tui.OperationSuccessful(opts.SuccessMessage)
+	render.OperationSuccessful(opts.SuccessMessage)
 
 	return nil
 }

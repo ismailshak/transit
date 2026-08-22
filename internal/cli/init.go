@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ismailshak/transit/internal/render"
 	"github.com/ismailshak/transit/internal/transit"
-	"github.com/ismailshak/transit/internal/tui"
 	"github.com/ismailshak/transit/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -71,16 +71,16 @@ func (a *App) getConfiguredLocation(ctx context.Context) (string, error) {
 	selection, err := ui.Select(ctx, "Select a location", choices)
 	if err != nil {
 		if errors.Is(err, ui.ErrCancelled) {
-			tui.OperationSkipped("Cancelled... Exiting")
+			render.OperationSkipped("Cancelled... Exiting")
 			return "", ui.ErrCancelled
 		}
 
 		if errors.Is(err, ui.ErrNoSelection) {
-			tui.OperationSkipped("Nothing selected... Exiting")
+			render.OperationSkipped("Nothing selected... Exiting")
 			return "", ui.ErrNoSelection
 		}
 
-		tui.OperationFailed("Failed to select location")
+		render.OperationFailed("Failed to select location")
 		return "", err
 	}
 
@@ -102,16 +102,16 @@ func (a *App) confirmConfiguredKey(ctx context.Context, location string) error {
 	key, err := ui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
 	if err != nil {
 		if errors.Is(err, ui.ErrCancelled) {
-			tui.OperationSkipped("Cancelled... Exiting")
+			render.OperationSkipped("Cancelled... Exiting")
 			return err
 		}
 
 		if errors.Is(err, ui.ErrNoInput) {
-			tui.OperationFailed("No input... Exiting")
+			render.OperationFailed("No input... Exiting")
 			return err
 		}
 
-		tui.OperationFailed("Failed to capture input")
+		render.OperationFailed("Failed to capture input")
 		return err
 	}
 
@@ -129,14 +129,14 @@ func (a *App) executeInitConfig(ctx context.Context) error {
 		return err
 	}
 
-	tui.OperationSuccessful("Location set to " + location)
+	render.OperationSuccessful("Location set to " + location)
 
 	err = a.confirmConfiguredKey(ctx, location)
 	if err != nil {
 		return err
 	}
 
-	tui.OperationSuccessful("API key set")
+	render.OperationSuccessful("API key set")
 	return nil
 }
 
@@ -147,7 +147,7 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	}
 
 	if count > 0 {
-		tui.OperationSuccessful("Data initialized")
+		render.OperationSuccessful("Data initialized")
 		return nil
 	}
 
@@ -164,7 +164,7 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	})
 
 	if errors.Is(err, ui.ErrCancelled) {
-		tui.OperationSkipped("Cancelled... Exiting")
+		render.OperationSkipped("Cancelled... Exiting")
 		return ui.ErrCancelled
 	}
 
@@ -190,7 +190,7 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	})
 
 	if errors.Is(err, ui.ErrCancelled) {
-		tui.OperationSkipped("Cancelled... Exiting")
+		render.OperationSkipped("Cancelled... Exiting")
 		return ui.ErrCancelled
 	}
 

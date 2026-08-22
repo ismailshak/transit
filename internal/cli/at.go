@@ -11,8 +11,8 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/render"
 	"github.com/ismailshak/transit/internal/transit"
-	"github.com/ismailshak/transit/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -73,12 +73,12 @@ func (a *App) watchAt(ctx context.Context, p transit.Provider, args []string) er
 		return err
 	}
 
-	message := tui.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
+	message := render.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	buffer := tui.NewBuffer()
+	buffer := render.NewBuffer()
 	buffer.StartAlternateBuffer()
 	defer buffer.StopAlternateBuffer()
 
@@ -159,7 +159,7 @@ func (a *App) renderDepartures(ctx context.Context, p transit.Provider, targets 
 
 		if len(departureSet.Departures) > 0 {
 			destinationLookup, sortedDestinations := groupByDestination(departureSet.Departures)
-			tui.PrintArrivalScreen(&destinationLookup, sortedDestinations, a.Now())
+			render.PrintArrivalScreen(&destinationLookup, sortedDestinations, a.Now())
 			rendered++
 		}
 
