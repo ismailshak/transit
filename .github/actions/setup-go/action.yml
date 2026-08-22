@@ -30,4 +30,4 @@ runs:
           ${{ steps.paths.outputs.mod }}
           ${{ steps.paths.outputs.build }}
         # mise.toml is in the hash because it owns the specific Go version installed 
-        key: ${{ runner.os }}-${{ runner.arch }}-go-${{ hashFiles('mise.toml', 'go.sum') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-go-${{ hashFiles('mise.toml', 'go.mod', 'go.sum') }}
