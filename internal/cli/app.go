@@ -97,8 +97,8 @@ func (a *App) defaultPreRun(cmd *cobra.Command, args []string) error {
 	return a.dbSetupPreRun(cmd.Context())
 }
 
-// client returns the API client for the configured location.
-func (a *App) client() (provider.API, error) {
+// provider returns the configured location's provider.
+func (a *App) provider() (transit.Provider, error) {
 	switch transit.LocationSlug(a.Cfg.Core.Location) {
 	case transit.DMVSlug:
 		client, err := provider.NewDMV(a.Cfg.DMV.APIKey, a.Now)

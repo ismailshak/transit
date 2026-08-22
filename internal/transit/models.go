@@ -71,7 +71,8 @@ type Departure struct {
 	Arrives   time.Time // Always an absolute instant. Render it in the agency's zone.
 }
 
-// SourceStatus is the outcome of asking one source for data.
+// SourceStatus is the outcome of asking one source for data. A source that fans out a request per
+// stop/agency still reports one status and the request that failed lives in the error.
 type SourceStatus struct {
 	Source string    // Provider source that was asked.
 	AsOf   time.Time // When the source produced the data, not when we asked for it.
@@ -86,7 +87,7 @@ type DepartureSet struct {
 }
 
 // AsOf returns the time of the oldest source that succeeded.
-// It returns the zero time when no source succeeded.
+// It returns the zero time when no source returned anything.
 func (s DepartureSet) AsOf() time.Time { return oldest(s.Sources) }
 
 // Degraded returns the sources that failed. It's empty when all sources succeed.
@@ -118,8 +119,8 @@ type AlertSet struct {
 	Sources []SourceStatus // One entry per source that was asked.
 }
 
-// AsOf returns the time of the oldest source that succeeded, which is the honest age of the whole
-// set. It returns the zero time when no source succeeded.
+// AsOf returns the time of the oldest source that returned data.
+// It returns the zero time when no source returned anything.
 func (s AlertSet) AsOf() time.Time { return oldest(s.Sources) }
 
 // Degraded returns the sources that failed. It's empty for the happy path.
@@ -201,7 +202,11 @@ type Static struct {
 func oldest(sources []SourceStatus) time.Time {
 	var t time.Time
 	for _, src := range sources {
-		if src.Err == nil && (t.IsZero() || src.AsOf.Before(t)) {
+		if src.AsOf.IsZero() {
+			continue
+		}
+
+		if t.IsZero() || src.AsOf.Before(t) {
 			t = src.AsOf
 		}
 	}

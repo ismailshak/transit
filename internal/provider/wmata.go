@@ -78,7 +78,7 @@ func (w *WMATAClient) BuildRequest(ctx context.Context, method string, route ...
 	return req, nil
 }
 
-func (w *WMATAClient) FetchStaticData(ctx context.Context) (*transit.Static, error) {
+func (w *WMATAClient) Seed(ctx context.Context) (*transit.Static, error) {
 	req, err := w.BuildRequest(ctx, http.MethodGet, "gtfs/rail-gtfs-static.zip")
 	if err != nil {
 		return nil, err
@@ -139,7 +139,19 @@ func (w *WMATAClient) FetchStaticData(ctx context.Context) (*transit.Static, err
 	return gtfs.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, agencyWMATA)
 }
 
-func (w *WMATAClient) FetchPredictions(ctx context.Context, refs []transit.StopRef) ([]transit.Departure, error) {
+func (w *WMATAClient) Departures(ctx context.Context, refs []transit.StopRef) (transit.DepartureSet, error) {
+	departures, asOf, err := w.fetchDepartures(ctx, refs)
+	if err != nil {
+		return transit.DepartureSet{}, err
+	}
+
+	return transit.DepartureSet{
+		Departures: departures,
+		Sources:    []transit.SourceStatus{{Source: sourceWMATARail, AsOf: asOf}},
+	}, nil
+}
+
+func (w *WMATAClient) fetchDepartures(ctx context.Context, refs []transit.StopRef) ([]transit.Departure, time.Time, error) {
 	codes := make([]string, 0, len(refs))
 	for _, i := range refs {
 		codes = append(codes, i.StopID)
@@ -147,13 +159,13 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, refs []transit.StopR
 
 	req, err := w.BuildRequest(ctx, http.MethodGet, "StationPrediction.svc/json/GetPrediction", strings.Join(codes, ","))
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	resp, err := w.http.Do(req)
 
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	defer resp.Body.Close()
@@ -161,7 +173,7 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, refs []transit.StopR
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != 200 {
-		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
+		return nil, time.Time{}, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
 
 	asOf := w.now()
@@ -170,10 +182,10 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, refs []transit.StopR
 	err = json.Unmarshal(body, &predictionsResponse)
 
 	if err != nil {
-		return nil, fmt.Errorf("parse predictions response: %w", err)
+		return nil, time.Time{}, fmt.Errorf("parse predictions response: %w", err)
 	}
 
-	predictions := make([]transit.Departure, 0, len(predictionsResponse.Trains))
+	departures := make([]transit.Departure, 0, len(predictionsResponse.Trains))
 	for _, t := range predictionsResponse.Trains {
 		if isWMATAGhostTrain(t) {
 			continue
@@ -186,7 +198,7 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, refs []transit.StopR
 
 		bg, fg := wmataLineColor(t.Line)
 
-		predictions = append(predictions, transit.Departure{
+		departures = append(departures, transit.Departure{
 			Source:    sourceWMATARail,
 			StopID:    t.LocationCode,
 			StopName:  t.LocationName,
@@ -201,14 +213,10 @@ func (w *WMATAClient) FetchPredictions(ctx context.Context, refs []transit.StopR
 		})
 	}
 
-	if len(predictions) == 0 {
-		return nil, ErrNoDepartures
-	}
-
-	return predictions, nil
+	return departures, asOf, nil
 }
 
-func (w *WMATAClient) FetchIncidents(ctx context.Context) (transit.AlertSet, error) {
+func (w *WMATAClient) Alerts(ctx context.Context) (transit.AlertSet, error) {
 	alerts, err := w.fetchAlerts(ctx)
 
 	source := transit.SourceStatus{Source: sourceWMATARail, Err: err}

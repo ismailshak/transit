@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/tui"
 	"github.com/spf13/cobra"
@@ -19,31 +18,27 @@ func (a *App) newIncidentsCmd() *cobra.Command {
 		Args:    usageArgs(cobra.NoArgs),
 		PreRunE: a.defaultPreRun,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := a.client()
+			p, err := a.provider()
 			if err != nil {
 				return err
 			}
 
-			return a.executeIncidents(cmd.Context(), client)
+			return a.executeIncidents(cmd.Context(), p)
 		},
 	}
 
 	return incidentsCmd
 }
 
-func (a *App) executeIncidents(ctx context.Context, client provider.API) error {
-	alertSet, err := client.FetchIncidents(ctx)
+func (a *App) executeIncidents(ctx context.Context, p transit.Provider) error {
+	alertSet, err := p.Alerts(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch incidents: %w", err)
 	}
 
 	degraded := alertSet.Degraded()
-	if len(alertSet.Sources) == 0 {
-		return errors.New("no sources were asked for alerts")
-	}
-
-	if len(degraded) == len(alertSet.Sources) {
-		return errors.New("every source failed")
+	if len(alertSet.Alerts) == 0 && len(degraded) > 0 {
+		return fmt.Errorf("fetch incidents: %w", errors.Join(errsOf(degraded)...))
 	}
 
 	agencies, err := a.Store.Agencies(ctx, transit.LocationSlug(a.Cfg.Core.Location))
@@ -58,4 +53,13 @@ func (a *App) executeIncidents(ctx context.Context, client provider.API) error {
 	}
 
 	return nil
+}
+
+func errsOf(sources []transit.SourceStatus) []error {
+	errs := make([]error, 0, len(sources))
+	for _, s := range sources {
+		errs = append(errs, s.Err)
+	}
+
+	return errs
 }

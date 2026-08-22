@@ -73,6 +73,7 @@ type sfMonitoredVehicleJourney struct {
 
 type sfStopMonitoringResponse struct {
 	ServiceDelivery struct {
+		ResponseTimestamp      string `json:"ResponseTimestamp"`
 		StopMonitoringDelivery struct {
 			MonitoredStopVisit []struct {
 				MonitoredVehicleJourney sfMonitoredVehicleJourney `json:"MonitoredVehicleJourney"`
@@ -213,7 +214,7 @@ func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency transit.Agen
 	return stops, nil
 }
 
-func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.Static, error) {
+func (sf *SFClient) Seed(ctx context.Context) (*transit.Static, error) {
 	bart := transit.Agency{
 		AgencyID: "BA",
 		Language: "en",
@@ -248,10 +249,10 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.Static, error
 	return &staticData, nil
 }
 
-func (sf *SFClient) fetchPrediction(ctx context.Context, ref transit.StopRef) ([]transit.Departure, error) {
+func (sf *SFClient) fetchDepartures(ctx context.Context, ref transit.StopRef) ([]transit.Departure, time.Time, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "StopMonitoring")
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	q := req.URL.Query()
@@ -263,18 +264,18 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, ref transit.StopRef) ([
 
 	resp, err := sf.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, newSFHTTPError(req, resp.StatusCode)
+		return nil, time.Time{}, newSFHTTPError(req, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	// Remove BOM from response
@@ -284,17 +285,16 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, ref transit.StopRef) ([
 
 	err = json.Unmarshal(body, &stopMonitoring)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
-	monitoredStopVisits := len(stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit)
-	if monitoredStopVisits == 0 {
-		return nil, ErrNoDepartures
-	}
+	// A missing or malformed timestamp should only affect the age and not the departure list.
+	asOf, _ := time.Parse(time.RFC3339, stopMonitoring.ServiceDelivery.ResponseTimestamp)
 
-	predictions := make([]transit.Departure, 0, monitoredStopVisits)
+	visits := stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit
+	departures := make([]transit.Departure, 0, len(visits))
 
-	for _, msv := range stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit {
+	for _, msv := range visits {
 		mvj := msv.MonitoredVehicleJourney
 		if isSFGhostTrain(mvj) {
 			continue
@@ -310,7 +310,7 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, ref transit.StopRef) ([
 
 		arrivalTime, err := time.Parse(time.RFC3339, arrivalString)
 		if err != nil {
-			return nil, err
+			return nil, time.Time{}, err
 		}
 
 		bg, fg := sfLineColor(mvj.LineRef)
@@ -329,66 +329,76 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, ref transit.StopRef) ([
 			Arrives:   arrivalTime,
 		}
 
-		predictions = append(predictions, d)
+		departures = append(departures, d)
 	}
 
-	return predictions, nil
+	return departures, asOf, nil
 }
 
-func (sf *SFClient) FetchPredictions(ctx context.Context, refs []transit.StopRef) ([]transit.Departure, error) {
-	predictions := make([]transit.Departure, 0)
+func (sf *SFClient) Departures(ctx context.Context, refs []transit.StopRef) (transit.DepartureSet, error) {
+	var departures []transit.Departure
+	var errs []error
+	var asOf time.Time
 
 	for _, r := range refs {
-		p, err := sf.fetchPrediction(ctx, r)
-		if errors.Is(err, ErrNoDepartures) {
+		d, t, err := sf.fetchDepartures(ctx, r)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("departures at %s: %w", r.Name, err))
 			continue
 		}
 
-		if err != nil {
-			return nil, fmt.Errorf("fetch predictions for %s: %w", r.StopID, err)
-		}
-
-		predictions = append(predictions, p...)
+		departures = append(departures, d...)
+		asOf = older(asOf, t)
 	}
 
-	if len(predictions) == 0 {
-		return nil, ErrNoDepartures
+	// Every stop lost its request, so there's no set to hand back and nothing to date it with.
+	if len(refs) > 0 && len(errs) == len(refs) {
+		return transit.DepartureSet{}, errors.Join(errs...)
 	}
 
-	return predictions, nil
+	return transit.DepartureSet{
+		Departures: departures,
+		Sources: []transit.SourceStatus{{
+			Source: source511,
+			AsOf:   asOf,
+			Err:    errors.Join(errs...),
+		}},
+	}, nil
 }
 
-func (sf *SFClient) FetchIncidents(ctx context.Context) (transit.AlertSet, error) {
+func (sf *SFClient) Alerts(ctx context.Context) (transit.AlertSet, error) {
 	agencies, err := sf.store.Agencies(ctx, transit.SFSlug)
 	if err != nil {
 		return transit.AlertSet{}, err
 	}
 
-	var sources []transit.SourceStatus
 	var alerts []transit.Alert
+	var errs []error
+	var asOf time.Time
 
 	// TODO surely there's a way to fetch multiple agencies at once
 	for _, agency := range agencies {
-		a, asOf, err := sf.fetchAgencyIncidents(ctx, agency)
+		a, t, err := sf.fetchAgencyAlerts(ctx, agency)
 		if err != nil {
-			sources = append(sources, transit.SourceStatus{
-				Source: source511,
-				Err:    fmt.Errorf("alerts for %s: %w", agency.Name, err),
-			})
+			errs = append(errs, fmt.Errorf("alerts for %s: %w", agency.Name, err))
 			continue
 		}
 
-		sources = append(sources, transit.SourceStatus{Source: source511, AsOf: asOf})
 		alerts = append(alerts, a...)
+		asOf = older(asOf, t)
 	}
 
 	return transit.AlertSet{
-		Alerts:  alerts,
-		Sources: sources,
+		Alerts: alerts,
+		Sources: []transit.SourceStatus{{
+			Source: source511,
+			AsOf:   asOf,
+			Err:    errors.Join(errs...),
+		}},
 	}, nil
 }
 
-func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Agency) ([]transit.Alert, time.Time, error) {
+func (sf *SFClient) fetchAgencyAlerts(ctx context.Context, agency transit.Agency) ([]transit.Alert, time.Time, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "servicealerts")
 	if err != nil {
 		return nil, time.Time{}, err
@@ -475,6 +485,18 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 
 	return alerts, asOf, nil
 
+}
+
+func older(a, b time.Time) time.Time {
+	if b.IsZero() {
+		return a
+	}
+
+	if a.IsZero() || b.Before(a) {
+		return b
+	}
+
+	return a
 }
 
 // 511 omits a timestamp rather than sending zero, and time.Unix(0, 0) is 1970.

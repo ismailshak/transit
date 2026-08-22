@@ -5,9 +5,6 @@ import (
 	"fmt"
 )
 
-// ErrNoDepartures is returned when a stop has no upcoming departures.
-var ErrNoDepartures = errors.New("no departures")
-
 // ErrMissingAPIKey is returned when the configured location has no credentials.
 var ErrMissingAPIKey = errors.New("missing api key")
 
