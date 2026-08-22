@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// openTestDB opens a temporary database that has no tables
+// openTestDB opens a temporary database that has no tables.
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 

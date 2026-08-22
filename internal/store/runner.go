@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-// migration is a record of a database migration that was executed
+// migration is a record of a database migration that was executed.
 type migration struct {
 	ID         int
 	Name       string

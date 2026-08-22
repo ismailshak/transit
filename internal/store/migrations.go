@@ -9,7 +9,7 @@ import (
 	"github.com/ismailshak/transit/internal/transit"
 )
 
-// changeFn applies a change to the database schema
+// changeFn applies a change to the database schema.
 type changeFn func(ctx context.Context, trx *sql.Tx) error
 
 type changeset struct {
@@ -21,7 +21,7 @@ type changeset struct {
 	Down changeFn
 }
 
-// The list of all migrations to run
+// The list of all migrations to run.
 var migrationChangesets = []changeset{
 	{
 		Name: "0001_Init",

@@ -37,7 +37,7 @@ const selectAgenciesByLocationSQL = "SELECT rowid, * FROM agencies WHERE locatio
 	LOCATIONS TABLE
 */
 
-// createLocationsTableSQL creates the locations table. An index will be created for `slug` due to 'UNIQUE' constraint
+// createLocationsTableSQL creates the locations table. An index will be created for `slug` due to 'UNIQUE' constraint.
 const createLocationsTableSQL = `CREATE TABLE locations (
 	slug TEXT NOT NULL UNIQUE,
 	name TEXT NOT NULL,

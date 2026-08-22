@@ -8,7 +8,7 @@ import (
 )
 
 // errUsage marks an invalid invocation: an unknown flag, or the wrong number of
-// arguments. Callers wrap it with the specifics. Mapped to exit code 2
+// arguments. Callers wrap it with the specifics. Mapped to exit code 2.
 var errUsage = errors.New("usage")
 
 // usageArgs tags a cobra argument validator's failures with errUsage, so a bad

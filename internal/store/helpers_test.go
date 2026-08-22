@@ -7,7 +7,7 @@ import (
 	"github.com/ismailshak/transit/internal/store"
 )
 
-// blankDB creates a temporary database that has no tables
+// blankDB creates a temporary database that has no tables.
 func blankDB(t *testing.T) *store.Store {
 	t.Helper()
 	testDir := t.TempDir()
@@ -30,7 +30,7 @@ func blankDB(t *testing.T) *store.Store {
 	return db
 }
 
-// migratedDB creates a temporary test database that's fully migrated
+// migratedDB creates a temporary test database that's fully migrated.
 func migratedDB(t *testing.T) *store.Store {
 	t.Helper()
 	testDir := t.TempDir()

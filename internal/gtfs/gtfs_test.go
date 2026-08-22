@@ -121,7 +121,7 @@ func TestParseGTFS(t *testing.T) {
 
 }
 
-// Filters out `\r` to make testing on Windows easier
+// Filters out `\r` to make testing on Windows easier.
 func removeCarriageReturn(s []byte) []byte {
 	filtered := make([]byte, 0, len(s))
 

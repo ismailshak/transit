@@ -39,7 +39,7 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-// SyncMigrations keeps migrations up-to-date and handles first time migration run
+// SyncMigrations keeps migrations up-to-date and handles first time migration run.
 func (s *Store) SyncMigrations(ctx context.Context) error {
 	err := createMigrationTable(ctx, s.db)
 	if err != nil {

@@ -9,12 +9,12 @@ type TerminalBuffer struct {
 	alternateBufferActive bool
 }
 
-// NewBuffer returns an alternate buffer instance
+// NewBuffer returns an alternate buffer instance.
 func NewBuffer() *TerminalBuffer {
 	return &TerminalBuffer{}
 }
 
-// StartAlternateBuffer renders a buffer on top of the current one
+// StartAlternateBuffer renders a buffer on top of the current one.
 func (b *TerminalBuffer) StartAlternateBuffer() {
 	if !b.alternateBufferActive {
 		fmt.Println("\x1b[?1049h")
@@ -22,7 +22,7 @@ func (b *TerminalBuffer) StartAlternateBuffer() {
 	}
 }
 
-// StopAlternateBuffer closes the alternate buffer and returns to the original buffer
+// StopAlternateBuffer closes the alternate buffer and returns to the original buffer.
 func (b *TerminalBuffer) StopAlternateBuffer() {
 	if b.alternateBufferActive {
 		fmt.Println("\x1b[?1049l")
@@ -31,7 +31,7 @@ func (b *TerminalBuffer) StopAlternateBuffer() {
 }
 
 // RefreshScreen erases the entire content of the buffer and leaves
-// cursor in the in the first row and column of the buffer
+// cursor in the in the first row and column of the buffer.
 func (b *TerminalBuffer) RefreshScreen() {
 	// Move cursor to 0,0
 	fmt.Println("\x1b[0;0H")

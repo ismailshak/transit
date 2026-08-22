@@ -147,14 +147,14 @@ type delegateKeyMap struct {
 	choose key.Binding
 }
 
-// Additional short help entries. This satisfies the help.KeyMap interface
+// Additional short help entries. This satisfies the help.KeyMap interface.
 func (d delegateKeyMap) ShortHelp() []key.Binding {
 	return []key.Binding{
 		d.choose,
 	}
 }
 
-// Additional full help entries. This satisfies the help.KeyMap interface
+// Additional full help entries. This satisfies the help.KeyMap interface.
 func (d delegateKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{

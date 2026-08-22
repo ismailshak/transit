@@ -34,14 +34,14 @@ func PrintArrivalScreen(destinationLookup *map[string][]transit.Departure, sorte
 	fmt.Println(out)
 }
 
-// Create and return a terminal layout that will contain the screen-like display
+// Create and return a terminal layout that will contain the screen-like display.
 func getScreen() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, false, false).
 		BorderForeground(Subtle)
 }
 
-// Generate the header that will be printed at the top of the screen
+// Generate the header that will be printed at the top of the screen.
 func genHeader(header string) string {
 	return lipgloss.NewStyle().
 		Bold(true).
@@ -52,7 +52,7 @@ func genHeader(header string) string {
 		Render(header)
 }
 
-// Generates a row printed on the screen
+// Generates a row printed on the screen.
 func genRow(destination []transit.Departure, now time.Time) string {
 	formattedLine := genLine(destination[0])
 	formattedDest := genDestination(destination[0].Headsign)
@@ -61,7 +61,7 @@ func genRow(destination []transit.Departure, now time.Time) string {
 	return lipgloss.JoinHorizontal(lipgloss.Left, formattedLine, formattedDest, formattedMins)
 }
 
-// Generate and color a metro's line
+// Generate and color a metro's line.
 func genLine(d transit.Departure) string {
 	return lipgloss.NewStyle().
 		Bold(true).
@@ -71,7 +71,7 @@ func genLine(d transit.Departure) string {
 		Render(d.Line)
 }
 
-// Generate a formatted (and padded) destination item
+// Generate a formatted (and padded) destination item.
 func genDestination(destination string) string {
 	return lipgloss.NewStyle().
 		PaddingLeft(2).
@@ -81,7 +81,7 @@ func genDestination(destination string) string {
 		Render(destination)
 }
 
-// Generates a comma separated list of formatted minutes until
+// Generates a comma separated list of formatted minutes until.
 func genTimeList(destination []transit.Departure, now time.Time) string {
 	formatted := []string{}
 	for _, d := range destination {
@@ -91,7 +91,7 @@ func genTimeList(destination []transit.Departure, now time.Time) string {
 	return strings.Join(formatted, ",")
 }
 
-// Generate a formatted entry for a single ETA
+// Generate a formatted entry for a single ETA.
 func genTimeEntry(arrives, now time.Time) string {
 	return lipgloss.NewStyle().
 		Foreground(Orange).
