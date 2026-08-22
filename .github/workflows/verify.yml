@@ -19,7 +19,7 @@ jobs:
           install: true
           cache: true
       - name: Build binary
-        run: go build ./...
+        run: just build
       - name: Lint project
         uses: golangci/golangci-lint-action@v9
         with:

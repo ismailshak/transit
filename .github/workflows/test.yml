@@ -20,4 +20,4 @@ jobs:
           install: true
           cache: true
       - name: Run test
-        run: go test -race ./...
+        run: just race
