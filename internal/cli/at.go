@@ -11,6 +11,7 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,7 @@ try being more specific by adding more characters.
 		Args:    usageArgs(cobra.MinimumNArgs(1)),
 		PreRunE: a.defaultPreRun,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := a.client()
+			p, err := a.provider()
 			if err != nil {
 				return err
 			}
@@ -40,10 +41,10 @@ try being more specific by adding more characters.
 			ctx := cmd.Context()
 
 			if watchFlag {
-				return a.watchAt(ctx, client, args)
+				return a.watchAt(ctx, p, args)
 			}
 
-			return a.executeAt(ctx, client, args)
+			return a.executeAt(ctx, p, args)
 		},
 	}
 
@@ -52,22 +53,22 @@ try being more specific by adding more characters.
 	return atCmd
 }
 
-func (a *App) executeAt(ctx context.Context, client provider.API, args []string) error {
-	targets, err := a.resolveStops(ctx, client, args)
+func (a *App) executeAt(ctx context.Context, p transit.Provider, args []string) error {
+	targets, err := a.resolveStops(ctx, p, args)
 	if err != nil {
 		return err
 	}
 
-	return a.renderDepartures(ctx, client, targets)
+	return a.renderDepartures(ctx, p, targets)
 }
 
-func (a *App) watchAt(ctx context.Context, client provider.API, args []string) error {
+func (a *App) watchAt(ctx context.Context, p transit.Provider, args []string) error {
 	interval, err := watchInterval(a.Cfg.Core.WatchInterval)
 	if err != nil {
 		return err
 	}
 
-	targets, err := a.resolveStops(ctx, client, args)
+	targets, err := a.resolveStops(ctx, p, args)
 	if err != nil {
 		return err
 	}
@@ -85,12 +86,12 @@ func (a *App) watchAt(ctx context.Context, client provider.API, args []string) e
 		buffer.RefreshScreen()
 		_, _ = fmt.Fprintln(a.Out, message)
 
-		if err := a.renderDepartures(ctx, client, targets); err != nil {
+		if err := a.renderDepartures(ctx, p, targets); err != nil {
 			if endsWatch(err) {
 				return err
 			}
 
-			if !errors.Is(err, provider.ErrNoDepartures) {
+			if !errors.Is(err, transit.ErrNoDepartures) {
 				a.errorf("%s", err)
 			}
 		}
@@ -105,23 +106,35 @@ func (a *App) watchAt(ctx context.Context, client provider.API, args []string) e
 
 // target is one argument resolved to the stop codes a provider wants
 type target struct {
-	arg   string
-	input []provider.PredictionInput
+	arg  string
+	refs []transit.StopRef
 }
 
-func (a *App) resolveStops(ctx context.Context, client provider.API, args []string) ([]target, error) {
-	var targets []target
+func (a *App) resolveStops(ctx context.Context, p transit.Provider, args []string) ([]target, error) {
+	slug := transit.LocationSlug(a.Cfg.Core.Location)
 
+	var targets []target
 	for _, arg := range args {
-		input, err := client.GetPredictionInput(ctx, arg)
+		stops, err := a.Store.MatchStops(ctx, slug, arg)
 		if err != nil {
 			return nil, fmt.Errorf("resolve %q: %w", arg, err)
 		}
-		if input == nil {
+
+		// TODO: report these to the caller so it can warn on nothing matching
+		if len(stops) == 0 {
 			continue
 		}
 
-		targets = append(targets, target{arg: arg, input: input})
+		if len(stops) > 5 {
+			continue
+		}
+
+		var refs []transit.StopRef
+		for _, s := range stops {
+			refs = append(refs, p.StopRefs(s)...)
+		}
+
+		targets = append(targets, target{arg: arg, refs: refs})
 	}
 
 	if len(targets) == 0 {
@@ -131,44 +144,51 @@ func (a *App) resolveStops(ctx context.Context, client provider.API, args []stri
 	return targets, nil
 }
 
-func (a *App) renderDepartures(ctx context.Context, client provider.API, targets []target) error {
+func (a *App) renderDepartures(ctx context.Context, p transit.Provider, targets []target) error {
 	var rendered int
 	for _, t := range targets {
-		departures, err := client.FetchPredictions(ctx, t.input)
-		if errors.Is(err, provider.ErrNoDepartures) {
+		departureSet, err := p.Departures(ctx, t.refs)
+		// Let this error skip so other targets can attempt to fetch for data.
+		if errors.Is(err, transit.ErrNoDepartures) {
 			continue
 		}
 
 		if err != nil {
-			return fmt.Errorf("fetch predictions for %q: %w", t.arg, err)
+			return fmt.Errorf("fetch departures for %q: %w", t.arg, err)
 		}
 
-		destinationLookup, sortedDestinations := groupByDestination(departures)
-		tui.PrintArrivalScreen(client, &destinationLookup, sortedDestinations)
-		rendered++
+		if len(departureSet.Departures) > 0 {
+			destinationLookup, sortedDestinations := groupByDestination(departureSet.Departures)
+			tui.PrintArrivalScreen(&destinationLookup, sortedDestinations, a.Now())
+			rendered++
+		}
+
+		for _, s := range departureSet.Degraded() {
+			a.warnf("%v", s.Err)
+		}
 	}
 
 	if rendered == 0 {
-		return provider.ErrNoDepartures
+		return transit.ErrNoDepartures
 	}
 
 	return nil
 }
 
-// Groups predictions by destination (assumes already sorted by minutes).
+// Groups departures by destination (assumes already sorted by minutes).
 // Sometimes the same destination can have multiple lines, so we group by both.
 // Returns grouped map and returns a sorted list of destinations
-func groupByDestination(predictions []provider.Prediction) (map[string][]provider.Prediction, []string) {
-	destMap := make(map[string][]provider.Prediction)
+func groupByDestination(departures []transit.Departure) (map[string][]transit.Departure, []string) {
+	destMap := make(map[string][]transit.Departure)
 	var destinations []string
 
-	for _, p := range predictions {
-		key := fmt.Sprintf("%s-%s", p.Destination, p.Line)
+	for _, d := range departures {
+		key := fmt.Sprintf("%s-%s", d.Headsign, d.Line)
 		_, exists := destMap[key]
 		if exists {
-			destMap[key] = append(destMap[key], p)
+			destMap[key] = append(destMap[key], d)
 		} else {
-			destMap[key] = []provider.Prediction{p}
+			destMap[key] = []transit.Departure{d}
 			destinations = append(destinations, key)
 		}
 	}
@@ -215,7 +235,7 @@ func endsWatch(err error) bool {
 	}
 
 	// Loop could start before trains start operating.
-	if errors.Is(err, provider.ErrNoDepartures) {
+	if errors.Is(err, transit.ErrNoDepartures) {
 		return false
 	}
 

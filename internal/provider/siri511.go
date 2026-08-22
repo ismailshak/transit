@@ -9,22 +9,23 @@ import (
 	"io"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ismailshak/transit/internal/gtfs"
-	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
-// SFClient is the API to interact with San Francisco's 511 API
+const (
+	source511 = "bayarea511"
+)
+
+// SFClient is the API to interact with San Francisco's 511 API.
 type SFClient struct {
 	apiKey  string
 	baseURL string
 	http    *http.Client
-	now     func() time.Time
-	store   *store.Store
+	store   staticLookup
 }
 
 type sfStopPlace struct {
@@ -32,10 +33,10 @@ type sfStopPlace struct {
 	Name     string `json:"Name"`
 	Centroid struct {
 		Location struct {
-			Latitude  string
-			Longitude string
-		}
-	}
+			Latitude  string `json:"Latitude"`
+			Longitude string `json:"Longitude"`
+		} `json:"Location"`
+	} `json:"Centroid"`
 	TransportMode string `json:"TransportMode"`
 }
 
@@ -48,59 +49,75 @@ type sfStopPlacesResponse struct {
 				DataObjects       struct {
 					SiteFrame struct {
 						StopPlaces struct {
-							StopPlace []sfStopPlace
+							StopPlace []sfStopPlace `json:"StopPlace"`
 						} `json:"stopPlaces"`
-					}
+					} `json:"SiteFrame"`
 				} `json:"dataObjects"`
-			}
-		}
-	}
+			} `json:"DataObjectDelivery"`
+		} `json:"ServiceDelivery"`
+	} `json:"Siri"`
 }
 
 type sfMonitoredVehicleJourney struct {
-	LineRef         string
-	DestinationRef  string
-	DestinationName string
+	DirectionRef    string `json:"DirectionRef"`
+	LineRef         string `json:"LineRef"`
+	DestinationRef  string `json:"DestinationRef"`
+	DestinationName string `json:"DestinationName"`
 	MonitoredCall   struct {
-		AimedArrivalTime    string
-		DestinationDisplay  string
-		ExpectedArrivalTime string
-		StopPointName       string
-	}
+		AimedArrivalTime    string `json:"AimedArrivalTime"`
+		DestinationDisplay  string `json:"DestinationDisplay"`
+		ExpectedArrivalTime string `json:"ExpectedArrivalTime"`
+		StopPointName       string `json:"StopPointName"`
+	} `json:"MonitoredCall"`
 }
 
 type sfStopMonitoringResponse struct {
 	ServiceDelivery struct {
+		ResponseTimestamp      string `json:"ResponseTimestamp"`
 		StopMonitoringDelivery struct {
 			MonitoredStopVisit []struct {
-				MonitoredVehicleJourney sfMonitoredVehicleJourney
-			}
-		}
-	}
+				MonitoredVehicleJourney sfMonitoredVehicleJourney `json:"MonitoredVehicleJourney"`
+			} `json:"MonitoredStopVisit"`
+		} `json:"StopMonitoringDelivery"`
+	} `json:"ServiceDelivery"`
+}
+
+type sfTranslation struct {
+	Language string `json:"Language"`
+	Text     string `json:"Text"`
+}
+
+type sfTranslatedText struct {
+	Translations []sfTranslation `json:"Translations"`
 }
 
 type sfServiceAlertsResponse struct {
+	Header struct {
+		GtfsRealtimeVersion string `json:"GtfsRealtimeVersion"`
+		Incrementality      int    `json:"incrementality"`
+		Timestamp           int64  `json:"Timestamp"`
+	} `json:"Header"`
 	Entities []struct {
 		ID    string `json:"Id"`
 		Alert struct {
 			ActivePeriods []struct {
-				Start int64
-				End   int64
-			}
+				Start int64 `json:"Start"`
+				End   int64 `json:"End"`
+			} `json:"ActivePeriods"`
 			InformedEntities []struct {
-				AgencyID string
-				StopID   string
-			}
-			Cause           int `json:"cause"`
-			Effect          int `json:"effect"`
-			DescriptionText struct {
-				Translations []struct {
-					Language string
-					Text     string
-				}
-			}
-		}
-	}
+				AgencyID string `json:"AgencyId"`
+				StopID   string `json:"StopId"`
+				RouteID  string `json:"RouteId"`
+				Trip     struct {
+					TripID string `json:"TripId"`
+				} `json:"Trip"`
+			} `json:"InformedEntities"`
+			Cause           int              `json:"cause"`
+			Effect          int              `json:"effect"`
+			HeaderText      sfTranslatedText `json:"HeaderText"`
+			DescriptionText sfTranslatedText `json:"DescriptionText"`
+		} `json:"Alert"`
+	} `json:"Entities"`
 }
 
 func newSFHTTPError(req *http.Request, statusCode int) *HTTPError {
@@ -126,7 +143,7 @@ func (sf *SFClient) BuildRequest(ctx context.Context, method string, route ...st
 	return req, nil
 }
 
-func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *transit.Agency) ([]*transit.Stop, error) {
+func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency transit.Agency) ([]transit.Stop, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "stopplaces")
 	if err != nil {
 		return nil, err
@@ -165,7 +182,7 @@ func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *transit.Age
 		return nil, err
 	}
 
-	var stops []*transit.Stop
+	var stops []transit.Stop
 
 	for _, sp := range stopPlaces.Siri.ServiceDelivery.DataObjectDelivery.DataObjects.SiteFrame.StopPlaces.StopPlace {
 		var stopType transit.StopType
@@ -191,14 +208,14 @@ func (sf *SFClient) fetchStopsForAgency(ctx context.Context, agency *transit.Age
 			Type:      stopType,
 		}
 
-		stops = append(stops, &stop)
+		stops = append(stops, stop)
 	}
 
 	return stops, nil
 }
 
-func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.StaticData, error) {
-	bart := &transit.Agency{
+func (sf *SFClient) Seed(ctx context.Context) (*transit.Static, error) {
+	bart := transit.Agency{
 		AgencyID: "BA",
 		Language: "en",
 		Location: transit.SFSlug,
@@ -211,7 +228,7 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.StaticData, e
 		return nil, fmt.Errorf("fetch BART stops: %w", err)
 	}
 
-	cal := &transit.Agency{
+	cal := transit.Agency{
 		AgencyID: "CT",
 		Language: "en",
 		Location: transit.SFSlug,
@@ -224,61 +241,41 @@ func (sf *SFClient) FetchStaticData(ctx context.Context) (*transit.StaticData, e
 		return nil, fmt.Errorf("fetch Caltrain stops: %w", err)
 	}
 
-	staticData := transit.StaticData{
-		Agencies: []*transit.Agency{bart, cal},
+	staticData := transit.Static{
+		Agencies: []transit.Agency{bart, cal},
 		Stops:    slices.Concat(bartStops, calStops),
 	}
 
 	return &staticData, nil
 }
 
-// Removes the `-X` suffix from the line name where X is a direction (e.g. -N, -S, -E, -W)
-// and abbreviates the line name
-func (sf *SFClient) formatLine(line string) string {
-	trimmed, _, _ := strings.Cut(line, "-")
-	switch trimmed {
-	case "Yellow":
-		return "YL"
-	case "Red":
-		return "RD"
-	case "Orange":
-		return "OR"
-	case "Green":
-		return "GR"
-	case "Blue":
-		return "BL"
-	default:
-		return trimmed
-	}
-}
-
-func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]Prediction, error) {
+func (sf *SFClient) fetchDepartures(ctx context.Context, ref transit.StopRef) ([]transit.Departure, time.Time, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "StopMonitoring")
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	q := req.URL.Query()
 	q.Add("api_key", sf.apiKey)
-	q.Add("agency", in.AgencyID)
-	q.Add("stopcode", in.StopID)
+	q.Add("agency", ref.AgencyID)
+	q.Add("stopcode", ref.StopID)
 	q.Add("format", "json")
 	req.URL.RawQuery = q.Encode()
 
 	resp, err := sf.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, newSFHTTPError(req, resp.StatusCode)
+		return nil, time.Time{}, newSFHTTPError(req, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	// Remove BOM from response
@@ -288,18 +285,21 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]
 
 	err = json.Unmarshal(body, &stopMonitoring)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
-	monitoredStopVisits := len(stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit)
-	if monitoredStopVisits == 0 {
-		return nil, ErrNoDepartures
-	}
+	// A missing or malformed timestamp should only affect the age and not the departure list.
+	asOf, _ := time.Parse(time.RFC3339, stopMonitoring.ServiceDelivery.ResponseTimestamp)
 
-	predictions := make([]Prediction, 0, monitoredStopVisits)
+	visits := stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit
+	departures := make([]transit.Departure, 0, len(visits))
 
-	for _, msv := range stopMonitoring.ServiceDelivery.StopMonitoringDelivery.MonitoredStopVisit {
+	for _, msv := range visits {
 		mvj := msv.MonitoredVehicleJourney
+		if isSFGhostTrain(mvj) {
+			continue
+		}
+
 		var arrivalString string
 		// Caltain API does not return ExpectedArrivalTime, it's set to null
 		if mvj.MonitoredCall.ExpectedArrivalTime != "" {
@@ -310,81 +310,98 @@ func (sf *SFClient) fetchPrediction(ctx context.Context, in PredictionInput) ([]
 
 		arrivalTime, err := time.Parse(time.RFC3339, arrivalString)
 		if err != nil {
-			return nil, err
+			return nil, time.Time{}, err
 		}
 
-		now := sf.now()
-		arrival := strconv.Itoa(int(arrivalTime.Sub(now).Minutes()))
+		bg, fg := sfLineColor(mvj.LineRef)
 
-		p := Prediction{
-			LocationName:    mvj.MonitoredCall.StopPointName,
-			Destination:     mvj.MonitoredCall.DestinationDisplay,
-			DestinationName: mvj.DestinationName,
-			Line:            sf.formatLine(mvj.LineRef),
-			Min:             arrival,
+		d := transit.Departure{
+			Source:    source511,
+			StopID:    ref.StopID,
+			StopName:  mvj.MonitoredCall.StopPointName,
+			AgencyID:  ref.AgencyID,
+			Mode:      "",
+			Line:      mvj.LineRef,
+			LineColor: bg,
+			LineText:  fg,
+			Headsign:  mvj.MonitoredCall.DestinationDisplay,
+			Direction: mvj.DirectionRef,
+			Arrives:   arrivalTime,
 		}
 
-		predictions = append(predictions, p)
+		departures = append(departures, d)
 	}
 
-	return predictions, nil
+	return departures, asOf, nil
 }
 
-func (sf *SFClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
-	predictions := make([]Prediction, 0)
+func (sf *SFClient) Departures(ctx context.Context, refs []transit.StopRef) (transit.DepartureSet, error) {
+	var departures []transit.Departure
+	var errs []error
+	var asOf time.Time
 
-	for _, in := range input {
-		p, err := sf.fetchPrediction(ctx, in)
-		if errors.Is(err, ErrNoDepartures) {
+	for _, r := range refs {
+		d, t, err := sf.fetchDepartures(ctx, r)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("departures at %s: %w", r.Name, err))
 			continue
 		}
 
-		if err != nil {
-			return nil, fmt.Errorf("fetch predictions for %s: %w", in.StopID, err)
-		}
-
-		predictions = append(predictions, p...)
+		departures = append(departures, d...)
+		asOf = older(asOf, t)
 	}
 
-	if len(predictions) == 0 {
-		return nil, ErrNoDepartures
+	// Every stop lost its request, so there's no set to hand back and nothing to date it with.
+	if len(refs) > 0 && len(errs) == len(refs) {
+		return transit.DepartureSet{}, errors.Join(errs...)
 	}
 
-	return predictions, nil
+	return transit.DepartureSet{
+		Departures: departures,
+		Sources: []transit.SourceStatus{{
+			Source: source511,
+			AsOf:   asOf,
+			Err:    errors.Join(errs...),
+		}},
+	}, nil
 }
 
-func (sf *SFClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
-	agencies, err := sf.store.LocationAgencies(ctx, transit.SFSlug)
+func (sf *SFClient) Alerts(ctx context.Context) (transit.AlertSet, error) {
+	agencies, err := sf.store.Agencies(ctx, transit.SFSlug)
 	if err != nil {
-		return nil, err
+		return transit.AlertSet{}, err
 	}
 
-	shouldDisplayAgency := len(agencies) > 1
-
-	incidents := make([]Incident, 0, 16) // TODO: figure out a good capacity (16 is arbitrary)
+	var alerts []transit.Alert
+	var errs []error
+	var asOf time.Time
 
 	// TODO surely there's a way to fetch multiple agencies at once
 	for _, agency := range agencies {
-		var agencyName string
-		if shouldDisplayAgency {
-			agencyName = agency.Name
-		}
-
-		inc, err := sf.fetchAgencyIncidents(ctx, agency, agencyName)
+		a, t, err := sf.fetchAgencyAlerts(ctx, agency)
 		if err != nil {
-			return nil, fmt.Errorf("alerts for %s: %w", agency.AgencyID, err)
+			errs = append(errs, fmt.Errorf("alerts for %s: %w", agency.Name, err))
+			continue
 		}
 
-		incidents = append(incidents, inc...)
+		alerts = append(alerts, a...)
+		asOf = older(asOf, t)
 	}
 
-	return incidents, nil
+	return transit.AlertSet{
+		Alerts: alerts,
+		Sources: []transit.SourceStatus{{
+			Source: source511,
+			AsOf:   asOf,
+			Err:    errors.Join(errs...),
+		}},
+	}, nil
 }
 
-func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Agency, agencyName string) ([]Incident, error) {
+func (sf *SFClient) fetchAgencyAlerts(ctx context.Context, agency transit.Agency) ([]transit.Alert, time.Time, error) {
 	req, err := sf.BuildRequest(ctx, http.MethodGet, "transit", "servicealerts")
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	q := req.URL.Query()
@@ -395,18 +412,18 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 
 	resp, err := sf.http.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, newSFHTTPError(req, resp.StatusCode)
+		return nil, time.Time{}, newSFHTTPError(req, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	// Remove BOM from response
@@ -415,86 +432,139 @@ func (sf *SFClient) fetchAgencyIncidents(ctx context.Context, agency transit.Age
 	var serviceAlerts sfServiceAlertsResponse
 	err = json.Unmarshal(body, &serviceAlerts)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
-	var incidents []Incident
+	asOf := sfTimestamp(serviceAlerts.Header.Timestamp)
+
+	var alerts []transit.Alert
 
 	for _, entity := range serviceAlerts.Entities {
 		var start, end time.Time
 		if len(entity.Alert.ActivePeriods) > 0 {
-			start = time.Unix(entity.Alert.ActivePeriods[0].Start, 0)
-			end = time.Unix(entity.Alert.ActivePeriods[0].End, 0)
+			start = sfTimestamp(entity.Alert.ActivePeriods[0].Start)
+			end = sfTimestamp(entity.Alert.ActivePeriods[0].End)
 		}
 
-		var affected []string
+		var affected []transit.AlertRef
 		// TODO: StopID could be duplicated because they would have different RouteIDs * sigh *
+		// TODO: Trip.TripID needs the trips.txt join from P5b-1 before it can become a route ref
+		// Agency is on every informed entity. The alert already knows which agency is affected.
 		for _, e := range entity.Alert.InformedEntities {
 			if e.StopID != "" {
-				affected = append(affected, e.StopID) // TODO: stop name instead? hopefully not a performance hit (but maybe doesn't matter due to incidents being rare)
+				affected = append(affected, transit.AlertRef{
+					Kind: transit.RefStop,
+					ID:   e.StopID,
+				})
+			}
+
+			if e.RouteID != "" {
+				bg, fg := sfLineColor(e.RouteID)
+				affected = append(affected, transit.AlertRef{
+					Kind:      transit.RefRoute,
+					ID:        e.RouteID,
+					Color:     bg,
+					TextColor: fg,
+				})
 			}
 		}
 
-		inc := Incident{
-			ActivePeriodStart: start,                                             // TODO: Figure out what scenario triggers multiple active periods
-			ActivePeriodEnd:   end,                                               // TODO: ^ here too
-			Affected:          affected,                                          // TODO: parse informed entities
-			Agency:            agencyName,                                        // Derive from header?
-			Description:       entity.Alert.DescriptionText.Translations[0].Text, // TODO: assumes english is always first
-			DateUpdated:       time.Time{},                                       // TODO: figure out where this is
-			Type:              gtfs.ResolveGTFSAlertEffect(entity.Alert.Effect),
+		alert := transit.Alert{
+			Source:      source511,
+			Description: alertText(entity.Alert.HeaderText, entity.Alert.DescriptionText),
+			Effect:      gtfs.ResolveGTFSAlertEffect(entity.Alert.Effect),
+			AgencyID:    agency.AgencyID,
+			Affected:    affected,
+			Starts:      start, // TODO: Figure out what scenario triggers multiple active periods
+			Ends:        end,   // TODO: ^ here too
+			Updated:     asOf,
 		}
 
-		incidents = append(incidents, inc)
+		alerts = append(alerts, alert)
 	}
 
-	return incidents, nil
+	return alerts, asOf, nil
 
 }
 
-func (sf *SFClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := sf.store.MatchStops(ctx, transit.SFSlug, arg)
-	if err != nil {
-		return nil, err
+func older(a, b time.Time) time.Time {
+	if b.IsZero() {
+		return a
 	}
 
-	// TODO: report these to the caller so it can warn on different situations
-	if len(stops) == 0 {
-		return nil, nil
+	if a.IsZero() || b.Before(a) {
+		return b
 	}
 
-	if len(stops) > 5 {
-		return nil, nil
-	}
-
-	input := make([]PredictionInput, 0, len(stops))
-
-	for _, s := range stops {
-		input = append(input, PredictionInput{StopID: s.StopID, AgencyID: s.AgencyID})
-	}
-
-	return input, nil
+	return a
 }
 
-func (sf *SFClient) GetLineColor(stop string) (string, string) {
+// 511 omits a timestamp rather than sending zero, and time.Unix(0, 0) is 1970.
+func sfTimestamp(sec int64) time.Time {
+	if sec == 0 {
+		return time.Time{}
+	}
+
+	return time.Unix(sec, 0)
+}
+
+// Caltrain sends its text in HeaderText and leaves DescriptionText empty.
+// BART sends a banner like "BART.gov Alert" as the header and the real text as the description.
+func alertText(header, description sfTranslatedText) string {
+	headerText := strings.TrimSpace(englishText(header))
+	descriptionText := strings.TrimSpace(englishText(description))
+
+	if headerText == "" {
+		return descriptionText
+	}
+
+	if descriptionText == "" {
+		return headerText
+	}
+
+	return headerText + ": " + descriptionText
+}
+
+// 511 ships four languages and doesn't promise an order.
+func englishText(t sfTranslatedText) string {
+	for _, tr := range t.Translations {
+		if tr.Language == "en" {
+			return tr.Text
+		}
+	}
+
+	return ""
+}
+
+// StopRefs returns the ref 511 understands. Its stop codes are the seeded IDs verbatim.
+func (sf *SFClient) StopRefs(s transit.Stop) []transit.StopRef {
+	return []transit.StopRef{{
+		StopID:   s.StopID,
+		Name:     s.Name,
+		AgencyID: s.AgencyID,
+		Source:   source511,
+	}}
+}
+
+func sfLineColor(line string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
-	trimmed := strings.Trim(stop, " ")
+	trimmed, _, _ := strings.Cut(line, "-")
 	switch trimmed {
-	case "RD":
+	case "Red":
 		return "#ED1D24", black
-	case "OR":
+	case "Orange":
 		return "#FAA61A", black
-	case "YL":
+	case "Yellow":
 		return "#FFE600", black
-	case "GR":
+	case "Green":
 		return "#50B848", white
-	case "BL":
+	case "Blue":
 		return "#009AD9", white
 	default:
 		return white, black
 	}
 }
 
-func (sf *SFClient) IsGhostTrain(line, destination string) bool {
-	return line == "--" || destination == "NO PASSENGERS"
+func isSFGhostTrain(mvj sfMonitoredVehicleJourney) bool {
+	return mvj.LineRef == "--" || mvj.MonitoredCall.DestinationDisplay == "NO PASSENGERS"
 }

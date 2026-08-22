@@ -18,11 +18,11 @@ func TestFormatUpdatedAt(t *testing.T) {
 		},
 		"morning, single-digit day": {
 			date: time.Date(2023, time.June, 10, 7, 27, 0, 0, time.UTC),
-			want: "10 Jun 23 7:27am",
+			want: "as of 10 Jun 23 7:27am",
 		},
 		"afternoon, double-digit day": {
 			date: time.Date(2029, time.October, 11, 15, 1, 0, 0, time.UTC),
-			want: "11 Oct 29 3:01pm",
+			want: "as of 11 Oct 29 3:01pm",
 		},
 	}
 

@@ -64,7 +64,7 @@ func UnzipStaticGTFS(path string, dest string) error {
 }
 
 // ParseGTFS parses an unzipped directory that contains the GTFS Static feed
-func ParseGTFS(path string, location transit.LocationSlug, st transit.StopType, agency string) (*transit.StaticData, error) {
+func ParseGTFS(path string, location transit.LocationSlug, st transit.StopType, agency string) (*transit.Static, error) {
 	agencyFile := filepath.Join(path, "agency.txt")
 	stopsFile := filepath.Join(path, "stops.txt")
 
@@ -78,7 +78,7 @@ func ParseGTFS(path string, location transit.LocationSlug, st transit.StopType, 
 		return nil, fmt.Errorf("parse %s: %w", stopsFile, err)
 	}
 
-	static := &transit.StaticData{
+	static := &transit.Static{
 		Agencies: agencies,
 		Stops:    stops,
 	}
@@ -86,11 +86,11 @@ func ParseGTFS(path string, location transit.LocationSlug, st transit.StopType, 
 	return static, nil
 }
 
-func parseGTFSAgency(path string, location transit.LocationSlug) ([]*transit.Agency, error) {
-	agencies := make([]*transit.Agency, 0)
+func parseGTFSAgency(path string, location transit.LocationSlug) ([]transit.Agency, error) {
+	agencies := make([]transit.Agency, 0)
 	err := parseGTFSEntity(path, func(record []string, headerMap map[string]int) {
 		lang, hasLang := headerMap["agency_lang"]
-		agency := &transit.Agency{
+		agency := transit.Agency{
 			Location: location,
 			AgencyID: record[headerMap["agency_id"]],
 			Name:     record[headerMap["agency_name"]],
@@ -108,12 +108,12 @@ func parseGTFSAgency(path string, location transit.LocationSlug) ([]*transit.Age
 	return agencies, nil
 }
 
-func parseGTFSStops(path string, location transit.LocationSlug, st transit.StopType, agency string) ([]*transit.Stop, error) {
-	stops := make([]*transit.Stop, 0, 64) // Random safe-bet high number to avoid excessive reallocations
+func parseGTFSStops(path string, location transit.LocationSlug, st transit.StopType, agency string) ([]transit.Stop, error) {
+	stops := make([]transit.Stop, 0, 64) // Random safe-bet high number to avoid excessive reallocations
 	err := parseGTFSEntity(path, func(record []string, headerMap map[string]int) {
 		lat, hasLat := headerMap["stop_lat"]
 		lon, hasLon := headerMap["stop_lon"]
-		stop := &transit.Stop{
+		stop := transit.Stop{
 			Location:  location,
 			Type:      st,
 			AgencyID:  agency,

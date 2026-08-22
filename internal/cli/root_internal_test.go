@@ -10,6 +10,7 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/ui"
 )
 
@@ -71,7 +72,7 @@ func TestExitCode(t *testing.T) {
 		},
 		"upstream rejected the key": {
 			err: fmt.Errorf("at: %w",
-				fmt.Errorf("fetch predictions for 902101: %w",
+				fmt.Errorf("fetch departures for 902101: %w",
 					&provider.HTTPError{StatusCode: http.StatusUnauthorized, URL: "http://api.511.org/transit/StopMonitoring"})),
 			want: 3,
 		},
@@ -80,11 +81,11 @@ func TestExitCode(t *testing.T) {
 			want: 3,
 		},
 		"no departures anywhere": {
-			err:  fmt.Errorf("at: %w", provider.ErrNoDepartures),
+			err:  fmt.Errorf("at: %w", transit.ErrNoDepartures),
 			want: 4,
 		},
 		"upstream failure outranks no departures": {
-			err:  errors.Join(provider.ErrNoDepartures, &provider.HTTPError{StatusCode: http.StatusServiceUnavailable}),
+			err:  errors.Join(transit.ErrNoDepartures, &provider.HTTPError{StatusCode: http.StatusServiceUnavailable}),
 			want: 3,
 		},
 		"unclassified": {

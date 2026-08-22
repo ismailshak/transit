@@ -6,7 +6,7 @@ import (
 )
 
 // searchableStops is a wrapper type that implements the fuzzy matching interface to enable search
-type searchableStops []*transit.Stop
+type searchableStops []transit.Stop
 
 func (s searchableStops) Len() int            { return len(s) }
 func (s searchableStops) String(i int) string { return s[i].Name }

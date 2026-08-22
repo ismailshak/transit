@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/tui"
 	"github.com/ismailshak/transit/internal/ui"
@@ -26,12 +25,17 @@ Adds missing config properties and downloads static data for the chosen location
 				return fmt.Errorf("collect information: %w", err)
 			}
 
-			client, err := a.client()
+			p, err := a.provider()
 			if err != nil {
 				return err
 			}
 
-			if err := a.executeInitData(ctx, client, transit.LocationSlug(a.Cfg.Core.Location)); err != nil {
+			seeder, ok := p.(transit.Seeder)
+			if !ok {
+				return nil
+			}
+
+			if err := a.executeInitData(ctx, seeder, transit.LocationSlug(a.Cfg.Core.Location)); err != nil {
 				return fmt.Errorf("initialize data: %w", err)
 			}
 
@@ -136,7 +140,7 @@ func (a *App) executeInitConfig(ctx context.Context) error {
 	return nil
 }
 
-func (a *App) executeInitData(ctx context.Context, client provider.API, location transit.LocationSlug) error {
+func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, location transit.LocationSlug) error {
 	count, err := a.Store.CountStopsByLocation(ctx, location)
 	if err != nil {
 		return fmt.Errorf("count stops: %w", err)
@@ -147,14 +151,14 @@ func (a *App) executeInitData(ctx context.Context, client provider.API, location
 		return nil
 	}
 
-	var d *transit.StaticData
+	var d *transit.Static
 	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
 		SpinMessage:    "Fetching data...",
 		ErrorMessage:   "Failed to fetch data",
 		SuccessMessage: "Data fetched",
 		CallbackFn: func(ctx context.Context) error {
 			var fetchErr error
-			d, fetchErr = client.FetchStaticData(ctx)
+			d, fetchErr = seeder.Seed(ctx)
 			return fetchErr
 		},
 	})

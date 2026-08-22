@@ -13,14 +13,14 @@ import (
 
 var testLocation transit.LocationSlug = "moon"
 
-var stopsFixture = []*transit.Stop{
+var stopsFixture = []transit.Stop{
 	{StopID: "A", Name: "AAA", Location: testLocation, AgencyID: "MET", Latitude: "12.1818181", Longitude: "-332.99933", Type: "train", ParentID: ""},
 	{StopID: "B", Name: "BBB", Location: testLocation, AgencyID: "MET", Latitude: "12.1813458", Longitude: "-332.99993", Type: "train", ParentID: "A"},
 	{StopID: "C", Name: "CCC", Location: testLocation, AgencyID: "MET", Latitude: "12.1814451", Longitude: "-332.99773", Type: "train", ParentID: "B"},
 	{StopID: "D", Name: "DDD", Location: testLocation, AgencyID: "MET", Latitude: "12.1812341", Longitude: "-332.98833", Type: "train", ParentID: "C"},
 }
 
-var matchFixture = []*transit.Stop{
+var matchFixture = []transit.Stop{
 	{StopID: "STN_A07", Name: "Van Ness-UDC", Location: testLocation, AgencyID: "MET", Type: "train", ParentID: ""},
 	{StopID: "STN_J02", Name: "Van Dorn Street", Location: testLocation, AgencyID: "MET", Type: "train", ParentID: ""},
 	{StopID: "STN_A01", Name: "Metro Center", Location: testLocation, AgencyID: "MET", Type: "train", ParentID: ""},

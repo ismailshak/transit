@@ -11,6 +11,7 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -103,7 +104,7 @@ func exitCode(err error) int {
 		return 2 // Usage or configuration error
 	case errors.As(err, &httpErr):
 		return 3 // Network or upstream error
-	case errors.Is(err, provider.ErrNoDepartures):
+	case errors.Is(err, transit.ErrNoDepartures):
 		return 4 // Request was successful but there's nothing to show
 	default:
 		return 1 // Catch-all, internal error

@@ -14,37 +14,52 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/gtfs"
-	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
 )
 
 const (
 	wmataDateTimeLayout = "2006-01-02T15:04:05"
+	sourceWMATARail     = "wmata-rail"
+	agencyWMATA         = "MET"
 )
 
-// WMATAClient is the API to interact with WMATA
+// WMATAClient is the API to interact with WMATA.
 type WMATAClient struct {
-	apiKey  string
-	baseURL string
-	http    *http.Client
-	store   *store.Store
+	apiKey   string
+	baseURL  string
+	location *time.Location
+	http     *http.Client
+	now      func() time.Time
 }
 
-// WMATA's predictions API response
+type wmataTrain struct {
+	Car             string `json:"Car"`
+	Destination     string `json:"Destination"`
+	DestinationCode string `json:"DestinationCode"`
+	DestinationName string `json:"DestinationName"`
+	Group           string `json:"Group"`
+	Line            string `json:"Line"`
+	LocationCode    string `json:"LocationCode"`
+	LocationName    string `json:"LocationName"`
+	Min             string `json:"Min"`
+}
+
 type wmataPredictionsResponse struct {
-	Trains []Prediction
+	Trains []wmataTrain `json:"Trains"`
 }
 
 type wmataIncident struct {
-	Description   string
-	IncidentType  string
-	LinesAffected string
-	DateUpdated   string
+	IncidentID   string `json:"IncidentID"`
+	Description  string `json:"Description"`
+	IncidentType string `json:"IncidentType"`
+	// WMATA plans to return this as an array.
+	// https://developer.wmata.com/api-details#api=54763641281d83086473f232&operation=54763641281d830c946a3d77
+	LinesAffected string `json:"LinesAffected"`
+	DateUpdated   string `json:"DateUpdated"`
 }
 
-// WMATA's incidents API response
 type wmataIncidentsResponse struct {
-	Incidents []wmataIncident
+	Incidents []wmataIncident `json:"Incidents"`
 }
 
 func (w *WMATAClient) BuildRequest(ctx context.Context, method string, route ...string) (*http.Request, error) {
@@ -63,7 +78,7 @@ func (w *WMATAClient) BuildRequest(ctx context.Context, method string, route ...
 	return req, nil
 }
 
-func (w *WMATAClient) FetchStaticData(ctx context.Context) (*transit.StaticData, error) {
+func (w *WMATAClient) Seed(ctx context.Context) (*transit.Static, error) {
 	req, err := w.BuildRequest(ctx, http.MethodGet, "gtfs/rail-gtfs-static.zip")
 	if err != nil {
 		return nil, err
@@ -121,49 +136,105 @@ func (w *WMATAClient) FetchStaticData(ctx context.Context) (*transit.StaticData,
 		return nil, err
 	}
 
-	return gtfs.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, "MET")
+	return gtfs.ParseGTFS(feed, transit.DMVSlug, transit.TrainStation, agencyWMATA)
 }
 
-func (w *WMATAClient) FetchPredictions(ctx context.Context, input []PredictionInput) ([]Prediction, error) {
-	codes := make([]string, 0, len(input))
-	for _, i := range input {
+func (w *WMATAClient) Departures(ctx context.Context, refs []transit.StopRef) (transit.DepartureSet, error) {
+	departures, asOf, err := w.fetchDepartures(ctx, refs)
+	if err != nil {
+		return transit.DepartureSet{}, err
+	}
+
+	return transit.DepartureSet{
+		Departures: departures,
+		Sources:    []transit.SourceStatus{{Source: sourceWMATARail, AsOf: asOf}},
+	}, nil
+}
+
+func (w *WMATAClient) fetchDepartures(ctx context.Context, refs []transit.StopRef) ([]transit.Departure, time.Time, error) {
+	codes := make([]string, 0, len(refs))
+	for _, i := range refs {
 		codes = append(codes, i.StopID)
 	}
 
 	req, err := w.BuildRequest(ctx, http.MethodGet, "StationPrediction.svc/json/GetPrediction", strings.Join(codes, ","))
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	resp, err := w.http.Do(req)
 
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-
 	if resp.StatusCode != 200 {
-		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
+		return nil, time.Time{}, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
 	}
 
-	var predictions wmataPredictionsResponse
-	err = json.Unmarshal(body, &predictions)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+
+	asOf := w.now()
+
+	var predictionsResponse wmataPredictionsResponse
+	err = json.Unmarshal(body, &predictionsResponse)
 
 	if err != nil {
-		return nil, fmt.Errorf("parse predictions response: %w", err)
+		return nil, time.Time{}, fmt.Errorf("parse predictions response: %w", err)
 	}
 
-	if len(predictions.Trains) == 0 {
-		return nil, ErrNoDepartures
+	departures := make([]transit.Departure, 0, len(predictionsResponse.Trains))
+	for _, t := range predictionsResponse.Trains {
+		if isWMATAGhostTrain(t) {
+			continue
+		}
+
+		arrives, ok := railArrival(t.Min, asOf)
+		if !ok {
+			continue
+		}
+
+		bg, fg := wmataLineColor(t.Line)
+
+		departures = append(departures, transit.Departure{
+			Source:    sourceWMATARail,
+			StopID:    t.LocationCode,
+			StopName:  t.LocationName,
+			AgencyID:  agencyWMATA,
+			Mode:      "",
+			Line:      t.Line,
+			LineColor: bg,
+			LineText:  fg,
+			Headsign:  t.Destination,
+			Direction: t.Group,
+			Arrives:   arrives,
+		})
 	}
 
-	return predictions.Trains, nil
+	return departures, asOf, nil
 }
 
-func (w *WMATAClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
+func (w *WMATAClient) Alerts(ctx context.Context) (transit.AlertSet, error) {
+	alerts, err := w.fetchAlerts(ctx)
+
+	source := transit.SourceStatus{Source: sourceWMATARail, Err: err}
+
+	if err == nil {
+		source.AsOf = w.now()
+	}
+
+	return transit.AlertSet{
+		Alerts:  alerts,
+		Sources: []transit.SourceStatus{source},
+	}, nil
+}
+
+func (w *WMATAClient) fetchAlerts(ctx context.Context) ([]transit.Alert, error) {
 	req, err := w.BuildRequest(ctx, http.MethodGet, "Incidents.svc/json/Incidents")
 	if err != nil {
 		return nil, err
@@ -177,10 +248,13 @@ func (w *WMATAClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-
 	if resp.StatusCode != 200 {
 		return nil, &HTTPError{StatusCode: resp.StatusCode, URL: req.URL.String()}
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	var incidentsRes wmataIncidentsResponse
@@ -190,51 +264,51 @@ func (w *WMATAClient) FetchIncidents(ctx context.Context) ([]Incident, error) {
 		return nil, fmt.Errorf("parse incidents response: %w", err)
 	}
 
-	var incidents []Incident
-	for _, res := range incidentsRes.Incidents {
-		date, _ := time.Parse(wmataDateTimeLayout, res.DateUpdated)
-		inc := Incident{
-			Description: res.Description,
-			DateUpdated: date,
-			Affected:    parseLinesAffected(res.LinesAffected),
-			Type:        res.IncidentType,
+	alerts := make([]transit.Alert, 0, len(incidentsRes.Incidents))
+	for _, inc := range incidentsRes.Incidents {
+		// A missing or malformed timestamp should only affect the age and not the alert.
+		date, _ := time.ParseInLocation(wmataDateTimeLayout, inc.DateUpdated, w.location)
+		alert := transit.Alert{
+			Source:      sourceWMATARail,
+			AgencyID:    agencyWMATA,
+			Affected:    parseAffected(inc.LinesAffected),
+			Description: inc.Description,
+			Effect:      inc.IncidentType,
+			Updated:     date,
 		}
 
-		incidents = append(incidents, inc)
+		alerts = append(alerts, alert)
 	}
 
-	return incidents, nil
+	return alerts, nil
+
 }
 
-func (w *WMATAClient) GetPredictionInput(ctx context.Context, arg string) ([]PredictionInput, error) {
-	stops, err := w.store.MatchStops(ctx, transit.DMVSlug, arg)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: report these to the caller so it can warn on different situations
-	if len(stops) == 0 {
-		return nil, nil
-	}
-
-	if len(stops) > 5 {
-		return nil, nil
-	}
-
-	input := make([]PredictionInput, 0, len(stops))
-
-	for _, s := range stops {
-		for _, id := range formatWMATAStopID(s.StopID) {
-			input = append(input, PredictionInput{StopID: id, AgencyID: s.AgencyID})
+// StopRefs splits a station into the platform codes WMATA understands.
+func (w *WMATAClient) StopRefs(s transit.Stop) []transit.StopRef {
+	ids := formatWMATAStopID(s.StopID)
+	refs := make([]transit.StopRef, len(ids))
+	for i, id := range ids {
+		refs[i] = transit.StopRef{
+			StopID:   id,
+			Name:     s.Name,
+			AgencyID: s.AgencyID,
+			Source:   sourceWMATARail,
 		}
 	}
 
-	return input, nil
+	return refs
 }
 
-func (w *WMATAClient) GetLineColor(stop string) (string, string) {
+// All WMATA train IDs have the format `STN_X_X` where each X is a unique ID.
+// A station can have more than one ID.
+func formatWMATAStopID(id string) []string {
+	return strings.Split(id, "_")[1:]
+}
+
+func wmataLineColor(line string) (string, string) {
 	white, black := "#FFFFFF", "#000000"
-	switch stop {
+	switch line {
 	case "SV", "Silver":
 		return "#919D9D", black
 	case "RD", "Red":
@@ -252,26 +326,48 @@ func (w *WMATAClient) GetLineColor(stop string) (string, string) {
 	}
 }
 
-func (w *WMATAClient) IsGhostTrain(line, destination string) bool {
-	return line == "--" || destination == "No Passenger" || line == "No"
+func isWMATAGhostTrain(t wmataTrain) bool {
+	return t.Line == "--" || t.Line == "No" || t.DestinationName == "No Passenger"
 }
 
-// Parses the affected format in the incidents response. Semi-colon separated with a space
-func parseLinesAffected(lines string) []string {
-	splitSlice := strings.Split(strings.ReplaceAll(lines, " ", ""), ";")
+// Parses the affected format in the incidents response. Semi-colon separated with a space.
+func parseAffected(lines string) []transit.AlertRef {
+	parts := strings.Split(strings.ReplaceAll(lines, " ", ""), ";")
 
-	var filteredSlice []string
-	for _, s := range splitSlice {
-		if s != "" {
-			filteredSlice = append(filteredSlice, s)
+	var refs []transit.AlertRef
+	for _, p := range parts {
+		if p == "" {
+			continue
 		}
+
+		bg, fg := wmataLineColor(p)
+		refs = append(refs, transit.AlertRef{
+			Kind:      transit.RefRoute,
+			ID:        p,
+			Color:     bg,
+			TextColor: fg,
+		})
 	}
 
-	return filteredSlice
+	return refs
 }
 
-// All WMATA train IDs have the format `STN_X_X` where each X is a unique ID
-// (train stations can have multiple)
-func formatWMATAStopID(id string) []string {
-	return strings.Split(id, "_")[1:]
+// railArrival converts the rendered countdown WMATA returns into an absolute
+// instant in time.
+func railArrival(min string, asOf time.Time) (time.Time, bool) {
+	switch min {
+	case "BRD":
+		return asOf, true
+	case "ARR":
+		return asOf.Add(30 * time.Second), true // 30s is a guess. WMATA doesn't specify what it translates to.
+	case "---", "":
+		return time.Time{}, false
+	}
+
+	n, err := strconv.Atoi(min)
+	if err != nil {
+		return time.Time{}, false
+	}
+
+	return asOf.Add(time.Duration(n) * time.Minute), true
 }

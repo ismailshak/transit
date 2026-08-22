@@ -14,6 +14,7 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 )
 
 func TestWatchInterval(t *testing.T) {
@@ -70,7 +71,7 @@ func TestEndsWatch(t *testing.T) {
 		expected bool
 	}{
 		"no departures keeps watching": {
-			err:      provider.ErrNoDepartures,
+			err:      transit.ErrNoDepartures,
 			expected: false,
 		},
 		"429 keeps watching": {
@@ -86,7 +87,7 @@ func TestEndsWatch(t *testing.T) {
 			expected: false,
 		},
 		"wrapped 500 keeps watching": {
-			err:      fmt.Errorf("fetch predictions for %q: %w", "courth", &provider.HTTPError{StatusCode: http.StatusInternalServerError}),
+			err:      fmt.Errorf("fetch departures for %q: %w", "courth", &provider.HTTPError{StatusCode: http.StatusInternalServerError}),
 			expected: false,
 		},
 		"404 ends the watch": {
@@ -177,10 +178,10 @@ func TestEndsWatch(t *testing.T) {
 
 func fetchErr(cause error) error {
 	urlErr := &url.Error{Op: "Get", URL: "https://api.wmata.com/StationPrediction.svc/json/GetPrediction", Err: cause}
-	return fmt.Errorf("fetch predictions for %q: %w", "courth", urlErr)
+	return fmt.Errorf("fetch departures for %q: %w", "courth", urlErr)
 }
 
-// parseErr is what a truncated response body produces inside FetchPredictions.
+// parseErr is what a truncated response body produces inside fetchDepartures.
 func parseErr() error {
 	err := json.Unmarshal([]byte("{"), &struct{}{})
 	return fmt.Errorf("parse predictions response: %w", err)

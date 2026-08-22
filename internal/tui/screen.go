@@ -2,31 +2,27 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/transit"
 )
 
 // PrintArrivalScreen creates and prints a screen that resembles a station's. Will display
-// an arriving train's line, destination and arriving trains (in "minutes-away")
-func PrintArrivalScreen(client provider.API, destinationLookup *map[string][]provider.Prediction, sortedDestinations []string) {
+// an arriving train's line, destination and arriving trains (in "minutes-away").
+func PrintArrivalScreen(destinationLookup *map[string][]transit.Departure, sortedDestinations []string, now time.Time) {
 	list := getScreen()
 
 	// since this is the same for all items, fishing it out from the first one
-	header := (*destinationLookup)[sortedDestinations[0]][0].LocationName
+	header := (*destinationLookup)[sortedDestinations[0]][0].StopName
 
 	items := []string{}
 	items = append(items, genHeader(header))
 
 	for _, d := range sortedDestinations {
-		destination := (*destinationLookup)[d]
-		if client.IsGhostTrain(destination[0].Line, destination[0].Destination) {
-			continue
-		}
-
-		item := genRow(client, destination)
-		items = append(items, item)
+		items = append(items, genRow((*destinationLookup)[d], now))
 	}
 
 	out := list.Render(
@@ -57,23 +53,22 @@ func genHeader(header string) string {
 }
 
 // Generates a row printed on the screen
-func genRow(client provider.API, destination []provider.Prediction) string {
-	formattedLine := genLine(client, destination[0].Line)
-	formattedDest := genDestination(destination[0].Destination)
-	formattedMins := genTimeList(destination)
+func genRow(destination []transit.Departure, now time.Time) string {
+	formattedLine := genLine(destination[0])
+	formattedDest := genDestination(destination[0].Headsign)
+	formattedMins := genTimeList(destination, now)
 
 	return lipgloss.JoinHorizontal(lipgloss.Left, formattedLine, formattedDest, formattedMins)
 }
 
 // Generate and color a metro's line
-func genLine(client provider.API, line string) string {
-	bg, fg := client.GetLineColor(line)
+func genLine(d transit.Departure) string {
 	return lipgloss.NewStyle().
 		Bold(true).
-		Background(lipgloss.Color(bg)).
-		Foreground(lipgloss.Color(fg)).
+		Background(lipgloss.Color(d.LineColor)).
+		Foreground(lipgloss.Color(d.LineText)).
 		Padding(0, 1).
-		Render(line)
+		Render(d.Line)
 }
 
 // Generate a formatted (and padded) destination item
@@ -87,19 +82,24 @@ func genDestination(destination string) string {
 }
 
 // Generates a comma separated list of formatted minutes until
-func genTimeList(destination []provider.Prediction) string {
+func genTimeList(destination []transit.Departure, now time.Time) string {
 	formatted := []string{}
 	for _, d := range destination {
-		formatted = append(formatted, genTimeEntry(d.Min))
+		formatted = append(formatted, genTimeEntry(d.Arrives, now))
 	}
 
 	return strings.Join(formatted, ",")
 }
 
 // Generate a formatted entry for a single ETA
-func genTimeEntry(time string) string {
+func genTimeEntry(arrives, now time.Time) string {
 	return lipgloss.NewStyle().
 		Foreground(Orange).
 		Align(lipgloss.Right).
-		Render(time)
+		Render(minutesAway(arrives, now))
+}
+
+func minutesAway(arrives, now time.Time) string {
+	mins := int(arrives.Sub(now).Round(time.Minute) / time.Minute)
+	return strconv.Itoa(max(mins, 0))
 }
