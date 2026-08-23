@@ -11,6 +11,7 @@ import (
 	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
+	"github.com/ismailshak/transit/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -19,10 +20,9 @@ import (
 type App struct {
 	Cfg   *config.Config
 	Store *store.Store
-	Out   io.Writer
+	Out   *ui.Terminal
 	Err   io.Writer
 	Now   func() time.Time
-	Width func() int // The terminal's width. Zero when Out isn't a terminal.
 
 	// Bound to --config in newRootCmd.
 	// Empty means the default location.

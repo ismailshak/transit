@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
@@ -58,7 +59,14 @@ func (a *App) executeAt(ctx context.Context, p transit.Provider, args []string) 
 		return err
 	}
 
-	return a.renderDepartures(ctx, p, targets)
+	boards, err := a.renderDepartures(ctx, p, targets)
+	if err != nil {
+		return err
+	}
+
+	a.Out.Print(boards)
+
+	return nil
 }
 
 func (a *App) watchAt(ctx context.Context, p transit.Provider, args []string) error {
@@ -72,20 +80,20 @@ func (a *App) watchAt(ctx context.Context, p transit.Provider, args []string) er
 		return err
 	}
 
-	message := render.Bold(fmt.Sprintf("Refreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
+	message := render.Bold(fmt.Sprintf("\nRefreshing station arrivals every %v. Press Ctrl+C to quit.", interval))
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	buffer := render.NewBuffer()
-	buffer.StartAlternateBuffer()
-	defer buffer.StopAlternateBuffer()
+	if err := a.Out.Enter(); err != nil {
+		return fmt.Errorf("open alternate buffer: %w", err)
+	}
+
+	defer func() { _ = a.Out.Exit() }()
 
 	for {
-		buffer.RefreshScreen()
-		_, _ = fmt.Fprintln(a.Out, message)
-
-		if err := a.renderDepartures(ctx, p, targets); err != nil {
+		boards, err := a.renderDepartures(ctx, p, targets)
+		if err != nil {
 			if endsWatch(err) {
 				return err
 			}
@@ -94,6 +102,8 @@ func (a *App) watchAt(ctx context.Context, p transit.Provider, args []string) er
 				a.errorf("%s", err)
 			}
 		}
+
+		a.Out.Draw(message + "\n" + boards)
 
 		select {
 		case <-ctx.Done():
@@ -143,8 +153,10 @@ func (a *App) resolveStops(ctx context.Context, p transit.Provider, args []strin
 	return targets, nil
 }
 
-func (a *App) renderDepartures(ctx context.Context, p transit.Provider, targets []target) error {
-	var rendered int
+// renderDepartures returns every target's board as one frame. It doesn't write so
+// the caller can decide between a redraw and an append.
+func (a *App) renderDepartures(ctx context.Context, p transit.Provider, targets []target) (string, error) {
+	var boards []string
 	for _, t := range targets {
 		departureSet, err := p.Departures(ctx, t.refs)
 		// Let this error skip so other targets can attempt to fetch for data.
@@ -153,12 +165,11 @@ func (a *App) renderDepartures(ctx context.Context, p transit.Provider, targets 
 		}
 
 		if err != nil {
-			return fmt.Errorf("fetch departures for %q: %w", t.arg, err)
+			return "", fmt.Errorf("fetch departures for %q: %w", t.arg, err)
 		}
 
 		if len(departureSet.Departures) > 0 {
-			a.print(render.Board{Set: departureSet, Now: a.Now()})
-			rendered++
+			boards = append(boards, render.Board{Set: departureSet, Now: a.Now()}.String())
 		}
 
 		for _, s := range departureSet.Degraded() {
@@ -166,11 +177,11 @@ func (a *App) renderDepartures(ctx context.Context, p transit.Provider, targets 
 		}
 	}
 
-	if rendered == 0 {
-		return transit.ErrNoDepartures
+	if len(boards) == 0 {
+		return "", transit.ErrNoDepartures
 	}
 
-	return nil
+	return strings.Join(boards, "\n") + "\n", nil
 }
 
 func watchInterval(seconds int) (time.Duration, error) {

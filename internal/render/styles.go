@@ -1,7 +1,6 @@
-// Package render contains functions that print pretty output to the terminal.
+// Package render is responsible for generating pretty output intended for a terminal.
 //
-// Generally encompasses functions that are transit's user interface, where visual aesthetic matters.
-// Regular messaging should be deferred to the `cli`.
+// Nothing here writes to a descriptor directly and package [ui] is in charge of that.
 package render
 
 import "github.com/charmbracelet/lipgloss"

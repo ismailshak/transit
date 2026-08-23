@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ismailshak/transit/internal/ui"
 )
 
 type testApp struct {
@@ -22,7 +24,7 @@ func newTestApp(t *testing.T) *testApp {
 	out := &bytes.Buffer{}
 	errOut := &bytes.Buffer{}
 	app := &testApp{
-		App:  &App{Out: out, Err: errOut, Now: time.Now, Width: func() int { return 80 }},
+		App:  &App{Out: ui.NewTerminal(out), Err: errOut, Now: time.Now},
 		t:    t,
 		out:  out,
 		err:  errOut,
