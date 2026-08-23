@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"sort"
 	"time"
 
 	"github.com/ismailshak/transit/internal/config"
@@ -158,8 +157,7 @@ func (a *App) renderDepartures(ctx context.Context, p transit.Provider, targets 
 		}
 
 		if len(departureSet.Departures) > 0 {
-			destinationLookup, sortedDestinations := groupByDestination(departureSet.Departures)
-			render.PrintArrivalScreen(&destinationLookup, sortedDestinations, a.Now())
+			a.print(render.Board{Set: departureSet, Now: a.Now()})
 			rendered++
 		}
 
@@ -175,31 +173,6 @@ func (a *App) renderDepartures(ctx context.Context, p transit.Provider, targets 
 	return nil
 }
 
-// Groups departures by destination (assumes already sorted by minutes).
-// Sometimes the same destination can have multiple lines, so we group by both.
-// Returns grouped map and returns a sorted list of destinations.
-func groupByDestination(departures []transit.Departure) (map[string][]transit.Departure, []string) {
-	destMap := make(map[string][]transit.Departure)
-	var destinations []string
-
-	for _, d := range departures {
-		key := fmt.Sprintf("%s-%s", d.Headsign, d.Line)
-		_, exists := destMap[key]
-		if exists {
-			destMap[key] = append(destMap[key], d)
-		} else {
-			destMap[key] = []transit.Departure{d}
-			destinations = append(destinations, key)
-		}
-	}
-
-	sort.Strings(destinations)
-
-	return destMap, destinations
-}
-
-// watchInterval converts the configured seconds into a duration. A non-positive
-// value would panic time.NewTicker, and config set already refuses one.
 func watchInterval(seconds int) (time.Duration, error) {
 	if seconds <= 0 {
 		return 0, fmt.Errorf("%w: watch_interval must be greater than 0", config.ErrInvalid)
