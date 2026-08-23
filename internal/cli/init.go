@@ -71,16 +71,16 @@ func (a *App) getConfiguredLocation(ctx context.Context) (string, error) {
 	selection, err := tui.Select(ctx, "Select a location", choices)
 	if err != nil {
 		if errors.Is(err, tui.ErrCancelled) {
-			a.print(render.Skipped("Cancelled... Exiting"))
+			a.println(render.Skipped("Cancelled... Exiting"))
 			return "", tui.ErrCancelled
 		}
 
 		if errors.Is(err, tui.ErrNoSelection) {
-			a.print(render.Skipped("Nothing selected... Exiting"))
+			a.println(render.Skipped("Nothing selected... Exiting"))
 			return "", tui.ErrNoSelection
 		}
 
-		a.print(render.Failed("Failed to select location"))
+		a.println(render.Failed("Failed to select location"))
 		return "", err
 	}
 
@@ -102,16 +102,16 @@ func (a *App) confirmConfiguredKey(ctx context.Context, location string) error {
 	key, err := tui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
 	if err != nil {
 		if errors.Is(err, tui.ErrCancelled) {
-			a.print(render.Skipped("Cancelled... Exiting"))
+			a.println(render.Skipped("Cancelled... Exiting"))
 			return err
 		}
 
 		if errors.Is(err, tui.ErrNoInput) {
-			a.print(render.Failed("No input... Exiting"))
+			a.println(render.Failed("No input... Exiting"))
 			return err
 		}
 
-		a.print(render.Failed("Failed to capture input"))
+		a.println(render.Failed("Failed to capture input"))
 		return err
 	}
 
@@ -129,14 +129,14 @@ func (a *App) executeInitConfig(ctx context.Context) error {
 		return err
 	}
 
-	a.print(render.Success("Location set to " + location))
+	a.println(render.Success("Location set to " + location))
 
 	err = a.confirmConfiguredKey(ctx, location)
 	if err != nil {
 		return err
 	}
 
-	a.print(render.Success("API key set"))
+	a.println(render.Success("API key set"))
 	return nil
 }
 
@@ -147,7 +147,7 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	}
 
 	if count > 0 {
-		a.print(render.Success("Data initialized"))
+		a.println(render.Success("Data initialized"))
 		return nil
 	}
 
@@ -162,16 +162,16 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	})
 
 	if errors.Is(err, tui.ErrCancelled) {
-		a.print(render.Skipped("Cancelled... Exiting"))
+		a.println(render.Skipped("Cancelled... Exiting"))
 		return tui.ErrCancelled
 	}
 
 	if err != nil {
-		a.print(render.Failed("Failed to fetch data"))
+		a.println(render.Failed("Failed to fetch data"))
 		return fmt.Errorf("fetch static data: %w", err)
 	}
 
-	a.print(render.Success("Data fetched"))
+	a.println(render.Success("Data fetched"))
 
 	err = tui.WithSpinner(ctx, &tui.SpinnerOptions{
 		SpinMessage: "Saving data...",
@@ -189,17 +189,17 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	})
 
 	if errors.Is(err, tui.ErrCancelled) {
-		a.print(render.Skipped("Cancelled... Exiting"))
+		a.println(render.Skipped("Cancelled... Exiting"))
 		return tui.ErrCancelled
 	}
 
 	if err != nil {
-		a.print(render.Failed("Failed to save data"))
+		a.println(render.Failed("Failed to save data"))
 		return fmt.Errorf("insert data: %w", err)
 	}
 
-	a.print(render.Success("Data saved"))
-	a.print("\nSuccessfully initialized. Use transit --help for commands and examples")
+	a.println(render.Success("Data saved"))
+	a.println("\nSuccessfully initialized. Use transit --help for commands and examples")
 
 	return nil
 }

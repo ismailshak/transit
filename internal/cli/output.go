@@ -23,7 +23,7 @@ func (a *App) warnf(format string, args ...any) {
 	_, _ = fmt.Fprintln(a.Err, warnPrefix, fmt.Sprintf(format, args...))
 }
 
-// print writes to Out.
-func (a *App) print(args ...any) {
+// println writes to Out.
+func (a *App) println(args ...any) {
 	_, _ = fmt.Fprintln(a.Out, args...)
 }
