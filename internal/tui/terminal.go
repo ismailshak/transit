@@ -1,4 +1,4 @@
-// Package ui owns everything that writes to the user's terminal (specifically, stdout).
+// Package tui owns everything that writes to the user's terminal (specifically, stdout).
 //
 // Prompts, selection lists, spinners and the terminal interface live and here.
 package tui
