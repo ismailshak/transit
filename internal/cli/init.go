@@ -194,11 +194,11 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	}
 
 	if err != nil {
-		a.print(render.Failed("Failed to fetch data"))
+		a.print(render.Failed("Failed to save data"))
 		return fmt.Errorf("insert data: %w", err)
 	}
 
-	a.print(render.Success("Data fetched"))
+	a.print(render.Success("Data saved"))
 	a.print("\nSuccessfully initialized. Use transit --help for commands and examples")
 
 	return nil
