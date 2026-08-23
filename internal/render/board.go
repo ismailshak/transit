@@ -11,10 +11,6 @@ import (
 )
 
 var (
-	boardStyle = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, false, false, false).
-			BorderForeground(Subtle)
-
 	headerStyle = lipgloss.NewStyle().
 			Bold(true).
 			BorderStyle(lipgloss.NormalBorder()).
@@ -55,7 +51,7 @@ func (b Board) String() string {
 		}
 	}
 
-	return boardStyle.Render(lipgloss.JoinVertical(lipgloss.Left, items...))
+	return lipgloss.JoinVertical(lipgloss.Left, items...)
 }
 
 // stopGroup is one stop's section. A row is the departures sharing a line and headsign.
