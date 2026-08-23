@@ -1,6 +1,11 @@
 package render
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+
+	"golang.org/x/term"
+)
 
 // TerminalBuffer is an alternate buffer drawn on top of the active terminal screen.
 // This buffer will not erase the user's current terminal, but render itself
@@ -37,4 +42,16 @@ func (b *TerminalBuffer) RefreshScreen() {
 	fmt.Println("\x1b[0;0H")
 	// Clear from cursor to bottom of screen
 	fmt.Println("\x1b[J")
+}
+
+// Temporary home for this
+
+// TerminalWidth returns the width of f's terminal. It returns 0 when f isn't a terminal.
+func TerminalWidth(f *os.File) int {
+	w, _, err := term.GetSize(int(f.Fd()))
+	if err != nil {
+		return 0
+	}
+
+	return w
 }

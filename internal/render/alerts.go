@@ -2,65 +2,115 @@ package render
 
 import (
 	"fmt"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ismailshak/transit/internal/transit"
-	"golang.org/x/term"
 )
 
 const (
-	dateFormat = "2 Jan 06 3:04pm"
+	dateFormat               = "2 Jan 06 3:04pm"
+	maxAlertDescriptionWidth = 72
 )
 
-func PrintAlerts(alertSet transit.AlertSet, showAgency bool) {
-	if len(alertSet.Alerts) == 0 {
-		fmt.Println("No alerts reported")
-		return
-	}
+var (
+	boxStyle = lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder(), true, true, true, true).
+			Padding(1, 1).
+			BorderForeground(Subtle)
 
-	maxWidth := 80
-	termWidth, _, _ := term.GetSize(int(os.Stdin.Fd()))
-	width := min(max(termWidth-5, 0), maxWidth) // -5 for some padding
+	effectStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			Bold(true)
 
-	for _, a := range alertSet.Alerts {
-		render(a, width, showAgency)
-	}
+	affectedStyle = lipgloss.NewStyle().
+			Padding(0, 1).
+			Margin(0, 1)
 
-	// TODO: Print once
-	if updated := formatUpdatedAt(alertSet.AsOf()); updated != "" {
-		fmt.Println(lipgloss.NewStyle().Margin(1, 1).Faint(true).Render(updated))
-	}
+	descriptionStyle = lipgloss.NewStyle().
+				Margin(1, 1, 0)
+
+	asOfStyle = lipgloss.NewStyle().
+			Margin(0, 1).
+			Faint(true)
+
+	activePeriodStyle = lipgloss.NewStyle().
+				Margin(1, 1, 0)
+
+	agencyStyle = lipgloss.NewStyle().
+			Foreground(Cyan)
+)
+
+// Alerts renders a notice box for each alert in the set.
+type Alerts struct {
+	Set        transit.AlertSet
+	Width      int // The terminal's width. Will use internal fallback when zero.
+	ShowAgency bool
 }
 
-func formatUpdatedAt(date time.Time) string {
-	if date.IsZero() {
-		return ""
+func (a Alerts) String() string {
+	if len(a.Set.Alerts) == 0 {
+		return "No alerts reported"
 	}
 
-	return "as of " + date.Format(dateFormat)
+	descriptionWidth := maxAlertDescriptionWidth
+	if a.Width > 0 {
+		descriptionWidth = min(
+			a.Width-boxStyle.GetHorizontalFrameSize()-descriptionStyle.GetHorizontalMargins(),
+			maxAlertDescriptionWidth,
+		)
+	}
+
+	items := make([]string, 0, len(a.Set.Alerts))
+	for _, alert := range a.Set.Alerts {
+		items = append(items, box(alert, descriptionWidth, a.ShowAgency))
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, items...)
 }
 
-func formatStartEnd(start, end time.Time) string {
-	if start.IsZero() && end.IsZero() {
-		return ""
+func box(alert transit.Alert, width int, showAgency bool) string {
+	blocks := []string{head(alert), descriptionStyle.Width(width).Render(alert.Description)}
+
+	if f := footer(alert, showAgency); f != "" {
+		blocks = append(blocks, f)
 	}
 
-	if start.IsZero() {
-		return fmt.Sprintf("Ends: %s", end.Format(dateFormat))
-	}
-
-	if end.IsZero() {
-		return fmt.Sprintf("Starts: %s", start.Format(dateFormat))
-	}
-
-	return fmt.Sprintf("%s - %s", start.Format(dateFormat), end.Format(dateFormat))
+	return boxStyle.Render(lipgloss.JoinVertical(lipgloss.Left, blocks...))
 }
 
-func genFooter(alert *transit.Alert, showAgency bool) string {
-	duration := formatStartEnd(alert.Starts, alert.Ends)
+func head(alert transit.Alert) string {
+	blocks := []string{effectStyle.Render(alert.Effect)}
+
+	for _, a := range alert.Affected {
+		blocks = append(blocks, ref(a))
+	}
+
+	if asOf := formatUpdatedAt(alert.Updated); asOf != "" {
+		blocks = append(blocks, asOfStyle.Render(asOf))
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Center, blocks...)
+}
+
+// ref is one entity's badge. Only the branded ones carry the agency's colors.
+func ref(a transit.AlertRef) string {
+	if a.Kind == transit.RefRoute {
+		return affectedStyle.
+			Background(lipgloss.Color(a.Color)).
+			Foreground(lipgloss.Color(a.TextColor)).
+			Render(a.ID)
+	}
+
+	return affectedStyle.
+		Border(lipgloss.NormalBorder(), true, true).
+		BorderForeground(Subtle).
+		Foreground(Subtle).
+		Render(a.ID)
+}
+
+func footer(alert transit.Alert, showAgency bool) string {
+	duration := formatStartEnd(alert)
 
 	var agencyID string
 	if showAgency {
@@ -73,7 +123,7 @@ func genFooter(alert *transit.Alert, showAgency bool) string {
 
 	var activePeriod string
 	if duration != "" {
-		activePeriod = lipgloss.NewStyle().Margin(1, 1, 0).Render(duration)
+		activePeriod = activePeriodStyle.Render(duration)
 	}
 
 	var agencyHorMargin int
@@ -85,52 +135,32 @@ func genFooter(alert *transit.Alert, showAgency bool) string {
 
 	var agency string
 	if agencyID != "" {
-		agency = lipgloss.NewStyle().Margin(1, agencyHorMargin, 0).Foreground(lipgloss.Color("30")).Render(agencyID)
+		agency = agencyStyle.Margin(1, agencyHorMargin, 0).Render(agencyID)
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Left, activePeriod, agency)
+	return lipgloss.JoinHorizontal(lipgloss.Top, activePeriod, agency)
 }
 
-func render(alert transit.Alert, width int, showAgency bool) {
-	list := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), true, true, true, true).
-		Padding(1, 1).
-		BorderForeground(Subtle)
-
-	effect := lipgloss.NewStyle().Padding(0, 1).Bold(true).Render(alert.Effect)
-
-	affected := genAffected(alert.Affected)
-
-	header := lipgloss.JoinHorizontal(lipgloss.Left, effect, affected)
-
-	description := lipgloss.NewStyle().Width(width).Margin(1, 1, 0).Render(alert.Description)
-
-	footer := genFooter(&alert, showAgency)
-
-	// TODO Clean up UI
-	if footer == "" {
-		out := list.Render(lipgloss.JoinVertical(lipgloss.Left, header, description))
-		fmt.Println(out)
-	} else {
-		out := list.Render(lipgloss.JoinVertical(lipgloss.Left, header, description, footer))
-		fmt.Println(out)
+func formatUpdatedAt(date time.Time) string {
+	if date.IsZero() {
+		return ""
 	}
+
+	return "as of " + date.Format(dateFormat)
 }
 
-func genAffected(affected []transit.AlertRef) string {
-	builder := strings.Builder{}
-
-	for _, a := range affected {
-		style := lipgloss.NewStyle().Padding(0, 1).Margin(0, 1)
-
-		if a.Kind == transit.RefRoute {
-			style = style.Background(lipgloss.Color(a.Color)).Foreground(lipgloss.Color(a.TextColor))
-		} else {
-			style = style.Border(lipgloss.NormalBorder(), true, true).BorderForeground(Subtle).Foreground(Subtle)
-		}
-
-		builder.WriteString(style.Render(a.ID))
+func formatStartEnd(alert transit.Alert) string {
+	if alert.Starts.IsZero() && alert.Ends.IsZero() {
+		return ""
 	}
 
-	return builder.String()
+	if alert.Starts.IsZero() {
+		return fmt.Sprintf("Ends: %s", alert.Ends.Format(dateFormat))
+	}
+
+	if alert.Ends.IsZero() {
+		return fmt.Sprintf("Starts: %s", alert.Starts.Format(dateFormat))
+	}
+
+	return fmt.Sprintf("%s - %s", alert.Starts.Format(dateFormat), alert.Ends.Format(dateFormat))
 }

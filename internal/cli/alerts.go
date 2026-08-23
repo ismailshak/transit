@@ -45,7 +45,7 @@ func (a *App) executeAlerts(ctx context.Context, p transit.Provider) error {
 		return fmt.Errorf("look up agencies: %w", err)
 	}
 
-	render.PrintAlerts(alertSet, len(agencies) > 1)
+	a.print(render.Alerts{Set: alertSet, Width: a.Width(), ShowAgency: len(agencies) > 1})
 
 	for _, s := range degraded {
 		a.warnf("%v", s.Err)

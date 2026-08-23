@@ -11,6 +11,7 @@ import (
 
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/provider"
+	"github.com/ismailshak/transit/internal/render"
 	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/ui"
 	"github.com/spf13/cobra"
@@ -65,9 +66,13 @@ func (a *App) newRootCmd() *cobra.Command {
 	return rootCmd
 }
 
+func width() int {
+	return render.TerminalWidth(os.Stdout)
+}
+
 // Run builds the app, runs the command tree, and returns a process exit code.
 func Run() int {
-	app := &App{Out: os.Stdout, Err: os.Stderr, Now: time.Now}
+	app := &App{Out: os.Stdout, Err: os.Stderr, Now: time.Now, Width: width}
 	// Too late to change the exit code, but logging to make debugging this scenario
 	// easier
 	defer func() {

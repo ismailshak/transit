@@ -22,6 +22,7 @@ type App struct {
 	Out   io.Writer
 	Err   io.Writer
 	Now   func() time.Time
+	Width func() int // The terminal's width. Zero when Out isn't a terminal.
 
 	// Bound to --config in newRootCmd.
 	// Empty means the default location.

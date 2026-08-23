@@ -22,7 +22,7 @@ func newTestApp(t *testing.T) *testApp {
 	out := &bytes.Buffer{}
 	errOut := &bytes.Buffer{}
 	app := &testApp{
-		App:  &App{Out: out, Err: errOut, Now: time.Now},
+		App:  &App{Out: out, Err: errOut, Now: time.Now, Width: func() int { return 80 }},
 		t:    t,
 		out:  out,
 		err:  errOut,
