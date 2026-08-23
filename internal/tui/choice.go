@@ -15,6 +15,11 @@ var ErrNoSelection = errors.New("nothing selected")
 // ErrNoInput is returned when the user submits a prompt without entering anything.
 var ErrNoInput = errors.New("no input")
 
+// ErrNotInteractive is returned by [Terminal.Select] and [Terminal.Password] when
+// the output isn't a terminal. A spinner degrades but still executes the work since
+// it just decorates.
+var ErrNotInteractive = errors.New("not a terminal")
+
 type Choice struct {
 	// Key is the unique identifier for the item and will be the value returned when the user selects an item
 	Key string

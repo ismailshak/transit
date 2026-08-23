@@ -2,6 +2,7 @@ package cli
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/ismailshak/transit/internal/transit"
@@ -39,4 +40,44 @@ func TestToChoices(t *testing.T) {
 			}
 		})
 	}
+}
+
+// newTestApp writes to a bytes.Buffer, so these run the same path as a piped `transit init`.
+func TestInitWithoutTerminal(t *testing.T) {
+	t.Run("location picker mentions resolution", func(t *testing.T) {
+		app := newTestApp(t)
+
+		code := app.run("init")
+		if code != 2 {
+			t.Fatalf("expected exit code 2 but got %d (output %q)", code, app.out)
+		}
+
+		if !strings.Contains(app.err.String(), "transit config set core.location") {
+			t.Errorf("expected the alternative on Err but got %q", app.err)
+		}
+
+		if strings.Contains(app.out.String(), "\x1b") {
+			t.Errorf("expected no escape sequences on Out but got %q", app.out)
+		}
+	})
+
+	t.Run("api key prompt mentions resolution", func(t *testing.T) {
+		app := newTestApp(t)
+
+		if code := app.run("config", "set", "core.location", "dmv"); code != 0 {
+			t.Fatalf("expected exit code 0 but got %d (output %q)", code, app.out)
+		}
+
+		app.out.Reset()
+		app.err.Reset()
+
+		code := app.run("init")
+		if code != 2 {
+			t.Fatalf("expected exit code 2 but got %d (output %q)", code, app.out)
+		}
+
+		if !strings.Contains(app.err.String(), "transit config set dmv.api_key") {
+			t.Errorf("expected the alternative on Err but got %q", app.err)
+		}
+	})
 }
