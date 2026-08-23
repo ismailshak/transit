@@ -103,6 +103,7 @@ func exitCode(err error) int {
 		errors.Is(err, provider.ErrMissingAPIKey),
 		errors.Is(err, tui.ErrNoSelection),
 		errors.Is(err, tui.ErrNoInput),
+		errors.Is(err, tui.ErrNotInteractive),
 		errors.Is(err, config.ErrInvalid):
 		return 2 // Usage or configuration error
 	case errors.As(err, &httpErr):

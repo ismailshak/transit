@@ -68,16 +68,17 @@ func (a *App) getConfiguredLocation(ctx context.Context) (string, error) {
 
 	choices := toChoices(locations)
 
-	selection, err := tui.Select(ctx, "Select a location", choices)
+	selection, err := a.Out.Select(ctx, "Select a location", choices)
 	if err != nil {
-		if errors.Is(err, tui.ErrCancelled) {
+		switch {
+		case errors.Is(err, tui.ErrCancelled):
 			a.println(render.Skipped("Cancelled... Exiting"))
 			return "", tui.ErrCancelled
-		}
-
-		if errors.Is(err, tui.ErrNoSelection) {
+		case errors.Is(err, tui.ErrNoSelection):
 			a.println(render.Skipped("Nothing selected... Exiting"))
 			return "", tui.ErrNoSelection
+		case errors.Is(err, tui.ErrNotInteractive):
+			return "", fmt.Errorf("%w: set a location with `transit config set core.location <location>`", err)
 		}
 
 		a.println(render.Failed("Failed to select location"))
@@ -99,16 +100,17 @@ func (a *App) confirmConfiguredKey(ctx context.Context, location string) error {
 		return nil
 	}
 
-	key, err := tui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
+	key, err := a.Out.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
 	if err != nil {
-		if errors.Is(err, tui.ErrCancelled) {
+		switch {
+		case errors.Is(err, tui.ErrCancelled):
 			a.println(render.Skipped("Cancelled... Exiting"))
-			return err
-		}
-
-		if errors.Is(err, tui.ErrNoInput) {
+			return tui.ErrCancelled
+		case errors.Is(err, tui.ErrNoSelection):
 			a.println(render.Failed("No input... Exiting"))
-			return err
+			return tui.ErrNoSelection
+		case errors.Is(err, tui.ErrNotInteractive):
+			return fmt.Errorf("%w: set one with `transit config set %s.api_key <key>`", err, location)
 		}
 
 		a.println(render.Failed("Failed to capture input"))
@@ -152,7 +154,7 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	}
 
 	var d *transit.Static
-	err = tui.WithSpinner(ctx, &tui.SpinnerOptions{
+	err = a.Out.WithSpinner(ctx, &tui.SpinnerOptions{
 		SpinMessage: "Fetching data...",
 		CallbackFn: func(ctx context.Context) error {
 			var fetchErr error
@@ -173,7 +175,7 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 
 	a.println(render.Success("Data fetched"))
 
-	err = tui.WithSpinner(ctx, &tui.SpinnerOptions{
+	err = a.Out.WithSpinner(ctx, &tui.SpinnerOptions{
 		SpinMessage: "Saving data...",
 		CallbackFn: func(ctx context.Context) error {
 			if insertErr := a.Store.InsertAgencies(ctx, d.Agencies); insertErr != nil {

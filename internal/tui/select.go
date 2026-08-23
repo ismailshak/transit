@@ -14,7 +14,13 @@ import (
 // until the user picks one or backs out. On success it returns the matching
 // Choice.Key. On cancel (Esc, Ctrl+C, or a cancelled ctx) it returns
 // ErrCancelled. On confirming with nothing matched returns ErrNoSelection.
-func Select(ctx context.Context, title string, choices []Choice) (string, error) {
+// When the output isn't a terminal it returns ErrNotInteractive without
+// rendering anything.
+func (s *Terminal) Select(ctx context.Context, title string, choices []Choice) (string, error) {
+	if !s.tty {
+		return "", ErrNotInteractive
+	}
+
 	listItems := convertListItems(choices)
 	keys := &delegateKeyMap{
 		choose: key.NewBinding(
@@ -31,6 +37,7 @@ func Select(ctx context.Context, title string, choices []Choice) (string, error)
 		listModel{list: l},
 		tea.WithContext(ctx),
 		tea.WithAltScreen(),
+		tea.WithOutput(s.w),
 	).Run()
 
 	if errors.Is(err, context.Canceled) {

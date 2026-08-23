@@ -61,6 +61,11 @@ func TestExitCode(t *testing.T) {
 			err:  fmt.Errorf("collect information: %w", tui.ErrNoInput),
 			want: 2,
 		},
+		"prompted without a terminal": {
+			err: fmt.Errorf("collect information: %w",
+				fmt.Errorf("%w: set a location with `transit config set core.location <location>`", tui.ErrNotInteractive)),
+			want: 2,
+		},
 		"unreadable config": {
 			err: fmt.Errorf("load config: %w",
 				fmt.Errorf("%w: %w", config.ErrInvalid, errors.New("yaml: line 3: mapping values are not allowed"))),

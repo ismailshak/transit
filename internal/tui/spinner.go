@@ -16,12 +16,18 @@ type SpinnerOptions struct {
 	CallbackFn func(ctx context.Context) error
 }
 
-// WithSpinner animates a spinner while opts.CallbackFn runs, then swaps it
-// for a success or error message depending on the result. Blocks until
+// WithSpinner animates a spinner while opts.CallbackFn. Blocks until
 // CallbackFn returns and the spinner has cleaned up after itself. Cancelling
 // (Esc, Ctrl+C, or a cancelled ctx) cancels the context handed to
 // opts.CallbackFn and returns ErrCancelled once it stops.
-func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
+//
+// When the output isn't a terminal the callback is still executed (and may return
+// ErrCancelled via ctx) but the animation is skipped.
+func (s *Terminal) WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
+	if !s.tty {
+		return s.withoutSpinner(ctx, opts)
+	}
+
 	sp := spinnerModel{
 		spinner: spinner.New(
 			spinner.WithSpinner(spinner.Dot),
@@ -33,6 +39,7 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	program := tea.NewProgram(
 		sp,
 		tea.WithContext(ctx),
+		tea.WithOutput(s.w),
 	)
 
 	// Ctrl+C reaches the spinner as a keystroke, so we have to send a cancel
@@ -77,6 +84,19 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	}
 
 	return nil
+}
+
+// withoutSpinner runs the callback with no animation and prints the message
+// plainly. ctx can still be used by CallbackFn to abort the operation early.
+func (s *Terminal) withoutSpinner(ctx context.Context, opts *SpinnerOptions) error {
+	s.Print(opts.SpinMessage + "\n")
+
+	err := opts.CallbackFn(ctx)
+	if errors.Is(err, context.Canceled) {
+		return ErrCancelled
+	}
+
+	return err
 }
 
 type spinnerResult struct {

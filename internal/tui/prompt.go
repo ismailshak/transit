@@ -12,8 +12,13 @@ import (
 
 // Password renders a single-line masked input and blocks until the user
 // submits or backs out. On cancel (Esc, Ctrl+C, or a cancelled ctx) returns
-// ErrCancelled. On submitting with nothing typed returns ErrNoInput.
-func Password(ctx context.Context, title string) (string, error) {
+// ErrCancelled. On submitting with nothing typed returns ErrNoInput. When the
+// output isn't a terminal it returns ErrNotInteractive without rendering anything.
+func (s *Terminal) Password(ctx context.Context, title string) (string, error) {
+	if !s.tty {
+		return "", ErrNotInteractive
+	}
+
 	ti := textinput.New()
 	ti.Placeholder = ""
 	ti.Focus()
@@ -28,7 +33,7 @@ func Password(ctx context.Context, title string) (string, error) {
 		title:     title,
 	}
 
-	program := tea.NewProgram(prompt, tea.WithContext(ctx))
+	program := tea.NewProgram(prompt, tea.WithContext(ctx), tea.WithOutput(s.w))
 	m, err := program.Run()
 
 	if errors.Is(err, context.Canceled) {
