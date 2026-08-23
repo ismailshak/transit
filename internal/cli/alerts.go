@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ismailshak/transit/internal/render"
 	"github.com/ismailshak/transit/internal/transit"
-	"github.com/ismailshak/transit/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +45,7 @@ func (a *App) executeAlerts(ctx context.Context, p transit.Provider) error {
 		return fmt.Errorf("look up agencies: %w", err)
 	}
 
-	tui.PrintAlerts(alertSet, len(agencies) > 1)
+	a.println(render.Alerts{Set: alertSet, Width: a.Out.Width(), ShowAgency: len(agencies) > 1})
 
 	for _, s := range degraded {
 		a.warnf("%v", s.Err)

@@ -1,4 +1,4 @@
-package ui
+package tui
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/ismailshak/transit/internal/tui"
+	"github.com/ismailshak/transit/internal/render"
 )
 
 // Password renders a single-line masked input and blocks until the user
@@ -89,9 +89,9 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m promptModel) View() string {
 	builder := strings.Builder{}
 
-	builder.WriteString(tui.PromptSymbolStyle(tui.PromptSymbol))
+	builder.WriteString(render.PromptSymbolStyle(render.PromptSymbol))
 	builder.WriteString(" ")
-	builder.WriteString(tui.PromptTitleStyle(m.title))
+	builder.WriteString(render.PromptTitleStyle(m.title))
 	builder.WriteString(" ")
 	builder.WriteString(m.textInput.View())
 

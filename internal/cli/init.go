@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ismailshak/transit/internal/render"
 	"github.com/ismailshak/transit/internal/transit"
 	"github.com/ismailshak/transit/internal/tui"
-	"github.com/ismailshak/transit/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -46,10 +46,10 @@ Adds missing config properties and downloads static data for the chosen location
 	return initCmd
 }
 
-func toChoices(locations []transit.Location) []ui.Choice {
-	choices := make([]ui.Choice, len(locations))
+func toChoices(locations []transit.Location) []tui.Choice {
+	choices := make([]tui.Choice, len(locations))
 	for i, l := range locations {
-		choices[i] = ui.Choice{Key: string(l.Slug), Title: string(l.Slug), Description: l.Name, FilterValue: l.Name}
+		choices[i] = tui.Choice{Key: string(l.Slug), Title: string(l.Slug), Description: l.Name, FilterValue: l.Name}
 	}
 
 	return choices
@@ -68,19 +68,19 @@ func (a *App) getConfiguredLocation(ctx context.Context) (string, error) {
 
 	choices := toChoices(locations)
 
-	selection, err := ui.Select(ctx, "Select a location", choices)
+	selection, err := tui.Select(ctx, "Select a location", choices)
 	if err != nil {
-		if errors.Is(err, ui.ErrCancelled) {
-			tui.OperationSkipped("Cancelled... Exiting")
-			return "", ui.ErrCancelled
+		if errors.Is(err, tui.ErrCancelled) {
+			a.println(render.Skipped("Cancelled... Exiting"))
+			return "", tui.ErrCancelled
 		}
 
-		if errors.Is(err, ui.ErrNoSelection) {
-			tui.OperationSkipped("Nothing selected... Exiting")
-			return "", ui.ErrNoSelection
+		if errors.Is(err, tui.ErrNoSelection) {
+			a.println(render.Skipped("Nothing selected... Exiting"))
+			return "", tui.ErrNoSelection
 		}
 
-		tui.OperationFailed("Failed to select location")
+		a.println(render.Failed("Failed to select location"))
 		return "", err
 	}
 
@@ -99,19 +99,19 @@ func (a *App) confirmConfiguredKey(ctx context.Context, location string) error {
 		return nil
 	}
 
-	key, err := ui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
+	key, err := tui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
 	if err != nil {
-		if errors.Is(err, ui.ErrCancelled) {
-			tui.OperationSkipped("Cancelled... Exiting")
+		if errors.Is(err, tui.ErrCancelled) {
+			a.println(render.Skipped("Cancelled... Exiting"))
 			return err
 		}
 
-		if errors.Is(err, ui.ErrNoInput) {
-			tui.OperationFailed("No input... Exiting")
+		if errors.Is(err, tui.ErrNoInput) {
+			a.println(render.Failed("No input... Exiting"))
 			return err
 		}
 
-		tui.OperationFailed("Failed to capture input")
+		a.println(render.Failed("Failed to capture input"))
 		return err
 	}
 
@@ -129,14 +129,14 @@ func (a *App) executeInitConfig(ctx context.Context) error {
 		return err
 	}
 
-	tui.OperationSuccessful("Location set to " + location)
+	a.println(render.Success("Location set to " + location))
 
 	err = a.confirmConfiguredKey(ctx, location)
 	if err != nil {
 		return err
 	}
 
-	tui.OperationSuccessful("API key set")
+	a.println(render.Success("API key set"))
 	return nil
 }
 
@@ -147,15 +147,13 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	}
 
 	if count > 0 {
-		tui.OperationSuccessful("Data initialized")
+		a.println(render.Success("Data initialized"))
 		return nil
 	}
 
 	var d *transit.Static
-	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
-		SpinMessage:    "Fetching data...",
-		ErrorMessage:   "Failed to fetch data",
-		SuccessMessage: "Data fetched",
+	err = tui.WithSpinner(ctx, &tui.SpinnerOptions{
+		SpinMessage: "Fetching data...",
 		CallbackFn: func(ctx context.Context) error {
 			var fetchErr error
 			d, fetchErr = seeder.Seed(ctx)
@@ -163,19 +161,20 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 		},
 	})
 
-	if errors.Is(err, ui.ErrCancelled) {
-		tui.OperationSkipped("Cancelled... Exiting")
-		return ui.ErrCancelled
+	if errors.Is(err, tui.ErrCancelled) {
+		a.println(render.Skipped("Cancelled... Exiting"))
+		return tui.ErrCancelled
 	}
 
 	if err != nil {
+		a.println(render.Failed("Failed to fetch data"))
 		return fmt.Errorf("fetch static data: %w", err)
 	}
 
-	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
-		SpinMessage:    "Saving data...",
-		ErrorMessage:   "Failed to save data",
-		SuccessMessage: "Data saved",
+	a.println(render.Success("Data fetched"))
+
+	err = tui.WithSpinner(ctx, &tui.SpinnerOptions{
+		SpinMessage: "Saving data...",
 		CallbackFn: func(ctx context.Context) error {
 			if insertErr := a.Store.InsertAgencies(ctx, d.Agencies); insertErr != nil {
 				return insertErr
@@ -189,15 +188,18 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 		},
 	})
 
-	if errors.Is(err, ui.ErrCancelled) {
-		tui.OperationSkipped("Cancelled... Exiting")
-		return ui.ErrCancelled
+	if errors.Is(err, tui.ErrCancelled) {
+		a.println(render.Skipped("Cancelled... Exiting"))
+		return tui.ErrCancelled
 	}
 
 	if err != nil {
+		a.println(render.Failed("Failed to save data"))
 		return fmt.Errorf("insert data: %w", err)
 	}
 
-	_, err = fmt.Fprintln(a.Out, "\nSuccessfully initialized. Use transit --help for commands and examples")
-	return err
+	a.println(render.Success("Data saved"))
+	a.println("\nSuccessfully initialized. Use transit --help for commands and examples")
+
+	return nil
 }

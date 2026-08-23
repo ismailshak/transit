@@ -1,4 +1,4 @@
-package ui
+package tui
 
 import (
 	"context"
@@ -6,16 +6,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/ismailshak/transit/internal/tui"
+	"github.com/ismailshak/transit/internal/render"
 )
 
 type SpinnerOptions struct {
 	// SpinMessage is shown next to the spinner while CallbackFn is running
 	SpinMessage string
-	// SuccessMessage replaces the spinner once CallbackFn returns nil
-	SuccessMessage string
-	// ErrorMessage replaces the spinner once CallbackFn returns an error
-	ErrorMessage string
 	// CallbackFn is the work to run while the spinner animates
 	CallbackFn func(ctx context.Context) error
 }
@@ -29,7 +25,7 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	sp := spinnerModel{
 		spinner: spinner.New(
 			spinner.WithSpinner(spinner.Dot),
-			spinner.WithStyle(tui.SpinnerStyle),
+			spinner.WithStyle(render.SpinnerStyle),
 		),
 		msg: &opts.SpinMessage,
 	}
@@ -77,12 +73,8 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	}
 
 	if err != nil {
-		tui.OperationFailed(opts.ErrorMessage)
-
 		return err
 	}
-
-	tui.OperationSuccessful(opts.SuccessMessage)
 
 	return nil
 }

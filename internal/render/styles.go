@@ -1,8 +1,7 @@
-// Package tui contains functions that print pretty output to the terminal.
+// Package render is responsible for generating pretty output intended for a terminal.
 //
-// Generally encompasses functions that are transit's user interface, where visual aesthetic matters.
-// Regular messaging should be deferred to the `cli`.
-package tui
+// Nothing here writes to a descriptor directly and package tui is in charge of that.
+package render
 
 import "github.com/charmbracelet/lipgloss"
 
@@ -26,9 +25,9 @@ var (
 
 	SpinnerStyle = lipgloss.NewStyle().Foreground(Purple)
 
-	OpSuccessStyle = lipgloss.NewStyle().Foreground(Green).Render
-	OpFailedStyle  = lipgloss.NewStyle().Foreground(Red).Render
-	OpSkippedStyle = lipgloss.NewStyle().Foreground(Subtle).Render
+	SuccessStyle = lipgloss.NewStyle().Foreground(Green).Render
+	FailedStyle  = lipgloss.NewStyle().Foreground(Red).Render
+	SkippedStyle = lipgloss.NewStyle().Foreground(Subtle).Render
 
 	PromptTitleStyle  = lipgloss.NewStyle().Bold(true).Render
 	PromptSymbolStyle = lipgloss.NewStyle().Foreground(Cyan).Render
@@ -36,4 +35,16 @@ var (
 
 func Bold(text string) string {
 	return lipgloss.NewStyle().Bold(true).Render(text)
+}
+
+func Success(msg string) string {
+	return SuccessStyle(SuccessIcon) + " " + msg
+}
+
+func Failed(msg string) string {
+	return FailedStyle(ErrorIcon) + " " + msg
+}
+
+func Skipped(msg string) string {
+	return SkippedStyle(SkipIcon) + " " + msg
 }

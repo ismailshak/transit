@@ -11,7 +11,7 @@ import (
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/transit"
-	"github.com/ismailshak/transit/internal/ui"
+	"github.com/ismailshak/transit/internal/tui"
 )
 
 func TestExitCode(t *testing.T) {
@@ -27,7 +27,7 @@ func TestExitCode(t *testing.T) {
 		},
 		"cancelled prompt": {
 			// cmd/init.go wraps whatever executeInitConfig returns
-			err:  fmt.Errorf("collect information: %w", ui.ErrCancelled),
+			err:  fmt.Errorf("collect information: %w", tui.ErrCancelled),
 			want: 0,
 		},
 		"cancelled request": {
@@ -54,11 +54,11 @@ func TestExitCode(t *testing.T) {
 			want: 2,
 		},
 		"nothing selected": {
-			err:  fmt.Errorf("collect information: %w", ui.ErrNoSelection),
+			err:  fmt.Errorf("collect information: %w", tui.ErrNoSelection),
 			want: 2,
 		},
 		"no input": {
-			err:  fmt.Errorf("collect information: %w", ui.ErrNoInput),
+			err:  fmt.Errorf("collect information: %w", tui.ErrNoInput),
 			want: 2,
 		},
 		"unreadable config": {

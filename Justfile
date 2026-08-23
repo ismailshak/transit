@@ -30,6 +30,19 @@ fmt:
 tidy:
     go mod tidy
 
+# Regenerate a package's golden files, e.g. `just golden ./internal/render -run TestBoard/two_stations`
+golden pkg *args:
+    go test {{ pkg }} -update -count=1 {{ args }}
+
+# Print a golden file with its colour escapes stripped, e.g. `just show internal/render/testdata/one_station.golden`
+[unix]
+golden-show file:
+    @perl -pe 's/\e\[[0-9;]*[a-zA-Z]//g; s/\n?\z/\n/' {{ file }}
+
+[windows]
+golden-show file:
+    @$e = [char]27; (Get-Content -Raw {{ file }}) -replace "$e\[[0-9;]*[a-zA-Z]", ""
+
 # Run the CLI from source, e.g. `just run at ballston`
 run *args:
     go run . {{ args }}
