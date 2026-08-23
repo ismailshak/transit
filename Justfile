@@ -30,6 +30,10 @@ fmt:
 tidy:
     go mod tidy
 
+# Regenerate a package's golden files, e.g. `just golden ./internal/render -run TestBoard/two_stations`
+golden pkg *args:
+    go test {{ pkg }} -update -count=1 {{ args }}
+
 # Run the CLI from source, e.g. `just run at ballston`
 run *args:
     go run . {{ args }}
