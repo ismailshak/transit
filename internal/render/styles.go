@@ -26,9 +26,9 @@ var (
 
 	SpinnerStyle = lipgloss.NewStyle().Foreground(Purple)
 
-	OpSuccessStyle = lipgloss.NewStyle().Foreground(Green).Render
-	OpFailedStyle  = lipgloss.NewStyle().Foreground(Red).Render
-	OpSkippedStyle = lipgloss.NewStyle().Foreground(Subtle).Render
+	SuccessStyle = lipgloss.NewStyle().Foreground(Green).Render
+	FailedStyle  = lipgloss.NewStyle().Foreground(Red).Render
+	SkippedStyle = lipgloss.NewStyle().Foreground(Subtle).Render
 
 	PromptTitleStyle  = lipgloss.NewStyle().Bold(true).Render
 	PromptSymbolStyle = lipgloss.NewStyle().Foreground(Cyan).Render
@@ -36,4 +36,16 @@ var (
 
 func Bold(text string) string {
 	return lipgloss.NewStyle().Bold(true).Render(text)
+}
+
+func Success(msg string) string {
+	return SuccessStyle(SuccessIcon) + " " + msg
+}
+
+func Failed(msg string) string {
+	return FailedStyle(ErrorIcon) + " " + msg
+}
+
+func Skipped(msg string) string {
+	return SkippedStyle(SkipIcon) + " " + msg
 }

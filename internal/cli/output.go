@@ -22,3 +22,8 @@ func (a *App) errorf(format string, args ...any) {
 func (a *App) warnf(format string, args ...any) {
 	_, _ = fmt.Fprintln(a.Err, warnPrefix, fmt.Sprintf(format, args...))
 }
+
+// print writes to Out.
+func (a *App) print(args ...any) {
+	_, _ = fmt.Fprintln(a.Out, args...)
+}

@@ -12,10 +12,6 @@ import (
 type SpinnerOptions struct {
 	// SpinMessage is shown next to the spinner while CallbackFn is running
 	SpinMessage string
-	// SuccessMessage replaces the spinner once CallbackFn returns nil
-	SuccessMessage string
-	// ErrorMessage replaces the spinner once CallbackFn returns an error
-	ErrorMessage string
 	// CallbackFn is the work to run while the spinner animates
 	CallbackFn func(ctx context.Context) error
 }
@@ -77,12 +73,8 @@ func WithSpinner(ctx context.Context, opts *SpinnerOptions) error {
 	}
 
 	if err != nil {
-		render.OperationFailed(opts.ErrorMessage)
-
 		return err
 	}
-
-	render.OperationSuccessful(opts.SuccessMessage)
 
 	return nil
 }
