@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -63,13 +66,7 @@ func TestInitWithoutTerminal(t *testing.T) {
 
 	t.Run("api key prompt mentions resolution", func(t *testing.T) {
 		app := newTestApp(t)
-
-		if code := app.run("config", "set", "core.location", "dmv"); code != 0 {
-			t.Fatalf("expected exit code 0 but got %d (output %q)", code, app.out)
-		}
-
-		app.out.Reset()
-		app.err.Reset()
+		seedLocation(t, app.home, "dmv")
 
 		code := app.run("init")
 		if code != 2 {
@@ -80,4 +77,21 @@ func TestInitWithoutTerminal(t *testing.T) {
 			t.Errorf("expected the alternative on Err but got %q", app.err)
 		}
 	})
+}
+
+// seedLocation writes what `config set` would write. That command opens the store a second time.
+// Windows then won't let TempDir remove the handle.
+// TODO: go through the CLI once the store and the config have their own flag-exposed paths
+func seedLocation(t *testing.T, home, location string) {
+	t.Helper()
+
+	dir := filepath.Join(home, ".config", "transit")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("expected no error but got %v", err)
+	}
+
+	contents := fmt.Sprintf("core:\n  location: %s\n", location)
+	if err := os.WriteFile(filepath.Join(dir, "config.yml"), []byte(contents), 0o600); err != nil {
+		t.Fatalf("expected no error but got %v", err)
+	}
 }
