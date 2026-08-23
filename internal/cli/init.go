@@ -7,7 +7,7 @@ import (
 
 	"github.com/ismailshak/transit/internal/render"
 	"github.com/ismailshak/transit/internal/transit"
-	"github.com/ismailshak/transit/internal/ui"
+	"github.com/ismailshak/transit/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -46,10 +46,10 @@ Adds missing config properties and downloads static data for the chosen location
 	return initCmd
 }
 
-func toChoices(locations []transit.Location) []ui.Choice {
-	choices := make([]ui.Choice, len(locations))
+func toChoices(locations []transit.Location) []tui.Choice {
+	choices := make([]tui.Choice, len(locations))
 	for i, l := range locations {
-		choices[i] = ui.Choice{Key: string(l.Slug), Title: string(l.Slug), Description: l.Name, FilterValue: l.Name}
+		choices[i] = tui.Choice{Key: string(l.Slug), Title: string(l.Slug), Description: l.Name, FilterValue: l.Name}
 	}
 
 	return choices
@@ -68,16 +68,16 @@ func (a *App) getConfiguredLocation(ctx context.Context) (string, error) {
 
 	choices := toChoices(locations)
 
-	selection, err := ui.Select(ctx, "Select a location", choices)
+	selection, err := tui.Select(ctx, "Select a location", choices)
 	if err != nil {
-		if errors.Is(err, ui.ErrCancelled) {
+		if errors.Is(err, tui.ErrCancelled) {
 			a.print(render.Skipped("Cancelled... Exiting"))
-			return "", ui.ErrCancelled
+			return "", tui.ErrCancelled
 		}
 
-		if errors.Is(err, ui.ErrNoSelection) {
+		if errors.Is(err, tui.ErrNoSelection) {
 			a.print(render.Skipped("Nothing selected... Exiting"))
-			return "", ui.ErrNoSelection
+			return "", tui.ErrNoSelection
 		}
 
 		a.print(render.Failed("Failed to select location"))
@@ -99,14 +99,14 @@ func (a *App) confirmConfiguredKey(ctx context.Context, location string) error {
 		return nil
 	}
 
-	key, err := ui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
+	key, err := tui.Password(ctx, fmt.Sprintf("Enter your API key for %s", location))
 	if err != nil {
-		if errors.Is(err, ui.ErrCancelled) {
+		if errors.Is(err, tui.ErrCancelled) {
 			a.print(render.Skipped("Cancelled... Exiting"))
 			return err
 		}
 
-		if errors.Is(err, ui.ErrNoInput) {
+		if errors.Is(err, tui.ErrNoInput) {
 			a.print(render.Failed("No input... Exiting"))
 			return err
 		}
@@ -152,7 +152,7 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 	}
 
 	var d *transit.Static
-	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
+	err = tui.WithSpinner(ctx, &tui.SpinnerOptions{
 		SpinMessage: "Fetching data...",
 		CallbackFn: func(ctx context.Context) error {
 			var fetchErr error
@@ -161,9 +161,9 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 		},
 	})
 
-	if errors.Is(err, ui.ErrCancelled) {
+	if errors.Is(err, tui.ErrCancelled) {
 		a.print(render.Skipped("Cancelled... Exiting"))
-		return ui.ErrCancelled
+		return tui.ErrCancelled
 	}
 
 	if err != nil {
@@ -173,7 +173,7 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 
 	a.print(render.Success("Data fetched"))
 
-	err = ui.WithSpinner(ctx, &ui.SpinnerOptions{
+	err = tui.WithSpinner(ctx, &tui.SpinnerOptions{
 		SpinMessage: "Saving data...",
 		CallbackFn: func(ctx context.Context) error {
 			if insertErr := a.Store.InsertAgencies(ctx, d.Agencies); insertErr != nil {
@@ -188,9 +188,9 @@ func (a *App) executeInitData(ctx context.Context, seeder transit.Seeder, locati
 		},
 	})
 
-	if errors.Is(err, ui.ErrCancelled) {
+	if errors.Is(err, tui.ErrCancelled) {
 		a.print(render.Skipped("Cancelled... Exiting"))
-		return ui.ErrCancelled
+		return tui.ErrCancelled
 	}
 
 	if err != nil {

@@ -1,11 +1,11 @@
-package ui_test
+package tui_test
 
 import (
 	"bytes"
 	"strings"
 	"testing"
 
-	"github.com/ismailshak/transit/internal/ui"
+	"github.com/ismailshak/transit/internal/tui"
 )
 
 // A bytes.Buffer has no file descriptor, so every Terminal below is a non-terminal.
@@ -13,23 +13,23 @@ func TestScreenWithoutTerminal(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		do   func(*ui.Terminal)
+		do   func(*tui.Terminal)
 		want string
 	}{
 		"enter": {
-			do:   func(s *ui.Terminal) { _ = s.Enter() },
+			do:   func(s *tui.Terminal) { _ = s.Enter() },
 			want: "",
 		},
 		"exit": {
-			do:   func(s *ui.Terminal) { _ = s.Exit() },
+			do:   func(s *tui.Terminal) { _ = s.Exit() },
 			want: "",
 		},
 		"draw": {
-			do:   func(s *ui.Terminal) { s.Draw("one\ntwo") },
+			do:   func(s *tui.Terminal) { s.Draw("one\ntwo") },
 			want: "one\ntwo",
 		},
 		"print": {
-			do:   func(s *ui.Terminal) { s.Print("hello") },
+			do:   func(s *tui.Terminal) { s.Print("hello") },
 			want: "hello",
 		},
 	}
@@ -39,7 +39,7 @@ func TestScreenWithoutTerminal(t *testing.T) {
 			t.Parallel()
 
 			var out bytes.Buffer
-			tc.do(ui.NewTerminal(&out))
+			tc.do(tui.NewTerminal(&out))
 
 			if got := out.String(); got != tc.want {
 				t.Errorf("expected %q but got %q", tc.want, got)
@@ -52,7 +52,7 @@ func TestScreenWithoutTerminalEmitsNoEscapes(t *testing.T) {
 	t.Parallel()
 
 	var out bytes.Buffer
-	s := ui.NewTerminal(&out)
+	s := tui.NewTerminal(&out)
 
 	if err := s.Enter(); err != nil {
 		t.Fatalf("expected no error but got %v", err)
@@ -74,7 +74,7 @@ func TestScreenWithoutTerminalEmitsNoEscapes(t *testing.T) {
 func TestScreenWithoutTerminalHasNoWidth(t *testing.T) {
 	t.Parallel()
 
-	s := ui.NewTerminal(&bytes.Buffer{})
+	s := tui.NewTerminal(&bytes.Buffer{})
 
 	if s.TTY() {
 		t.Error("expected no terminal but got one")

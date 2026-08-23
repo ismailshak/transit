@@ -11,7 +11,7 @@ import (
 	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/store"
 	"github.com/ismailshak/transit/internal/transit"
-	"github.com/ismailshak/transit/internal/ui"
+	"github.com/ismailshak/transit/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +20,7 @@ import (
 type App struct {
 	Cfg   *config.Config
 	Store *store.Store
-	Out   *ui.Terminal
+	Out   *tui.Terminal
 	Err   io.Writer
 	Now   func() time.Time
 

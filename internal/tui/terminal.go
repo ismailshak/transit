@@ -1,7 +1,7 @@
 // Package ui owns everything that writes to the user's terminal (specifically, stdout).
 //
 // Prompts, selection lists, spinners and the terminal interface live and here.
-package ui
+package tui
 
 import (
 	"io"

@@ -12,7 +12,7 @@ import (
 	"github.com/ismailshak/transit/internal/config"
 	"github.com/ismailshak/transit/internal/provider"
 	"github.com/ismailshak/transit/internal/transit"
-	"github.com/ismailshak/transit/internal/ui"
+	"github.com/ismailshak/transit/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -70,7 +70,7 @@ func (a *App) newRootCmd() *cobra.Command {
 
 // Run builds the app, runs the command tree, and returns a process exit code.
 func Run() int {
-	app := &App{Out: ui.NewTerminal(os.Stdout), Err: os.Stderr, Now: time.Now}
+	app := &App{Out: tui.NewTerminal(os.Stdout), Err: os.Stderr, Now: time.Now}
 
 	// Too late to change the exit code, but logging to make debugging this scenario easier
 	defer func() {
@@ -87,7 +87,7 @@ func Run() int {
 
 // cancelled reports whether err is the user backing out from a prompt or from a signal.
 func cancelled(err error) bool {
-	return errors.Is(err, ui.ErrCancelled) || errors.Is(err, context.Canceled)
+	return errors.Is(err, tui.ErrCancelled) || errors.Is(err, context.Canceled)
 }
 
 // exitCode maps a caught error to one of the documented exit codes.
@@ -101,8 +101,8 @@ func exitCode(err error) int {
 		return 0 // Acceptable errors that aren't real errors
 	case errors.Is(err, errUsage),
 		errors.Is(err, provider.ErrMissingAPIKey),
-		errors.Is(err, ui.ErrNoSelection),
-		errors.Is(err, ui.ErrNoInput),
+		errors.Is(err, tui.ErrNoSelection),
+		errors.Is(err, tui.ErrNoInput),
 		errors.Is(err, config.ErrInvalid):
 		return 2 // Usage or configuration error
 	case errors.As(err, &httpErr):

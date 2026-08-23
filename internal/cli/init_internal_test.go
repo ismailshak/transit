@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/ismailshak/transit/internal/transit"
-	"github.com/ismailshak/transit/internal/ui"
+	"github.com/ismailshak/transit/internal/tui"
 )
 
 func TestToChoices(t *testing.T) {
@@ -13,19 +13,19 @@ func TestToChoices(t *testing.T) {
 
 	tests := map[string]struct {
 		input    []transit.Location
-		expected []ui.Choice
+		expected []tui.Choice
 	}{
 		"converts a location correctly": {
 			input: []transit.Location{
 				{Slug: "slug", Name: "Long Slug Name"},
 			},
-			expected: []ui.Choice{
+			expected: []tui.Choice{
 				{Key: "slug", Title: "slug", Description: "Long Slug Name", FilterValue: "Long Slug Name"},
 			},
 		},
 		"empty list": {
 			input:    []transit.Location{},
-			expected: []ui.Choice{},
+			expected: []tui.Choice{},
 		},
 	}
 
