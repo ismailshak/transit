@@ -1,6 +1,6 @@
 // Package render is responsible for generating pretty output intended for a terminal.
 //
-// Nothing here writes to a descriptor directly and package [tui] is in charge of that.
+// Nothing here writes to a descriptor directly and package tui is in charge of that.
 package render
 
 import "github.com/charmbracelet/lipgloss"

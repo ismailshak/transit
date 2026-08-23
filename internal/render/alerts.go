@@ -48,6 +48,7 @@ type Alerts struct {
 	ShowAgency bool
 }
 
+// String renders all alerts, one box per alert.
 func (a Alerts) String() string {
 	if len(a.Set.Alerts) == 0 {
 		return "No alerts reported"
@@ -126,10 +127,8 @@ func footer(alert transit.Alert, showAgency bool) string {
 		activePeriod = activePeriodStyle.Render(duration)
 	}
 
-	var agencyHorMargin int
-	if duration == "" {
-		agencyHorMargin = 1
-	} else {
+	agencyHorMargin := 1
+	if duration != "" {
 		agencyHorMargin = 2
 	}
 
