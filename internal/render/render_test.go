@@ -42,7 +42,7 @@ func golden(t *testing.T, name, got string) {
 
 	b, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("expected to read %s but got %v, run `just golden ./internal/render`", path, err)
+		t.Fatalf("expected to read %s but got %v, run `mise run golden ./internal/render`", path, err)
 	}
 
 	want := string(b)

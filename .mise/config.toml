@@ -1,0 +1,40 @@
+[tools]
+go = "1.26.5"
+golangci-lint = "v2.12.2"
+
+[tasks.build]
+description = "Build the binary into the repo root"
+run = "go build -o transit"
+
+[tasks.fmt]
+description = "Run the formatter"
+run = "golangci-lint fmt"
+
+[tasks.golden]
+description = "Regenerate a package's golden files, e.g. `mise run golden ./internal/render -run TestBoard/two_stations`"
+usage = '''
+arg "<pkg>"
+arg "[args]" var=#true
+'''
+run = 'go test "$usage_pkg" -update $usage_args'
+
+[tasks.lint]
+description = "Run the linters"
+run = "golangci-lint run"
+
+[tasks.race]
+description = "Run the test suite with the race detector"
+run = "go test -race ./..."
+
+[tasks.test]
+description = "Run the test suite"
+run = "go test ./..."
+
+[tasks.tidy]
+description = "Add missing and remove unused modules"
+run = "go mod tidy"
+
+[tasks.transit]
+description = "Run the CLI from source, e.g. `mise transit at ballston`"
+quiet = true
+run = "go run ."

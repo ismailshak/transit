@@ -29,5 +29,5 @@ runs:
         path: |
           ${{ steps.paths.outputs.mod }}
           ${{ steps.paths.outputs.build }}
-        # mise.toml is in the hash because it owns the specific Go version installed 
-        key: ${{ runner.os }}-${{ runner.arch }}-go-${{ hashFiles('mise.toml', 'go.mod', 'go.sum') }}
+        # .mise/config.toml is in the hash because it owns the specific Go version installed 
+        key: ${{ runner.os }}-${{ runner.arch }}-go-${{ hashFiles('.mise/config.toml', 'go.mod', 'go.sum') }}
