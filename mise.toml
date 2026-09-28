@@ -1,4 +1,0 @@
-[tools]
-go = "1.26.5"
-golangci-lint = "v2.12.2"
-just = "1.58.0"

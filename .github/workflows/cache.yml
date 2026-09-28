@@ -31,4 +31,4 @@ jobs:
         shell: bash # pwsh would carry on after a failed compile and warm a partial cache
         run: |
           go test -race -run '^$' ./...
-          just build
+          mise run build

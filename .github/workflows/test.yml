@@ -18,4 +18,4 @@ jobs:
       - name: Set up Go
         uses: ./.github/actions/setup-go
       - name: Run test
-        run: just race
+        run: mise run race

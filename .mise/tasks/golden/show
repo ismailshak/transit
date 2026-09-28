@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#MISE description="Print a golden file with its colour escapes stripped, e.g. `mise run golden:show internal/render/testdata/one_station.golden`"
+#MISE quiet=true
+#USAGE flag "--render" help="Print the escapes as-is so the terminal draws the colours"
+#USAGE arg "[file]" var=#true
+
+# Start from wherever we invoked so that relative paths work
+cd "$MISE_ORIGINAL_CWD" || exit
+
+# Opens a picker over golden files if no files are passed
+if [ -z "$usage_file" ]; then
+  if ! command -v fzf >/dev/null; then
+    echo "install fzf to run without files, or pass a file: mise run golden:show <file>..." >&2
+    exit 1
+  fi
+  # Unquoted so each picked path becomes its own arg
+  # shellcheck disable=SC2046
+  set -- $(find . -name "*.golden" | fzf -m)
+else
+  # mise leaves --render in $@. usage_file only holds the files.
+  # shellcheck disable=SC2086
+  set -- $usage_file
+fi
+
+[ $# -eq 0 ] && exit 0
+
+strip='s/\e\[[0-9;]*m//g'
+# shellcheck disable=SC2154
+[ "$usage_render" = true ] && strip=''
+
+for file in "$@"; do
+  echo -e "\nGolden: $file\n"
+  # -l ends each file with a newline. Golden files don't have one.
+  perl -lpe "$strip" "$file"
+done
